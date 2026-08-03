@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   miniRow: { flexDirection: "row", alignItems: "center", marginTop: S.sm },
   miniLink: { color: C.brand, fontFamily: F.text, fontSize: 12, marginLeft: 4 },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: S.md },
-  iconBtn: { width: 34, height: 34, borderRadius: R.sm, backgroundColor: C.surface3, alignItems: "center", justifyContent: "center" },
+  iconBtn: { width: 40, height: 40, borderRadius: R.sm, backgroundColor: C.surface3, alignItems: "center", justifyContent: "center" },
   shotRow: { backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, marginBottom: S.sm, overflow: "hidden" },
   shotHead: { flexDirection: "row", alignItems: "center", padding: S.md, gap: S.sm },
   shotNum: { width: 30, height: 30, borderRadius: R.sm, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
