@@ -34,7 +34,16 @@ Auth + protected routes; Dashboard (stats, quick actions, continue working, rece
 2. Real drag-and-drop scene reordering.
 3. Billing/subscription tiers (Stripe) when monetization begins.
 
-## Sprint 2 (2026-06 / iteration 5) — Storyboard depth
+## Sprint 3.5 (2026-06 / iteration 6) — Production-grade reliability & data architecture
+- **Single source of truth**: Storyboard & Shot List are two views of the same `scene` data. Primary shot shares fields with the scene (two-way sync verified both directions); secondary shots store overrides in `shot.data` and stay isolated.
+- **useProjectStore.ts** (new): centralizes persistence. `mutate()` = local edit → history push + debounced autosave; `applyServer()` = AI/frame responses (already persisted) + history snapshot; `normalizeProject()` auto-repairs on every transition (sequential scene_number, unique scene/shot ids, single primary shot, arrays present → no dup numbers / no orphans).
+- **Autosave state machine**: idle/unsaved/saving/saved/offline/recovering with exponential-backoff retry on failure + `online`/`offline` listeners (never loses work). Header shows all states.
+- **Undo/Redo**: 100-deep history + Ctrl/Cmd+Z / Ctrl/Cmd+Shift+Z shortcuts (ignored inside inputs) + header buttons (disabled when empty).
+- **SceneCard refactor**: reads straight from `scene` prop (removed stale local mirror) so undo/redo & sync reflect live; `EditableField`/ShotList `Field` are focus-aware + idempotent-commit (no duplicate history entries).
+- **Statistics** always live: Storyboard SummaryPanel (Total Scenes/Shots, Runtime, Shooting Time, Locations, Characters, Lenses, Movements, Completion) + Shot List Production Summary.
+- Verified: iteration_6 — frontend 100% in-scope pass, backend 29/34 (5 failures are known Cloudflare-edge 502 on real-AI /generate, not regressions). Seed project c73286507b42 restored to 8 real scenes.
+
+## Sprint 2/3 (iteration 5) — Storyboard depth
 Implemented in strict priority order per user request:
 - **P1 Storyboard Editor** — verified complete (inline edit, autosave, drag-drop, scene actions, regen, expandable cards). NOTE: previous fork left many referenced StyleSheet keys undefined (RN silently ignored → unstyled). Added ALL missing styles (efInput, group, statusRow, frameBig, toolbar, summary, etc.).
 - **P2 Smart Shot List** — rewrote Shot List tab as a professional horizontal-scroll production table, auto-synced from `project.scenes` (single source of truth, zero duplication). `ShotListTab` in project/[id].tsx.
