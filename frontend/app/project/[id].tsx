@@ -14,7 +14,9 @@ import { Field, Picker, Btn, H1, H2, Body, Badge, MockBadge, AnimIn } from "@/sr
 import * as O from "@/src/options";
 import { exportPdf, exportCsv, printProject } from "@/src/exporter";
 
-const TABS = ["Overview", "Storyboard", "Shot List", "Script", "Production", "References", "Exports", "Settings"];
+const TABS = ["Overview", "Storyboard", "Script", "Shot List", "Equipment", "Crew", "Schedule", "Budget", "Exports", "Settings"];
+
+const cap = (k: string) => k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 function totalDuration(scenes: any[]) {
   let sec = 0;
@@ -77,6 +79,8 @@ export default function Editor() {
   };
   const regenScene = async (s: any) => { setBusyScene(s.id); try { setProject(await api.regenScene(id, s.id)); } catch {} finally { setBusyScene(null); } };
   const regenPrompt = async (s: any) => { setBusyScene(s.id + "-p"); try { setProject(await api.regenImagePrompt(id, s.id)); } catch {} finally { setBusyScene(null); } };
+  const regenDialogue = async (s: any) => { setBusyScene(s.id + "-d"); try { setProject(await api.regenDialogue(id, s.id)); } catch {} finally { setBusyScene(null); } };
+  const regenCamera = async (s: any) => { setBusyScene(s.id + "-c"); try { setProject(await api.regenCamera(id, s.id)); } catch {} finally { setBusyScene(null); } };
   const regenerateAll = async () => { setRegenAll(true); try { setProject(await api.generate(id)); setTab("Overview"); } catch {} finally { setRegenAll(false); } };
   const doExport = async (fn: () => Promise<void>) => { try { await fn(); api.markExported(id).then(() => setProject((p: any) => ({ ...p, export_count: (p.export_count || 0) + 1 }))); } catch (e) { console.log(e); } };
 
@@ -144,6 +148,10 @@ export default function Editor() {
                             {busyScene === s.id + "-p" ? <ActivityIndicator size="small" color={C.brand} /> : <><Ionicons name="refresh" size={13} color={C.brand} /><Text style={styles.miniLink}>Regenerate prompt</Text></>}
                           </Pressable>
                         </View>
+                        <View style={styles.regenRow}>
+                          <RegenChip icon="chatbubbles-outline" label="Dialogue" busy={busyScene === s.id + "-d"} onPress={() => regenDialogue(s)} testID={`regen-dialogue-${i}`} />
+                          <RegenChip icon="videocam-outline" label="Camera" busy={busyScene === s.id + "-c"} onPress={() => regenCamera(s)} testID={`regen-camera-${i}`} />
+                        </View>
                         <View style={styles.actions}>
                           <IconBtn icon="create-outline" onPress={() => setEditing({ ...s })} testID={`edit-${i}`} />
                           <IconBtn icon="sparkles-outline" loading={busyScene === s.id} onPress={() => regenScene(s)} testID={`regen-${i}`} />
@@ -190,23 +198,38 @@ export default function Editor() {
                 </View>
               )}
               {tab === "Script" && (
-                <View style={styles.card}><Text style={styles.secLabel}>SCRIPT</Text><Body style={{ marginTop: S.sm, lineHeight: 24 }}>{project.script || "—"}</Body></View>
-              )}
-              {tab === "Production" && (<>
-                <View style={styles.card}><Text style={styles.secLabel}>PRODUCTION NOTES</Text><Body style={{ marginTop: S.sm }}>{project.production_notes || "—"}</Body></View>
-                <View style={[styles.card, { marginTop: S.md }]}>
-                  <Text style={styles.secLabel}>SETTINGS SUMMARY</Text>
-                  {[["Video type", project.video_type], ["Platform", project.platform], ["Duration", project.duration], ["Aspect", project.aspect_ratio], ["Crew", project.crew_size], ["Budget", project.budget], ["Location", project.location_type], ["Actors", project.num_actors]].map((r) => (
-                    <View key={String(r[0])} style={styles.dRow}><Text style={styles.dLabel}>{r[0]}</Text><Text style={styles.dVal}>{String(r[1] || "—")}</Text></View>
+                <View>
+                  {project.scenes.map((s: any, i: number) => (
+                    <AnimIn key={s.id} delay={i * 40}>
+                      <View style={styles.card}>
+                        <Text style={styles.secLabel}>SCENE {s.scene_number} · {(s.title || "").toUpperCase()}</Text>
+                        {s.narrative ? <Body style={{ marginTop: S.sm, lineHeight: 22 }}>{s.narrative}</Body> : null}
+                        {s.dialogue ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>DIALOGUE</Text><Body style={{ flex: 1 }}>{s.dialogue}</Body></View> : null}
+                        {s.voice_over ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>V.O.</Text><Body style={{ flex: 1 }}>{s.voice_over}</Body></View> : null}
+                        {s.on_screen_text ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>ON SCREEN</Text><Body style={{ flex: 1 }}>{s.on_screen_text}</Body></View> : null}
+                      </View>
+                    </AnimIn>
                   ))}
                 </View>
-              </>)}
-              {tab === "References" && (
-                <View style={styles.card}>
-                  <Text style={styles.secLabel}>CREATIVE & REFERENCES</Text>
-                  {[["Mood", project.mood], ["Visual style", project.visual_style], ["Camera style", project.camera_style], ["Lighting", project.lighting_style], ["Editing", project.editing_style], ["Music", project.music_style], ["Director refs", project.director_references], ["Film refs", project.film_references], ["Deliverables", project.deliverables], ["Special requests", project.special_requests], ["Restrictions", project.restrictions], ["Notes", project.extra_notes]].map((r) => (
-                    <View key={String(r[0])} style={styles.dRow}><Text style={styles.dLabel}>{r[0]}</Text><Text style={styles.dVal}>{String(r[1] || "—")}</Text></View>
+              )}
+              {tab === "Equipment" && <DefCard label="RECOMMENDED EQUIPMENT" data={project.equipment}
+                order={["camera", "lens", "drone", "gimbal", "tripod", "lighting", "audio", "accessories"]} icon="camera-outline" />}
+              {tab === "Crew" && <DefCard label="SUGGESTED CREW" data={project.crew}
+                order={["crew_size", "director", "producer", "dp", "camera_operator", "focus_puller", "gaffer", "sound", "drone_pilot", "production_assistant"]} icon="people-outline" />}
+              {tab === "Schedule" && <DefCard label="SHOOTING SCHEDULE" data={project.schedule}
+                order={["recommendation", "estimated_hours", "breakdown"]} icon="calendar-outline" />}
+              {tab === "Budget" && (
+                <View>
+                  <Body muted style={{ marginBottom: S.md }}>Estimated production budget ranges.</Body>
+                  {[["low", "Low Budget"], ["medium", "Medium Budget"], ["commercial", "Commercial"], ["premium", "Premium"]].map(([k, l], i) => (
+                    <AnimIn key={k} delay={i * 50}>
+                      <View style={styles.budgetRow}>
+                        <View><Text style={styles.budgetTier}>{l}</Text></View>
+                        <Text style={styles.budgetVal}>{project.budget?.[k] || "—"}</Text>
+                      </View>
+                    </AnimIn>
                   ))}
+                  {project.budget?.notes ? <Body muted style={{ marginTop: S.md, fontSize: 12.5 }}>{project.budget.notes}</Body> : null}
                 </View>
               )}
               {tab === "Exports" && (<>
@@ -235,6 +258,7 @@ export default function Editor() {
                 <Field key={k} label={l} value={editing[k]} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, [k]: v }))} testID={`f-${k}`} />
               ))}
               <Field label="Scene description" value={editing.visual_description} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, visual_description: v }))} multiline testID="f-visual" />
+              <Field label="Narrative" value={editing.narrative} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, narrative: v }))} multiline />
               <Field label="Subject / action" value={editing.subject_action} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, subject_action: v }))} multiline />
               <Field label="Dialogue" value={editing.dialogue} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, dialogue: v }))} multiline />
               <Field label="Voice over" value={editing.voice_over} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, voice_over: v }))} multiline />
@@ -242,6 +266,7 @@ export default function Editor() {
               <Picker label="Shot type" value={editing.shot_size} options={O.SHOT_SIZES} onSelect={(v: string) => setEditing((e: any) => ({ ...e, shot_size: v }))} />
               <Picker label="Camera angle" value={editing.camera_angle} options={O.CAMERA_ANGLES} onSelect={(v: string) => setEditing((e: any) => ({ ...e, camera_angle: v }))} />
               <Picker label="Camera movement" value={editing.camera_movement} options={O.CAMERA_MOVES} onSelect={(v: string) => setEditing((e: any) => ({ ...e, camera_movement: v }))} />
+              <Field label="Camera position" value={editing.camera_position} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, camera_position: v }))} />
               <Field label="Lens" value={editing.focal_length} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, focal_length: v }))} />
               <Picker label="Frame rate" value={editing.frame_rate} options={O.FRAME_RATES} onSelect={(v: string) => setEditing((e: any) => ({ ...e, frame_rate: v }))} />
               <Picker label="Resolution" value={editing.resolution} options={O.RESOLUTIONS} onSelect={(v: string) => setEditing((e: any) => ({ ...e, resolution: v }))} />
@@ -252,6 +277,7 @@ export default function Editor() {
               <Field label="Estimated time" value={editing.estimated_time} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, estimated_time: v }))} />
               <Field label="Crew notes" value={editing.crew_notes} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, crew_notes: v }))} />
               <Field label="Transition" value={editing.transition} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, transition: v }))} />
+              <Field label="Director notes" value={editing.director_notes} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, director_notes: v }))} multiline />
               <Field label="Production notes" value={editing.production_notes} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, production_notes: v }))} multiline />
               <Field label="AI image prompt" value={editing.image_prompt} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, image_prompt: v }))} multiline testID="f-prompt" />
             </ScrollView>
@@ -265,16 +291,39 @@ export default function Editor() {
 function Overview({ p }: any) {
   return (
     <View>
-      <AnimIn><OSec label="CREATIVE CONCEPT" text={p.concept} /></AnimIn>
-      <AnimIn delay={60}><OSec label="CREATIVE SUMMARY" text={p.creative_summary} /></AnimIn>
-      <AnimIn delay={120}><OSec label="DIRECTOR'S TREATMENT" text={p.treatment} /></AnimIn>
-      <AnimIn delay={180}><OSec label="VISUAL DIRECTION" text={p.visual_direction} /></AnimIn>
+      <AnimIn><KVCard label="CREATIVE CONCEPT" icon="bulb-outline" data={p.concept}
+        order={["elevator_pitch", "campaign_goal", "audience", "emotional_tone", "core_message", "call_to_action"]} /></AnimIn>
+      <AnimIn delay={80}><KVCard label="DIRECTOR'S TREATMENT" icon="color-wand-outline" data={p.treatment}
+        order={["visual_language", "narrative_style", "camera_philosophy", "lighting_philosophy", "color_palette", "editing_rhythm", "sound_design"]} /></AnimIn>
     </View>
   );
 }
-function OSec({ label, text }: any) {
-  if (!text) return null;
-  return <View style={styles.card}><Text style={styles.secLabel}>{label}</Text><Body style={{ marginTop: S.sm, lineHeight: 23 }}>{text}</Body></View>;
+
+function KVCard({ label, data, order, icon }: any) {
+  // Legacy string support
+  if (typeof data === "string") {
+    if (!data) return null;
+    return <View style={styles.card}><Text style={styles.secLabel}>{label}</Text><Body style={{ marginTop: S.sm, lineHeight: 23 }}>{data}</Body></View>;
+  }
+  const keys = (order || Object.keys(data || {})).filter((k: string) => data && data[k]);
+  if (keys.length === 0) return <View style={styles.card}><Text style={styles.secLabel}>{label}</Text><Body muted style={{ marginTop: S.sm }}>Not generated yet.</Body></View>;
+  return (
+    <View style={styles.card}>
+      <View style={styles.kvHead}>{icon ? <Ionicons name={icon} size={16} color={C.brand} /> : null}<Text style={styles.secLabel}>{label}</Text></View>
+      {keys.map((k: string) => (
+        <View key={k} style={styles.kvRow}><Text style={styles.kvLabel}>{cap(k)}</Text><Text style={styles.kvVal}>{String(data[k])}</Text></View>
+      ))}
+    </View>
+  );
+}
+const DefCard = KVCard;
+
+function RegenChip({ icon, label, busy, onPress, testID }: any) {
+  return (
+    <Pressable style={styles.regenChip} onPress={onPress} testID={testID}>
+      {busy ? <ActivityIndicator size="small" color={C.brand} /> : <><Ionicons name={icon} size={13} color={C.brand} /><Text style={styles.regenChipText}>{label}</Text></>}
+    </Pressable>
+  );
 }
 function Chip({ children }: any) { return <View style={styles.chip}><Text style={styles.chipText}>{children}</Text></View>; }
 function IconBtn({ icon, onPress, color, loading, testID }: any) {
@@ -330,6 +379,18 @@ const styles = StyleSheet.create({
   tabText: { color: C.onSurface2, fontFamily: F.text, fontSize: 13.5, fontWeight: "500" },
   card: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.md },
   secLabel: { color: C.brand, fontFamily: F.text, fontSize: 11.5, letterSpacing: 1.4 },
+  kvHead: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
+  kvRow: { paddingVertical: S.sm, borderTopWidth: 1, borderTopColor: C.border, marginTop: S.sm },
+  kvLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 3 },
+  kvVal: { color: C.onSurface, fontFamily: F.text, fontSize: 14, lineHeight: 21 },
+  regenRow: { flexDirection: "row", gap: 8, marginTop: S.sm },
+  regenChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: C.surface3, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 6, minHeight: 30 },
+  regenChipText: { color: C.brand, fontFamily: F.text, fontSize: 11.5 },
+  scriptLine: { flexDirection: "row", gap: S.md, marginTop: S.sm },
+  scriptTag: { color: C.brand, fontFamily: F.text, fontSize: 10, letterSpacing: 1, width: 70, paddingTop: 3 },
+  budgetRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.sm },
+  budgetTier: { color: C.onSurface, fontFamily: F.display, fontSize: 20 },
+  budgetVal: { color: C.brand, fontFamily: F.text, fontSize: 15, fontWeight: "600" },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: S.md },
   sceneCard: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, overflow: "hidden", marginBottom: S.md },
   frame: { height: 130, alignItems: "center", justifyContent: "center" },

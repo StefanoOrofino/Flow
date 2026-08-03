@@ -1,0 +1,41 @@
+{
+  "summary": "Backend: 27/27 pytest PASSED against real AI. Updated test_storyboard_api.py to the new structured schema (concept OBJECT with elevator_pitch/campaign_goal/audience/emotional_tone/core_message/call_to_action; treatment OBJECT with visual_language/narrative_style/camera_philosophy/lighting_philosophy/color_palette/editing_rhythm/sound_design; equipment/crew/schedule/budget objects; scenes with narrative/camera_position/director_notes). Added new tests for POST /projects/{id}/scenes/{sid}/regenerate-dialogue (verifies dialogue/voice_over/on_screen_text are set AND shot_size/camera_angle are UNCHANGED) and /regenerate-camera (verifies shot_size/camera_angle/camera_movement/camera_position/focal_length set AND dialogue/voice_over UNCHANGED), plus 404 cases for both. Existing auth (register/login/me/password-reset), 12 categorized templates, projects CRUD, ownership isolation, duplicate, delete-and-404, generate, regenerate-scene, regenerate-image-prompt still all pass. Real AI (mock_mode=false) confirmed at GET /api/. Frontend E2E (390x844): signup with unique email -> dashboard -> Create Storyboard -> 5-step wizard (title + goal filled, Continue x4) -> Generate Storyboard -> editor loaded at ~51s -> Overview tab shows structured CREATIVE CONCEPT and DIRECTOR'S TREATMENT as labeled key/value rows (Elevator Pitch, Campaign Goal, Emotional Tone, Core Message, Call To Action; Visual Language, Narrative Style, Camera Philosophy, Lighting Philosophy, etc.) - NOT a raw paragraph -> Script/Equipment/Crew/Schedule/Budget tabs all render structured KV content -> Budget tab shows Low/Medium/Commercial/Premium ranges with $ amounts -> Edit Scene modal contains new fields NARRATIVE, CAMERA POSITION, DIRECTOR NOTES and Save works -> Storyboard scene card Dialogue & Camera regenerate chips both trigger successfully -> Exports tab PDF, CSV, Print buttons all trigger without crashing. No deprecated Expo packages detected. No React Native red screens. No blocking bugs found.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_storyboard_api.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "None blocking. Optional: the frontend E2E generation this run fell back to MOCK MODE (banner 'MOCK MODE (add LLM balance for live AI)' visible in editor). Backend curl + pytest generation succeeded with real AI, so the fallback likely triggered on the E2E-created project due to a transient AI rate-limit / balance dip. Consider surfacing the reason in the mock banner (e.g. 'AI call failed - insufficient balance' vs generic 'add LLM balance') so users can tell transient errors from missing key."
+  ],
+  "critical_code_review_comments": [
+    "server.py generate endpoint wraps ai_generate in broad try/except, returns mock_output on any failure and marks mock_mode=true - good, prevents 500s.",
+    "server.py new _regen_partial helper cleanly restricts updates to the requested keys only - verified via pytest that camera regen leaves dialogue/voice_over untouched and vice versa - good.",
+    "server.py build_prompt now requests structured concept/treatment/equipment/crew/schedule/budget as JSON objects and the schema matches what the frontend Overview KVCard and DefCard consume - good.",
+    "server.py SCENE_FIELDS now includes narrative, camera_position, director_notes - normalize_scene ensures every scene has all fields as strings - good.",
+    "Frontend project/[id].tsx KVCard/DefCard component handles BOTH legacy-string concept/treatment AND new object form via `typeof data === 'string'` guard - good backward compat.",
+    "Frontend project/[id].tsx: 10 tabs (Overview/Storyboard/Script/Shot List/Equipment/Crew/Schedule/Budget/Exports/Settings) all have testID `tab-<name>` for testing - good.",
+    "Frontend scene edit modal (line ~253-283) now includes Narrative, Camera position, Director notes as Field inputs mapped via SCENE_FIELDS - good.",
+    "Frontend Storyboard scene card exposes RegenChip Dialogue and RegenChip Camera with testIDs regen-dialogue-<i> and regen-camera-<i> - good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_storyboard_api.py (rewrote test_generate_returns_full_package to assert new structured concept/treatment/equipment/crew/schedule/budget schema and scene narrative/camera_position/director_notes; added test_regenerate_dialogue_only, test_regenerate_camera_only, test_regenerate_dialogue_unknown_scene_404, test_regenerate_camera_unknown_scene_404)",
+    "/app/test_reports/pytest/pytest_results.xml (regenerated - 27 passed)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "pytest creates fresh user_a & user_b per session (test_a_*@storyboard.ai / pass1234) and cleans up TEST_* projects at end. Frontend E2E created ephemeral e2e_{ts}@storyboard.ai user - remains in DB.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend base: https://frameflow-studio-15.preview.emergentagent.com/api. Real AI is ENABLED (mock_mode:false at GET /api/) but individual generate calls may fall back to labelled MOCK if the LLM call fails - this is documented expected behaviour. AI generation takes ~30-60s. Signup form testIDs: signup-name, signup-email, signup-password, signup-submit. Wizard is 5 steps with testIDs: in-title, in-goal, wizard-continue, generate-btn (NOT wizard-generate). Editor has 10 tabs (Overview/Storyboard/Script/Shot List/Equipment/Crew/Schedule/Budget/Exports/Settings) with testID tab-<name>. Scene card testIDs: edit-<i>, regen-<i>, dup-<i>, del-<i>, regen-dialogue-<i>, regen-camera-<i>, regen-prompt-<i>. Edit modal shows labels in UPPERCASE (e.g. 'NARRATIVE', 'CAMERA POSITION', 'DIRECTOR NOTES') so use case-insensitive matching. pytest.ini forces xdist `-n 2 --dist loadscope`; use `-n 0` for fully serial runs during debug.",
+  "rca_of_issue": "No regressions. The prior iteration's test file was still asserting the pre-refactor string-based concept/treatment/visual_direction/script schema; updated to the new nested object schema described in the review request. Also filled a coverage gap by adding tests for the two new partial-regen endpoints (regenerate-dialogue, regenerate-camera) including a positive assertion that unrelated fields are NOT changed by a partial regen."
+}

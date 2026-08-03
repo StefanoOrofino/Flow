@@ -57,5 +57,9 @@ export const api = {
   regenScene: (id: string, sid: string) => req(`/projects/${id}/scenes/${sid}/regenerate`, "POST"),
   regenImagePrompt: (id: string, sid: string) =>
     req(`/projects/${id}/scenes/${sid}/regenerate-image-prompt`, "POST"),
+  regenDialogue: (id: string, sid: string) =>
+    req(`/projects/${id}/scenes/${sid}/regenerate-dialogue`, "POST"),
+  regenCamera: (id: string, sid: string) =>
+    req(`/projects/${id}/scenes/${sid}/regenerate-camera`, "POST"),
   templates: () => req("/templates"),
 };

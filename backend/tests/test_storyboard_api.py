@@ -158,10 +158,10 @@ class TestProjectsCRUD:
 # ==== Generation (real AI) ====
 class TestGeneration:
     def test_generate_returns_full_package(self, api, auth_headers_a):
-        # Create fresh project for generation
+        # Create fresh project for generation - use new schema fields
         r = requests.post(f"{api}/projects", headers=auth_headers_a,
-                          json={"title": "TEST_Gen", "description": "A dramatic short about a lighthouse keeper.",
-                                "num_scenes": 3, "visual_style": "Cinematic", "tone": "Dramatic"}, timeout=15)
+                          json={"title": "TEST_Gen", "goal": "A dramatic short about a lighthouse keeper.",
+                                "num_scenes": 6, "visual_style": "Cinematic", "mood": "Dramatic"}, timeout=15)
         assert r.status_code == 200
         pid = r.json()["id"]
         pytest.gen_pid = pid
@@ -170,16 +170,36 @@ class TestGeneration:
         assert r2.status_code == 200, r2.text
         p = r2.json()
         assert p["status"] == "generated"
-        for k in ("concept", "treatment", "visual_direction", "script"):
-            assert p.get(k), f"missing {k}"
+
+        # concept is now a structured object
+        concept = p.get("concept")
+        assert isinstance(concept, dict) and concept, "concept must be non-empty dict"
+        for k in ("elevator_pitch", "campaign_goal", "audience", "emotional_tone", "core_message", "call_to_action"):
+            assert k in concept, f"concept missing key {k}"
+
+        # treatment is now a structured object
+        treatment = p.get("treatment")
+        assert isinstance(treatment, dict) and treatment, "treatment must be non-empty dict"
+        for k in ("visual_language", "narrative_style", "camera_philosophy", "lighting_philosophy",
+                  "color_palette", "editing_rhythm", "sound_design"):
+            assert k in treatment, f"treatment missing key {k}"
+
+        # equipment / crew / schedule / budget objects
+        for section in ("equipment", "crew", "schedule", "budget"):
+            sec = p.get(section)
+            assert isinstance(sec, dict) and sec, f"{section} must be non-empty dict"
+        # budget must have low/medium/commercial/premium ranges
+        for k in ("low", "medium", "commercial", "premium"):
+            assert k in p["budget"], f"budget missing {k}"
+
         scenes = p.get("scenes", [])
-        assert len(scenes) == 3, f"expected 3 scenes got {len(scenes)}"
+        assert 6 <= len(scenes) <= 12, f"expected 6-12 scenes got {len(scenes)}"
         for s in scenes:
             for f in ("id", "scene_number", "title", "shot_size", "camera_angle",
-                      "camera_movement", "focal_length", "image_prompt", "visual_description"):
-                assert f in s and s[f] != "" or f in ("dialogue", "voice_over"), f"scene missing {f}: {s}"
+                      "camera_movement", "focal_length", "image_prompt", "visual_description",
+                      "narrative", "camera_position", "director_notes"):
+                assert f in s, f"scene missing field {f}: {list(s.keys())}"
         pytest.gen_scene_id = scenes[0]["id"]
-        # log mock mode for context
         pytest.gen_mock = p.get("mock_mode", None)
 
     def test_regenerate_scene(self, api, auth_headers_a):
@@ -199,8 +219,53 @@ class TestGeneration:
         scene = next(s for s in p["scenes"] if s["id"] == pytest.gen_scene_id)
         assert scene["image_prompt"]
 
+    def test_regenerate_dialogue_only(self, api, auth_headers_a):
+        # capture before
+        before = requests.get(f"{api}/projects/{pytest.gen_pid}", headers=auth_headers_a, timeout=15).json()
+        before_scene = next(s for s in before["scenes"] if s["id"] == pytest.gen_scene_id)
+        before_shot_size = before_scene.get("shot_size")
+        before_camera_angle = before_scene.get("camera_angle")
+
+        r = requests.post(f"{api}/projects/{pytest.gen_pid}/scenes/{pytest.gen_scene_id}/regenerate-dialogue",
+                          headers=auth_headers_a, timeout=120)
+        assert r.status_code == 200, r.text
+        after = r.json()
+        scene = next(s for s in after["scenes"] if s["id"] == pytest.gen_scene_id)
+        # dialogue-related fields should be present (strings)
+        assert "dialogue" in scene and "voice_over" in scene and "on_screen_text" in scene
+        # camera-related fields should be UNCHANGED
+        assert scene.get("shot_size") == before_shot_size, "shot_size changed but should have been untouched"
+        assert scene.get("camera_angle") == before_camera_angle, "camera_angle changed but should have been untouched"
+
+    def test_regenerate_camera_only(self, api, auth_headers_a):
+        before = requests.get(f"{api}/projects/{pytest.gen_pid}", headers=auth_headers_a, timeout=15).json()
+        before_scene = next(s for s in before["scenes"] if s["id"] == pytest.gen_scene_id)
+        before_dialogue = before_scene.get("dialogue")
+        before_vo = before_scene.get("voice_over")
+
+        r = requests.post(f"{api}/projects/{pytest.gen_pid}/scenes/{pytest.gen_scene_id}/regenerate-camera",
+                          headers=auth_headers_a, timeout=120)
+        assert r.status_code == 200, r.text
+        after = r.json()
+        scene = next(s for s in after["scenes"] if s["id"] == pytest.gen_scene_id)
+        for k in ("shot_size", "camera_angle", "camera_movement", "camera_position", "focal_length"):
+            assert k in scene and scene[k] != "", f"camera field {k} missing/empty after regen"
+        # dialogue fields should be UNCHANGED
+        assert scene.get("dialogue") == before_dialogue, "dialogue changed but should have been untouched"
+        assert scene.get("voice_over") == before_vo, "voice_over changed but should have been untouched"
+
     def test_regenerate_unknown_scene_404(self, api, auth_headers_a):
         r = requests.post(f"{api}/projects/{pytest.gen_pid}/scenes/deadbeef/regenerate",
+                          headers=auth_headers_a, timeout=30)
+        assert r.status_code == 404
+
+    def test_regenerate_dialogue_unknown_scene_404(self, api, auth_headers_a):
+        r = requests.post(f"{api}/projects/{pytest.gen_pid}/scenes/deadbeef/regenerate-dialogue",
+                          headers=auth_headers_a, timeout=30)
+        assert r.status_code == 404
+
+    def test_regenerate_camera_unknown_scene_404(self, api, auth_headers_a):
+        r = requests.post(f"{api}/projects/{pytest.gen_pid}/scenes/deadbeef/regenerate-camera",
                           headers=auth_headers_a, timeout=30)
         assert r.status_code == 404
 

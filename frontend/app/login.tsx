@@ -36,7 +36,7 @@ export default function Login() {
         <View style={styles.inner}>
           <View style={styles.brandRow}>
             <Ionicons name="film-outline" size={24} color={C.brand} />
-            <Text style={styles.brandText}>STORYBOARD AI</Text>
+            <Text style={styles.brandText}>FRAMEFLOW STUDIO</Text>
           </View>
           <H1 style={{ marginBottom: S.sm }}>Welcome back</H1>
           <Body muted style={{ marginBottom: S.xl }}>Sign in to your production suite.</Body>
