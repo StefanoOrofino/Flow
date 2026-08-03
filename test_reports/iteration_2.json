@@ -1,0 +1,52 @@
+{
+  "summary": "Backend: 23/23 pytest PASSED (auth register/login/me/password-reset, 12 categorized templates, projects CRUD, ownership isolation user-A vs user-B, real AI generation returning concept/treatment/visual_direction/script/production_notes + 3 rich scenes with all technical fields, regenerate-scene, regenerate-image-prompt, unknown-scene 404). Frontend E2E: signup → /dashboard hero 'Welcome back, E2E' (branding now consistently STORYBOARD AI) → Create-Storyboard button → 5-step wizard (Project→Video→Creative→Advanced→Review) with Review showing entered title → Generate Storyboard → editor loaded at ~44s with 5 AI scenes → all 8 tabs render content (Overview/Storyboard/Shot List/Script/Production/References/Exports/Settings) → scene duplicate, add, delete update the top-bar counter (5→6→7→6 scenes · 36s) → autosave badge visible → Exports tab shows PDF/CSV/Print cards → Projects screen shows the generated project with 'Generated' status chip and search + filter chips (All/Favorites/Drafts/Generated/Archived) → Templates screen shows 12 template cards + category chips (All/Commercial/Corporate/Product/…) with Use-template. Real AI mock_mode=false confirmed. No deprecated Expo packages detected. No React Native red screens. No blocking bugs found in this iteration.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Editor / Storyboard scene card",
+        "issues": [
+          "Scene card action row now has 6 icon buttons in a row (edit/regen/dup/up/down/del). On 390px width this makes each tap target ~40x40, slightly under the 44x44 Apple HIG minimum. Consider wrapping or increasing icon button size."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_storyboard_api.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional cleanup) Remove PRODUCTION_LEVELS/TONES/PACINGS legacy aliases from /app/frontend/src/options.ts — they are no longer referenced by app/(tabs)/new.tsx (which now correctly uses CREW_SIZES/MOODS and does not use a pacing field).",
+    "(Optional polish) Storyboard scene card action row: consider wrapping to 2 rows or making IconBtn 44x44 to meet touch-target guidelines on narrow phones.",
+    "(Retest) Re-run pytest with `-n 0` if you see flaky 502s under the default parallel xdist config — the tests share pytest module-level state (pytest.gen_pid) which is not process-safe across xdist workers. Consider replacing pytest.gen_pid with a session-scoped fixture if you want the suite to be xdist-safe by default."
+  ],
+  "critical_code_review_comments": [
+    "server.py: get_current_user handles JWT + Google session tokens with timezone-aware expiry — good.",
+    "server.py: every project endpoint uses _get_owned() so user-B cannot GET/PUT/DELETE user-A's project (verified — returns 404) — good.",
+    "server.py: PUT /projects/{id} strips id/user_id/_id from incoming data — prevents tenant hijack — good.",
+    "server.py: 12 curated templates in TEMPLATES list with category field — matches spec — good.",
+    "server.py: AI generation try/except returns mock_mode:true labelled fallback when EMERGENT_LLM_KEY call fails — good.",
+    "server.py: all responses exclude MongoDB _id — good.",
+    "Frontend api.ts uses process.env.EXPO_PUBLIC_BACKEND_URL with /api prefix — good.",
+    "Frontend project/[id].tsx uses debounced (600ms) autosave via setTimeout and shows a 'saving/saved/idle' state indicator — good.",
+    "Frontend new.tsx uses proper 5-step wizard with disabled continue guarded on title-required in step 0 — good.",
+    "pytest.ini forces `-n 2 --dist loadscope` but the test module shares pytest.gen_pid across TestGeneration methods. loadscope pins the class to one worker so it works, but is fragile if suite is ever split. Consider moving generated-project state to a session-scoped fixture."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_storyboard_api.py (updated templates test from 7→12 with category field assertion)",
+    "/app/test_reports/pytest/pytest_results.xml (regenerated)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "pytest creates fresh user_a & user_b per session (test_a_*@storyboard.ai / pass1234) and cleans up TEST_* projects at end. Frontend E2E created ephemeral e2e_{ts}@storyboard.ai user — remains in DB.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend base: https://frameflow-studio-15.preview.emergentagent.com/api. Real AI is ENABLED (mock_mode:false at GET /api/). AI generation takes ~20-60s. pytest.ini forces xdist `-n 2 --dist loadscope` — use `-n 0` for fully serial runs. 12 templates expected. Wizard is 5 steps now. Editor has 8 tabs. testIDs on all interactive elements. Ephemeral signup emails on the login/signup page — both forms render on the same route so use unique placeholders ('Your name', 'At least 6 characters') to target the signup form.",
+  "rca_of_issue": "No regressions in this iteration. The iteration-1 wizard blocker (missing named exports in options.ts) is resolved — new.tsx now uses O.CREW_SIZES/O.MOODS directly. The legacy aliases (PRODUCTION_LEVELS/TONES/PACINGS) added by the previous testing agent still exist in options.ts but are unused; they can be removed safely (see action_items)."
+}
