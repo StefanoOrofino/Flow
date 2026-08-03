@@ -11,6 +11,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image as ExpoImage } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
+import { useProjectStore } from "@/src/useProjectStore";
 import { useAuth } from "@/src/auth";
 import { C, S, R, F, MAX_W } from "@/src/theme";
 import { Btn, H2, Body, Badge, MockBadge, AnimIn } from "@/src/components";
@@ -33,45 +34,34 @@ export default function Editor() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const author = user?.name || user?.email || "You";
-  const [project, setProject] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const store = useProjectStore(id);
+  const { project, loading, saveState } = store;
   const [tab, setTab] = useState("Overview");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "unsaved">("idle");
   const [busyScene, setBusyScene] = useState<string | null>(null);
   const [frameBusy, setFrameBusy] = useState<string | null>(null);
   const [viewer, setViewer] = useState<string | null>(null);
   const [regenAll, setRegenAll] = useState(false);
   const [regenTicks, setRegenTicks] = useState<Record<string, number>>({});
-  const timer = useRef<any>(null);
 
-  const load = useCallback(async () => {
-    try { setProject(await api.getProject(id)); } catch { router.back(); } finally { setLoading(false); }
-  }, [id]);
-  useEffect(() => { load(); }, [load]);
+  // Undo / redo keyboard shortcuts (web)
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.addEventListener) return;
+    const onKey = (e: any) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || (e.key || "").toLowerCase() !== "z") return;
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || e.target?.isContentEditable) return;
+      e.preventDefault();
+      if (e.shiftKey) store.redo(); else store.undo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [store]);
 
-  const persist = (data: any) => {
-    setProject((p: any) => ({ ...p, ...data }));
-    setSaveState("saving");
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(async () => {
-      try { await api.updateProject(id, data); setSaveState("saved"); setTimeout(() => setSaveState("idle"), 1400); }
-      catch { setSaveState("idle"); }
-    }, 600);
-  };
+  const persist = (data: any) => store.mutate((p: any) => ({ ...p, ...data }));
   const renum = (scenes: any[]) => scenes.map((x, i) => ({ ...x, scene_number: i + 1 }));
-  const persistScenesFn = (updater: (sc: any[]) => any[]) => {
-    setSaveState("saving");
-    setProject((p: any) => {
-      const scenes = updater(p.scenes);
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(async () => {
-        try { await api.updateProject(id, { scenes }); setSaveState("saved"); setTimeout(() => setSaveState("idle"), 1400); }
-        catch { setSaveState("idle"); }
-      }, 600);
-      return { ...p, scenes };
-    });
-  };
+  const persistScenesFn = (updater: (sc: any[]) => any[]) => store.mutate((p: any) => ({ ...p, scenes: updater(p.scenes) }));
   const persistScenes = (scenes: any[]) => persistScenesFn(() => scenes);
 
   const blankScene = () => ({
@@ -81,7 +71,8 @@ export default function Editor() {
     camera_movement: "Static", focal_length: "35mm", camera_position: "", camera_height: "Eye level",
     camera_direction: "", lighting: "", color_palette: "", mood: "", props: "", wardrobe: "", sound_notes: "",
     transition: "Cut", frame_rate: "24fps", resolution: "4K", equipment: "", estimated_time: "", crew_notes: "",
-    director_notes: "", production_notes: "", comments: "", ai_notes: "", image_prompt: "", image_url: "", status: "Draft",
+    director_notes: "", production_notes: "", comments: "", ai_notes: "", image_prompt: "", image_url: "",
+    status: "Draft", shots: [], comment_list: [], frames: [], active_frame_id: "",
   });
   const addScene = () => persistScenesFn((sc) => renum([...sc, blankScene()]));
   const insertScene = (refId: string, pos: "above" | "below") => persistScenesFn((sc) => {
@@ -109,14 +100,14 @@ export default function Editor() {
   const setStatus = (s: any, status: string) => persistScenesFn((sc) => sc.map((x) => (x.id === s.id ? { ...x, status } : x)));
   const setImage = (s: any, url: string) => persistScenesFn((sc) => sc.map((x) => (x.id === s.id ? { ...x, image_url: url } : x)));
   const commitScene = (sid: string, fields: any) => persistScenesFn((sc) => sc.map((x) => (x.id === sid ? { ...x, ...fields } : x)));
-  const markUnsaved = () => setSaveState("unsaved");
+  const markUnsaved = () => {};
   const expandAll = () => setExpanded(Object.fromEntries(project.scenes.map((s: any) => [s.id, true])));
   const collapseAll = () => setExpanded({});
 
   const bump = (sid: string) => setRegenTicks((t) => ({ ...t, [sid]: (t[sid] || 0) + 1 }));
   const regenWrap = (suffix: string, fn: any) => async (s: any) => {
     setBusyScene(s.id + suffix);
-    try { setProject(await fn(id, s.id)); bump(s.id); } catch {} finally { setBusyScene(null); }
+    try { store.applyServer(await fn(id, s.id)); bump(s.id); } catch {} finally { setBusyScene(null); }
   };
   const regenScene = regenWrap("", api.regenScene);
   const regenPrompt = regenWrap("-p", api.regenImagePrompt);
@@ -125,15 +116,17 @@ export default function Editor() {
   const regenDescription = regenWrap("-desc", api.regenDescription);
   const regenVoiceOver = regenWrap("-vo", api.regenVoiceOver);
   const regenLighting = regenWrap("-l", api.regenLighting);
-  const regenerateAll = async () => { setRegenAll(true); try { setProject(await api.generate(id)); setTab("Overview"); } catch {} finally { setRegenAll(false); } };
+  const regenerateAll = async () => { setRegenAll(true); try { store.applyServer(await api.generate(id)); setTab("Overview"); } catch {} finally { setRegenAll(false); } };
 
   // Storyboard image frames (mock/none provider until a real one is wired)
-  const frameGenerate = async (s: any, body: any) => { setFrameBusy(s.id); try { setProject(await api.generateFrame(id, s.id, body)); } catch {} finally { setFrameBusy(null); } };
-  const frameRegenerate = async (s: any, fid: string, body: any) => { setFrameBusy(s.id); try { setProject(await api.regenerateFrame(id, s.id, fid, body)); } catch {} finally { setFrameBusy(null); } };
-  const frameSetActive = async (s: any, fid: string) => { try { setProject(await api.setActiveFrame(id, s.id, fid)); } catch {} };
-  const frameDelete = async (s: any, fid: string) => { setFrameBusy(s.id); try { setProject(await api.deleteFrame(id, s.id, fid)); } catch {} finally { setFrameBusy(null); } };
+  const frameGenerate = async (s: any, body: any) => { setFrameBusy(s.id); try { store.applyServer(await api.generateFrame(id, s.id, body)); } catch {} finally { setFrameBusy(null); } };
+  const frameRegenerate = async (s: any, fid: string, body: any) => { setFrameBusy(s.id); try { store.applyServer(await api.regenerateFrame(id, s.id, fid, body)); } catch {} finally { setFrameBusy(null); } };
+  const frameSetActive = async (s: any, fid: string) => { try { store.applyServer(await api.setActiveFrame(id, s.id, fid)); } catch {} };
+  const frameDelete = async (s: any, fid: string) => { setFrameBusy(s.id); try { store.applyServer(await api.deleteFrame(id, s.id, fid)); } catch {} finally { setFrameBusy(null); } };
   const frameActions = { generate: frameGenerate, regenerate: frameRegenerate, setActive: frameSetActive, del: frameDelete, view: setViewer };
-  const doExport = async (fn: () => Promise<void>) => { try { await fn(); api.markExported(id).then(() => setProject((p: any) => ({ ...p, export_count: (p.export_count || 0) + 1 }))); } catch (e) { console.log(e); } };
+  const doExport = async (fn: () => Promise<void>) => { try { await fn(); api.markExported(id).catch(() => {}); } catch (e) { console.log(e); } };
+
+  useEffect(() => { if (!loading && !project) router.back(); }, [loading, project]);
 
   if (loading || !project) return <View style={styles.center}><ActivityIndicator color={C.brand} size="large" /></View>;
 
@@ -146,8 +139,17 @@ export default function Editor() {
         <Pressable onPress={() => router.back()} testID="editor-back" hitSlop={8}><Ionicons name="arrow-back" size={22} color={C.onSurface} /></Pressable>
         <View style={{ flex: 1, marginHorizontal: S.md }}>
           <Text style={styles.hTitle} numberOfLines={1}>{project.title}</Text>
-          <Text style={styles.hSub}>{saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "unsaved" ? "Unsaved changes" : `${project.scenes.length} scenes · ${totalDuration(project.scenes)}`}</Text>
+          <View style={styles.saveRow}>
+            {saveState === "saving" && <><ActivityIndicator size="small" color={C.onSurface2} /><Text style={styles.hSub}>Saving…</Text></>}
+            {saveState === "recovering" && <><ActivityIndicator size="small" color={C.warning} /><Text style={[styles.hSub, { color: C.warning }]}>Recovering…</Text></>}
+            {saveState === "saved" && <><Ionicons name="checkmark-circle" size={13} color={C.success} /><Text style={[styles.hSub, { color: C.success }]}>Saved</Text></>}
+            {saveState === "unsaved" && <><View style={styles.unsavedDot} /><Text style={styles.hSub}>Unsaved changes</Text></>}
+            {saveState === "offline" && <><Ionicons name="cloud-offline-outline" size={13} color={C.warning} /><Text style={[styles.hSub, { color: C.warning }]}>Offline · changes kept</Text></>}
+            {(saveState === "idle" || saveState === "error") && <Text style={styles.hSub}>{project.scenes.length} scenes · {totalDuration(project.scenes)}</Text>}
+          </View>
         </View>
+        <Pressable onPress={store.undo} disabled={!store.canUndo} testID="undo-btn" hitSlop={8} style={{ opacity: store.canUndo ? 1 : 0.35, marginRight: 14 }}><Ionicons name="arrow-undo-outline" size={20} color={C.onSurface} /></Pressable>
+        <Pressable onPress={store.redo} disabled={!store.canRedo} testID="redo-btn" hitSlop={8} style={{ opacity: store.canRedo ? 1 : 0.35, marginRight: 14 }}><Ionicons name="arrow-redo-outline" size={20} color={C.onSurface} /></Pressable>
         <Pressable onPress={() => setTab("Exports")} testID="export-btn" hitSlop={8}><Ionicons name="share-outline" size={22} color={C.brand} /></Pressable>
       </View>
 
@@ -310,12 +312,21 @@ const GROUPS: { title: string; fields: [string, string, boolean?][] }[] = [
   { title: "AI", fields: [["image_prompt", "Image Prompt", true], ["ai_notes", "AI Notes", true]] },
 ];
 
-function EditableField({ label, value, onChange, multiline }: any) {
+function EditableField({ label, value, onCommit, multiline, testID }: any) {
+  const [v, setV] = useState(value ?? "");
+  const focused = useRef(false);
+  const last = useRef(value ?? "");
+  const t = useRef<any>(null);
+  useEffect(() => { if (!focused.current) { setV(value ?? ""); last.current = value ?? ""; } }, [value]);
+  const fire = (nv: string) => { if (nv === last.current) return; last.current = nv; onCommit(nv); };
+  const change = (nv: string) => { setV(nv); if (t.current) clearTimeout(t.current); t.current = setTimeout(() => fire(nv), 500); };
   return (
     <View style={styles.efWrap}>
       <Text style={styles.efLabel}>{label}</Text>
-      <TextInput value={value} onChangeText={onChange} multiline={multiline} placeholder="Empty…"
-        placeholderTextColor={C.onSurface2}
+      <TextInput value={v} onChangeText={change} multiline={multiline} placeholder="Empty…"
+        onFocus={() => { focused.current = true; }}
+        onBlur={() => { focused.current = false; if (t.current) clearTimeout(t.current); fire(v); }}
+        placeholderTextColor={C.onSurface2} testID={testID}
         style={[styles.efInput, multiline && { minHeight: 52, textAlignVertical: "top", paddingTop: 8 }]} />
     </View>
   );
@@ -374,8 +385,7 @@ function StoryboardFrame({ scene, promptValue, aspect, busy, frameActions, onEdi
       )}
 
       {editing ? (
-        <TextInput value={promptValue} onChangeText={onEditPrompt} multiline placeholder="Describe the frame for image generation…"
-          placeholderTextColor={C.onSurface2} style={[styles.efInput, { minHeight: 60, textAlignVertical: "top", paddingTop: 8, marginTop: 6 }]} testID={`frame-prompt-${scene.scene_number}`} />
+        <EditableField label="Image Prompt" value={promptValue} onCommit={onEditPrompt} multiline testID={`frame-prompt-${scene.scene_number}`} />
       ) : (
         <Text style={styles.framePrompt} numberOfLines={2}>{promptValue || "No image prompt yet — regenerate it in the AI section."}</Text>
       )}
@@ -473,20 +483,8 @@ function CommentsPanel({ scene, author, onChange }: any) {
 
 const SceneCard = React.memo(function SceneCard({ scene, index, open, version, busyScene, frameBusy, drag, isActive,
   onToggle, commitScene, markUnsaved, setStatus, setImage, insertScene, copyScene, actions, frameActions, aspect, author }: any) {
-  const [f, setF] = useState<any>(scene);
-  const latest = useRef(scene); latest.current = scene;
-  const t = useRef<any>(null);
-  useEffect(() => { setF(latest.current); }, [version]);
-  const change = (k: string) => (v: string) => {
-    setF((prev: any) => {
-      const nx = { ...prev, [k]: v };
-      markUnsaved();
-      if (t.current) clearTimeout(t.current);
-      t.current = setTimeout(() => commitScene(scene.id, { [k]: v }), 700);
-      return nx;
-    });
-  };
-  const regenMap: Record<string, any> = { CREATIVE: null };
+  const f = scene; // single source of truth — read straight from the scene prop (reflects undo/redo & two-way sync)
+  const commit = (k: string) => (v: string) => commitScene(scene.id, { [k]: v });
   return (
     <ScaleDecorator>
       <View style={[styles.sbCard, isActive && styles.sbCardActive]} testID={`scene-card-${index}`}>
@@ -510,13 +508,13 @@ const SceneCard = React.memo(function SceneCard({ scene, index, open, version, b
 
         {open && (
           <View style={styles.sbBody}>
-            <StoryboardFrame scene={scene} promptValue={f.image_prompt} aspect={aspect} busy={frameBusy}
-              frameActions={frameActions} onEditPrompt={change("image_prompt")} />
+            <StoryboardFrame scene={scene} promptValue={scene.image_prompt} aspect={aspect} busy={frameBusy}
+              frameActions={frameActions} onEditPrompt={commit("image_prompt")} />
 
             <Text style={styles.efLabel}>Status</Text>
             <View style={styles.statusRow}>
               {STATUSES.map((st) => (
-                <Pressable key={st} onPress={() => { setF((p: any) => ({ ...p, status: st })); setStatus(scene, st); }}
+                <Pressable key={st} onPress={() => setStatus(scene, st)}
                   style={[styles.statusChip, f.status === st && { borderColor: STATUS_TONE[st], backgroundColor: "rgba(197,160,89,0.12)" }]} testID={`status-${index}-${st}`}>
                   <Text style={[styles.statusChipText, f.status === st && { color: STATUS_TONE[st] }]}>{st}</Text>
                 </Pressable>
@@ -527,7 +525,7 @@ const SceneCard = React.memo(function SceneCard({ scene, index, open, version, b
               <View key={g.title} style={styles.group}>
                 <Text style={styles.groupTitle}>{g.title}</Text>
                 {g.fields.map(([k, l, ml]) => (
-                  <EditableField key={k} label={l} value={f[k]} onChange={change(k)} multiline={ml} />
+                  <EditableField key={k} label={l} value={scene[k]} onCommit={commit(k)} multiline={ml} testID={`ef-${k}-${index}`} />
                 ))}
                 {g.title === "CREATIVE" && (
                   <View style={styles.regenRow}>
@@ -573,16 +571,22 @@ const SceneCard = React.memo(function SceneCard({ scene, index, open, version, b
 function SummaryPanel({ scenes, mobile }: any) {
   const locations = Array.from(new Set(scenes.map((s: any) => (s.location || "").trim()).filter(Boolean)));
   const chars = Array.from(new Set(scenes.flatMap((s: any) => String(s.characters || "").split(/[,;/]/).map((c: string) => c.trim()).filter(Boolean))));
+  const lenses = Array.from(new Set(scenes.map((s: any) => (s.focal_length || "").trim()).filter(Boolean)));
+  const moves = Array.from(new Set(scenes.map((s: any) => (s.camera_movement || "").trim()).filter(Boolean)));
+  const totalShots = scenes.reduce((n: number, s: any) => n + Math.max(1, (s.shots || []).length), 0);
   const done = scenes.filter((s: any) => s.status === "Approved" || s.status === "Completed").length;
   const pct = scenes.length ? Math.round((done / scenes.length) * 100) : 0;
   return (
     <View style={[styles.summary, mobile ? styles.summaryMobile : styles.summaryDesktop]}>
       <Text style={styles.secLabel}>SUMMARY</Text>
       <SumRow label="Total Scenes" value={String(scenes.length)} />
-      <SumRow label="Estimated Duration" value={totalDuration(scenes)} />
+      <SumRow label="Total Shots" value={String(totalShots)} />
+      <SumRow label="Estimated Runtime" value={totalDuration(scenes)} />
       <SumRow label="Est. Shooting Time" value={estShootTime(scenes)} />
-      <SumRow label="Locations Used" value={String(locations.length)} />
+      <SumRow label="Locations" value={String(locations.length)} />
       <SumRow label="Characters" value={String(chars.length)} />
+      <SumRow label="Lenses Used" value={String(lenses.length)} />
+      <SumRow label="Camera Movements" value={String(moves.length)} />
       <View style={{ marginTop: S.sm }}>
         <View style={styles.rowBetween}><Text style={styles.sumLabel}>Completion</Text><Text style={styles.sumVal}>{pct}%</Text></View>
         <View style={styles.barTrack}><View style={[styles.barFill, { width: `${pct}%` }]} /></View>
@@ -701,6 +705,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: S.lg, paddingBottom: S.md, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface2 },
   hTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 20, flex: 1 },
   hSub: { color: C.onSurface2, fontFamily: F.text, fontSize: 12 },
+  saveRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  unsavedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.warning },
   tabsWrap: { borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface2, paddingVertical: S.sm },
   tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: R.pill, flexShrink: 0 },
   tabActive: { backgroundColor: C.surface3 },

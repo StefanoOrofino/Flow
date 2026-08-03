@@ -395,12 +395,14 @@ const ShotRow = React.memo(function ShotRow({ row, wide, open, onToggle, setVal,
 function Field({ value, onCommit, multiline, keyboard, testID }: any) {
   const [v, setV] = useState(value ?? "");
   const focused = useRef(false);
+  const last = useRef(value ?? "");
   const t = useRef<any>(null);
-  useEffect(() => { if (!focused.current) setV(value ?? ""); }, [value]);
-  const change = (nv: string) => { setV(nv); if (t.current) clearTimeout(t.current); t.current = setTimeout(() => onCommit(nv), 450); };
+  useEffect(() => { if (!focused.current) { setV(value ?? ""); last.current = value ?? ""; } }, [value]);
+  const fire = (nv: string) => { if (nv === last.current) return; last.current = nv; onCommit(nv); };
+  const change = (nv: string) => { setV(nv); if (t.current) clearTimeout(t.current); t.current = setTimeout(() => fire(nv), 450); };
   return (
     <TextInput value={v} onChangeText={change} multiline={multiline} keyboardType={keyboard || "default"}
-      onFocus={() => { focused.current = true; }} onBlur={() => { focused.current = false; if (t.current) clearTimeout(t.current); onCommit(v); }}
+      onFocus={() => { focused.current = true; }} onBlur={() => { focused.current = false; if (t.current) clearTimeout(t.current); fire(v); }}
       placeholder="Empty…" placeholderTextColor={C.onSurface2}
       style={[s.input, multiline && { minHeight: 54, textAlignVertical: "top", paddingTop: 8 }]} testID={testID} />
   );
