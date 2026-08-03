@@ -173,3 +173,84 @@ export async function exportCsv(p: any) {
   await (FileSystem as any).writeAsStringAsync(uri, csv);
   if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: "text/csv" });
 }
+
+// ---------------------------------------------------------------------------
+// Shot List exports (production planning document; operates on resolved flat shots)
+// ---------------------------------------------------------------------------
+const SHOT_COLUMNS: [string, string][] = [
+  ["shot_code", "Shot"], ["storyboard_order", "SB #"], ["shooting_order", "SH #"], ["name", "Shot Name"],
+  ["int_ext", "Int/Ext"], ["day_night", "Day/Night"], ["location", "Location"], ["shot_type", "Shot Type"],
+  ["camera_angle", "Angle"], ["camera_movement", "Movement"], ["lens", "Lens"], ["frame_rate", "FPS"],
+  ["resolution", "Res"], ["aspect_ratio", "Aspect"], ["est_duration", "Duration"], ["est_shoot_time", "Shoot Time"],
+  ["characters", "Characters"], ["props", "Props"], ["lighting", "Lighting"], ["equipment", "Equipment"], ["status", "Status"],
+];
+
+function shotListHtml(p: any, shots: any[]): string {
+  const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const head = SHOT_COLUMNS.map(([, l]) => `<th>${esc(l)}</th>`).join("");
+  const body = shots.map((r) => `<tr>${SHOT_COLUMNS.map(([k]) => `<td>${esc(r[k])}</td>`).join("")}</tr>`).join("");
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
+    @page { size: A4 landscape; margin: 28px; }
+    * { box-sizing: border-box; } body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #17140d; margin: 0; }
+    .hd { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #C5A059; padding-bottom: 10px; margin-bottom: 14px; }
+    .hd .k { color: #C5A059; letter-spacing: 4px; font-size: 10px; } .hd h1 { font-family: Georgia, serif; font-size: 26px; margin: 4px 0 0; } .hd .c { color: #777; font-size: 12px; }
+    .hd .r { text-align: right; color: #777; font-size: 11px; }
+    table { width: 100%; border-collapse: collapse; font-size: 8px; } th, td { border: 1px solid #d8d3c6; padding: 4px 5px; text-align: left; vertical-align: top; } th { background: #0A0A0A; color: #C5A059; font-size: 7.5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    tr:nth-child(even) td { background: #faf7f0; }
+    .foot { text-align: center; color: #999; font-size: 9px; margin-top: 16px; }
+  </style></head><body>
+    <div class="hd"><div><div class="k">FRAMEFLOW STUDIO · SHOT LIST</div><h1>${esc(p.title)}</h1><div class="c">${esc(p.client || "—")}</div></div>
+      <div class="r">${shots.length} shots<br/>${date}</div></div>
+    <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
+    <div class="foot">FrameFlow Studio · ${esc(p.title)} · Shot List · ${date}</div>
+  </body></html>`;
+}
+
+export async function exportShotListPdf(p: any, shots: any[]) {
+  const html = shotListHtml(p, shots);
+  if (Platform.OS === "web") { openPrintWindow(html); return; }
+  const { uri } = await Print.printToFileAsync({ html });
+  if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: "application/pdf" });
+}
+
+export async function printShotList(p: any, shots: any[]) {
+  const html = shotListHtml(p, shots);
+  if (Platform.OS === "web") { openPrintWindow(html); return; }
+  await Print.printAsync({ html });
+}
+
+function shotListCsv(shots: any[]): string {
+  const q = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [SHOT_COLUMNS.map(([, l]) => q(l)).join(",")];
+  shots.forEach((r) => lines.push(SHOT_COLUMNS.map(([k]) => q(r[k])).join(",")));
+  return lines.join("\n");
+}
+
+async function downloadOrShare(content: string, name: string, mime: string) {
+  if (Platform.OS === "web") {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  const uri = (FileSystem as any).cacheDirectory + name;
+  await (FileSystem as any).writeAsStringAsync(uri, content);
+  if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: mime });
+}
+
+export async function exportShotListCsv(p: any, shots: any[]) {
+  const name = `${(p.title || "shotlist").replace(/[^a-z0-9]/gi, "_")}_shotlist.csv`;
+  await downloadOrShare(shotListCsv(shots), name, "text/csv");
+}
+
+// Excel-compatible export: an HTML table saved as .xls (opens natively in Excel/Numbers).
+export async function exportShotListExcel(p: any, shots: any[]) {
+  const head = SHOT_COLUMNS.map(([, l]) => `<th>${esc(l)}</th>`).join("");
+  const body = shots.map((r) => `<tr>${SHOT_COLUMNS.map(([k]) => `<td>${esc(r[k])}</td>`).join("")}</tr>`).join("");
+  const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"/></head><body>
+    <table border="1"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></body></html>`;
+  const name = `${(p.title || "shotlist").replace(/[^a-z0-9]/gi, "_")}_shotlist.xls`;
+  await downloadOrShare(html, name, "application/vnd.ms-excel");
+}
+

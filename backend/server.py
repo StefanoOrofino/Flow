@@ -379,10 +379,11 @@ def normalize_scene(s: dict, idx: int) -> dict:
         out[f] = str(s.get(f, "") or "")
     if not out.get("status"):
         out["status"] = "Draft"
-    # Preserve non-string structured fields (comments + image frames) across (re)generation.
+    # Preserve non-string structured fields (comments + image frames + shots) across (re)generation.
     out["comment_list"] = s.get("comment_list") or []
     out["frames"] = s.get("frames") or []
     out["active_frame_id"] = s.get("active_frame_id") or ""
+    out["shots"] = s.get("shots") or []
     return out
 
 
@@ -509,6 +510,7 @@ async def regenerate_scene(pid: str, sid: str, user=Depends(get_current_user)):
             x["comment_list"] = scene.get("comment_list") or []
             x["frames"] = scene.get("frames") or []
             x["active_frame_id"] = scene.get("active_frame_id") or ""
+            x["shots"] = scene.get("shots") or []
     await db.projects.update_one({"id": pid, "user_id": user["user_id"]},
                                  {"$set": {"scenes": scenes, "updated_at": now_iso()}})
     return await _get_owned(pid, user)

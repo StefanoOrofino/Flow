@@ -15,6 +15,7 @@ import { useAuth } from "@/src/auth";
 import { C, S, R, F, MAX_W } from "@/src/theme";
 import { Btn, H2, Body, Badge, MockBadge, AnimIn } from "@/src/components";
 import { exportPdf, exportCsv, printProject } from "@/src/exporter";
+import ShotList from "@/src/ShotList";
 
 const TABS = ["Overview", "Storyboard", "Script", "Shot List", "Equipment", "Crew", "Schedule", "Budget", "Exports", "Settings"];
 
@@ -187,7 +188,7 @@ export default function Editor() {
             <>
               {tab === "Overview" && <Overview p={project} />}
               {/* Storyboard tab is rendered separately below via DraggableFlatList */}
-              {tab === "Shot List" && <ShotListTab scenes={project.scenes} onEdit={(sid: string) => { setTab("Storyboard"); setExpanded((e: any) => ({ ...e, [sid]: true })); }} />}
+              {tab === "Shot List" && <ShotList project={project} commitScene={commitScene} onEditInStoryboard={(sid: string) => { setTab("Storyboard"); setExpanded((e: any) => ({ ...e, [sid]: true })); }} />}
               {tab === "Script" && (
                 <View>
                   {project.scenes.map((s: any, i: number) => (
@@ -568,53 +569,6 @@ const SceneCard = React.memo(function SceneCard({ scene, index, open, version, b
     </ScaleDecorator>
   );
 });
-
-const SHOT_COLS: { key: string; label: string; w: number }[] = [
-  { key: "scene_number", label: "#", w: 42 },
-  { key: "title", label: "Scene", w: 140 },
-  { key: "shot_size", label: "Shot Size", w: 120 },
-  { key: "camera_angle", label: "Angle", w: 110 },
-  { key: "camera_movement", label: "Movement", w: 110 },
-  { key: "focal_length", label: "Lens", w: 80 },
-  { key: "frame_rate", label: "FPS", w: 70 },
-  { key: "resolution", label: "Res", w: 70 },
-  { key: "location", label: "Location", w: 130 },
-  { key: "time_of_day", label: "Time", w: 90 },
-  { key: "duration", label: "Duration", w: 80 },
-];
-function ShotListTab({ scenes, onEdit }: any) {
-  const tableW = SHOT_COLS.reduce((n, c) => n + c.w, 0) + 56;
-  return (
-    <View>
-      <View style={styles.syncNote}>
-        <Ionicons name="sync-outline" size={14} color={C.brand} />
-        <Body muted style={{ fontSize: 12, flex: 1 }}>Auto-synced from your Storyboard. Edit any scene there and the shot list updates instantly — no duplicate data.</Body>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableScroll}>
-        <View style={{ width: tableW }}>
-          <View style={[styles.tRow, styles.tHead]}>
-            {SHOT_COLS.map((c) => (
-              <Text key={c.key} style={[styles.tHeadCell, { width: c.w }]} numberOfLines={1}>{c.label}</Text>
-            ))}
-            <Text style={[styles.tHeadCell, { width: 56, textAlign: "center" }]}>Edit</Text>
-          </View>
-          {(scenes || []).map((s: any, i: number) => (
-            <View key={s.id} style={[styles.tRow, i % 2 === 1 && styles.tRowAlt]} testID={`shot-row-${i}`}>
-              {SHOT_COLS.map((c) => (
-                <Text key={c.key} style={[styles.tCell, { width: c.w }, c.key === "scene_number" && { color: C.brand, fontWeight: "600" }, c.key === "title" && { color: C.onSurface }]} numberOfLines={2}>
-                  {String(s[c.key] || "—")}
-                </Text>
-              ))}
-              <Pressable style={styles.tEdit} onPress={() => onEdit(s.id)} testID={`shot-edit-${i}`}>
-                <Ionicons name="create-outline" size={16} color={C.brand} />
-              </Pressable>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
 
 function SummaryPanel({ scenes, mobile }: any) {
   const locations = Array.from(new Set(scenes.map((s: any) => (s.location || "").trim()).filter(Boolean)));
