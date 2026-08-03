@@ -1,18 +1,17 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
-  View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Modal,
-  KeyboardAvoidingView, Platform,
+  View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Modal, TextInput, useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn } from "react-native-reanimated";
 import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
+import * as Clipboard from "expo-clipboard";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
 import { C, S, R, F, MAX_W } from "@/src/theme";
-import { Field, Picker, Btn, H1, H2, Body, Badge, MockBadge, AnimIn } from "@/src/components";
-import * as O from "@/src/options";
+import { Btn, H2, Body, Badge, MockBadge, AnimIn } from "@/src/components";
 import { exportPdf, exportCsv, printProject } from "@/src/exporter";
 
 const TABS = ["Overview", "Storyboard", "Script", "Shot List", "Equipment", "Crew", "Schedule", "Budget", "Exports", "Settings"];
@@ -32,11 +31,11 @@ export default function Editor() {
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("Overview");
-  const [editing, setEditing] = useState<any>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "unsaved">("idle");
   const [busyScene, setBusyScene] = useState<string | null>(null);
   const [regenAll, setRegenAll] = useState(false);
+  const [regenTicks, setRegenTicks] = useState<Record<string, number>>({});
   const timer = useRef<any>(null);
 
   const load = useCallback(async () => {
@@ -53,34 +52,72 @@ export default function Editor() {
       catch { setSaveState("idle"); }
     }, 600);
   };
-  const persistScenes = (scenes: any[]) => persist({ scenes });
+  const renum = (scenes: any[]) => scenes.map((x, i) => ({ ...x, scene_number: i + 1 }));
+  const persistScenesFn = (updater: (sc: any[]) => any[]) => {
+    setSaveState("saving");
+    setProject((p: any) => {
+      const scenes = updater(p.scenes);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(async () => {
+        try { await api.updateProject(id, { scenes }); setSaveState("saved"); setTimeout(() => setSaveState("idle"), 1400); }
+        catch { setSaveState("idle"); }
+      }, 600);
+      return { ...p, scenes };
+    });
+  };
+  const persistScenes = (scenes: any[]) => persistScenesFn(() => scenes);
 
-  const saveScene = (u: any) => { persistScenes(project.scenes.map((s: any) => (s.id === u.id ? u : s))); setEditing(null); };
-  const addScene = () => {
-    const ns = { id: Math.random().toString(36).slice(2, 12), scene_number: project.scenes.length + 1,
-      title: "New Scene", duration: "5s", location: "", time_of_day: "Day", visual_description: "", subject_action: "",
-      characters: "", dialogue: "", voice_over: "", on_screen_text: "", shot_size: "Medium shot", camera_angle: "Eye level",
-      camera_movement: "Static", focal_length: "35mm", lighting: "", color_palette: "", sound_notes: "", transition: "Cut",
-      frame_rate: "24fps", resolution: "4K", equipment: "", estimated_time: "", crew_notes: "", production_notes: "", image_prompt: "" };
-    persistScenes([...project.scenes, ns]);
+  const blankScene = () => ({
+    id: Math.random().toString(36).slice(2, 12), scene_number: 0, title: "New Scene", duration: "5s",
+    location: "", time_of_day: "Day", characters: "", visual_description: "", narrative: "", subject_action: "",
+    dialogue: "", voice_over: "", on_screen_text: "", shot_size: "Medium shot", camera_angle: "Eye level",
+    camera_movement: "Static", focal_length: "35mm", camera_position: "", camera_height: "Eye level",
+    camera_direction: "", lighting: "", color_palette: "", mood: "", props: "", wardrobe: "", sound_notes: "",
+    transition: "Cut", frame_rate: "24fps", resolution: "4K", equipment: "", estimated_time: "", crew_notes: "",
+    director_notes: "", production_notes: "", comments: "", ai_notes: "", image_prompt: "", image_url: "", status: "Draft",
+  });
+  const addScene = () => persistScenesFn((sc) => renum([...sc, blankScene()]));
+  const insertScene = (refId: string, pos: "above" | "below") => persistScenesFn((sc) => {
+    const idx = sc.findIndex((x) => x.id === refId);
+    const at = pos === "above" ? idx : idx + 1;
+    const next = [...sc]; next.splice(at, 0, blankScene());
+    return renum(next);
+  });
+  const dupScene = (s: any) => persistScenesFn((sc) => {
+    const idx = sc.findIndex((x) => x.id === s.id);
+    const next = [...sc]; next.splice(idx + 1, 0, { ...s, id: Math.random().toString(36).slice(2, 12) });
+    return renum(next);
+  });
+  const copyScene = async (s: any) => {
+    const text = Object.entries(s).filter(([k]) => !["id"].includes(k)).map(([k, v]) => `${k}: ${v}`).join("\n");
+    try { await Clipboard.setStringAsync(text); } catch {}
   };
-  const dupScene = (s: any) => {
-    const copy = { ...s, id: Math.random().toString(36).slice(2, 12) };
-    const idx = project.scenes.findIndex((x: any) => x.id === s.id);
-    const scenes = [...project.scenes]; scenes.splice(idx + 1, 0, copy);
-    persistScenes(scenes.map((x, i) => ({ ...x, scene_number: i + 1 })));
+  const delScene = (s: any) => persistScenesFn((sc) => renum(sc.filter((x) => x.id !== s.id)));
+  const move = (s: any, dir: number) => persistScenesFn((sc) => {
+    const idx = sc.findIndex((x) => x.id === s.id); const j = idx + dir;
+    if (j < 0 || j >= sc.length) return sc;
+    const next = [...sc]; [next[idx], next[j]] = [next[j], next[idx]];
+    return renum(next);
+  });
+  const setStatus = (s: any, status: string) => persistScenesFn((sc) => sc.map((x) => (x.id === s.id ? { ...x, status } : x)));
+  const setImage = (s: any, url: string) => persistScenesFn((sc) => sc.map((x) => (x.id === s.id ? { ...x, image_url: url } : x)));
+  const commitScene = (sid: string, fields: any) => persistScenesFn((sc) => sc.map((x) => (x.id === sid ? { ...x, ...fields } : x)));
+  const markUnsaved = () => setSaveState("unsaved");
+  const expandAll = () => setExpanded(Object.fromEntries(project.scenes.map((s: any) => [s.id, true])));
+  const collapseAll = () => setExpanded({});
+
+  const bump = (sid: string) => setRegenTicks((t) => ({ ...t, [sid]: (t[sid] || 0) + 1 }));
+  const regenWrap = (suffix: string, fn: any) => async (s: any) => {
+    setBusyScene(s.id + suffix);
+    try { setProject(await fn(id, s.id)); bump(s.id); } catch {} finally { setBusyScene(null); }
   };
-  const delScene = (s: any) => persistScenes(project.scenes.filter((x: any) => x.id !== s.id).map((x: any, i: number) => ({ ...x, scene_number: i + 1 })));
-  const move = (s: any, dir: number) => {
-    const idx = project.scenes.findIndex((x: any) => x.id === s.id); const j = idx + dir;
-    if (j < 0 || j >= project.scenes.length) return;
-    const scenes = [...project.scenes]; [scenes[idx], scenes[j]] = [scenes[j], scenes[idx]];
-    persistScenes(scenes.map((x, i) => ({ ...x, scene_number: i + 1 })));
-  };
-  const regenScene = async (s: any) => { setBusyScene(s.id); try { setProject(await api.regenScene(id, s.id)); } catch {} finally { setBusyScene(null); } };
-  const regenPrompt = async (s: any) => { setBusyScene(s.id + "-p"); try { setProject(await api.regenImagePrompt(id, s.id)); } catch {} finally { setBusyScene(null); } };
-  const regenDialogue = async (s: any) => { setBusyScene(s.id + "-d"); try { setProject(await api.regenDialogue(id, s.id)); } catch {} finally { setBusyScene(null); } };
-  const regenCamera = async (s: any) => { setBusyScene(s.id + "-c"); try { setProject(await api.regenCamera(id, s.id)); } catch {} finally { setBusyScene(null); } };
+  const regenScene = regenWrap("", api.regenScene);
+  const regenPrompt = regenWrap("-p", api.regenImagePrompt);
+  const regenDialogue = regenWrap("-d", api.regenDialogue);
+  const regenCamera = regenWrap("-c", api.regenCamera);
+  const regenDescription = regenWrap("-desc", api.regenDescription);
+  const regenVoiceOver = regenWrap("-vo", api.regenVoiceOver);
+  const regenLighting = regenWrap("-l", api.regenLighting);
   const regenerateAll = async () => { setRegenAll(true); try { setProject(await api.generate(id)); setTab("Overview"); } catch {} finally { setRegenAll(false); } };
   const doExport = async (fn: () => Promise<void>) => { try { await fn(); api.markExported(id).then(() => setProject((p: any) => ({ ...p, export_count: (p.export_count || 0) + 1 }))); } catch (e) { console.log(e); } };
 
@@ -95,7 +132,7 @@ export default function Editor() {
         <Pressable onPress={() => router.back()} testID="editor-back" hitSlop={8}><Ionicons name="arrow-back" size={22} color={C.onSurface} /></Pressable>
         <View style={{ flex: 1, marginHorizontal: S.md }}>
           <Text style={styles.hTitle} numberOfLines={1}>{project.title}</Text>
-          <Text style={styles.hSub}>{saveState === "saving" ? "Saving…" : saveState === "saved" ? "All changes saved" : `${project.scenes.length} scenes · ${totalDuration(project.scenes)}`}</Text>
+          <Text style={styles.hSub}>{saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "unsaved" ? "Unsaved changes" : `${project.scenes.length} scenes · ${totalDuration(project.scenes)}`}</Text>
         </View>
         <Pressable onPress={() => setTab("Exports")} testID="export-btn" hitSlop={8}><Ionicons name="share-outline" size={22} color={C.brand} /></Pressable>
       </View>
@@ -114,9 +151,12 @@ export default function Editor() {
       {tab === "Storyboard" && !notGenerated ? (
         <StoryboardTab
           project={project} busyScene={busyScene} expanded={expanded} setExpanded={setExpanded}
-          onReorder={persistScenes} addScene={addScene}
-          actions={{ edit: (s: any) => setEditing({ ...s }), dup: dupScene, del: delScene, move,
-            regenScene, regenDialogue, regenCamera, regenPrompt }}
+          onReorder={persistScenes} addScene={addScene} regenTicks={regenTicks}
+          commitScene={commitScene} markUnsaved={markUnsaved} setStatus={setStatus} setImage={setImage}
+          expandAll={expandAll} collapseAll={collapseAll} insertScene={insertScene} copyScene={copyScene}
+          onExport={() => doExport(() => exportCsv(project))} onPdf={() => doExport(() => exportPdf(project))}
+          actions={{ dup: dupScene, del: delScene, move,
+            regenScene, regenDialogue, regenCamera, regenPrompt, regenDescription, regenVoiceOver, regenLighting }}
         />
       ) : (
       <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: 120, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
@@ -156,7 +196,7 @@ export default function Editor() {
                               ["Est. time", s.estimated_time], ["Crew notes", s.crew_notes], ["Duration", s.duration], ["Transition", s.transition]].map((r) => (
                               <View key={String(r[0])} style={styles.dRow}><Text style={styles.dLabel}>{r[0]}</Text><Text style={styles.dVal}>{String(r[1] || "—")}</Text></View>
                             ))}
-                            <Pressable style={styles.miniRow} onPress={() => setEditing({ ...s })} testID={`shot-edit-${i}`}><Ionicons name="create-outline" size={14} color={C.brand} /><Text style={styles.miniLink}>Edit scene</Text></Pressable>
+                            <Pressable style={styles.miniRow} onPress={() => { setTab("Storyboard"); setExpanded((e: any) => ({ ...e, [s.id]: true })); }} testID={`shot-edit-${i}`}><Ionicons name="create-outline" size={14} color={C.brand} /><Text style={styles.miniLink}>Edit in Storyboard</Text></Pressable>
                           </View>
                         )}
                       </View>
@@ -212,46 +252,7 @@ export default function Editor() {
       </ScrollView>
       )}
 
-      {/* Scene editor modal */}
-      <Modal visible={!!editing} animationType="slide" onRequestClose={() => setEditing(null)}>
-        {editing && (
-          <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.surface }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-            <View style={[styles.header, { paddingTop: insets.top + S.md }]}>
-              <Pressable onPress={() => setEditing(null)} testID="scene-cancel" hitSlop={8}><Ionicons name="close" size={24} color={C.onSurface} /></Pressable>
-              <Text style={styles.hTitle}>Edit Scene {editing.scene_number}</Text>
-              <Pressable onPress={() => saveScene(editing)} testID="scene-save" hitSlop={8}><Text style={{ color: C.brand, fontFamily: F.text, fontSize: 15, fontWeight: "600" }}>Save</Text></Pressable>
-            </View>
-            <ScrollView contentContainerStyle={{ padding: S.xl, paddingBottom: insets.bottom + S.xxxl, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
-              {[["title", "Scene name"], ["duration", "Duration"], ["location", "Location"], ["time_of_day", "Time of day"], ["characters", "Characters"]].map(([k, l]) => (
-                <Field key={k} label={l} value={editing[k]} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, [k]: v }))} testID={`f-${k}`} />
-              ))}
-              <Field label="Scene description" value={editing.visual_description} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, visual_description: v }))} multiline testID="f-visual" />
-              <Field label="Narrative" value={editing.narrative} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, narrative: v }))} multiline />
-              <Field label="Subject / action" value={editing.subject_action} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, subject_action: v }))} multiline />
-              <Field label="Dialogue" value={editing.dialogue} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, dialogue: v }))} multiline />
-              <Field label="Voice over" value={editing.voice_over} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, voice_over: v }))} multiline />
-              <Field label="On-screen text" value={editing.on_screen_text} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, on_screen_text: v }))} />
-              <Picker label="Shot type" value={editing.shot_size} options={O.SHOT_SIZES} onSelect={(v: string) => setEditing((e: any) => ({ ...e, shot_size: v }))} />
-              <Picker label="Camera angle" value={editing.camera_angle} options={O.CAMERA_ANGLES} onSelect={(v: string) => setEditing((e: any) => ({ ...e, camera_angle: v }))} />
-              <Picker label="Camera movement" value={editing.camera_movement} options={O.CAMERA_MOVES} onSelect={(v: string) => setEditing((e: any) => ({ ...e, camera_movement: v }))} />
-              <Field label="Camera position" value={editing.camera_position} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, camera_position: v }))} />
-              <Field label="Lens" value={editing.focal_length} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, focal_length: v }))} />
-              <Picker label="Frame rate" value={editing.frame_rate} options={O.FRAME_RATES} onSelect={(v: string) => setEditing((e: any) => ({ ...e, frame_rate: v }))} />
-              <Picker label="Resolution" value={editing.resolution} options={O.RESOLUTIONS} onSelect={(v: string) => setEditing((e: any) => ({ ...e, resolution: v }))} />
-              <Field label="Lighting" value={editing.lighting} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, lighting: v }))} multiline />
-              <Field label="Color palette" value={editing.color_palette} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, color_palette: v }))} />
-              <Field label="Audio notes" value={editing.sound_notes} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, sound_notes: v }))} />
-              <Field label="Equipment" value={editing.equipment} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, equipment: v }))} />
-              <Field label="Estimated time" value={editing.estimated_time} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, estimated_time: v }))} />
-              <Field label="Crew notes" value={editing.crew_notes} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, crew_notes: v }))} />
-              <Field label="Transition" value={editing.transition} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, transition: v }))} />
-              <Field label="Director notes" value={editing.director_notes} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, director_notes: v }))} multiline />
-              <Field label="Production notes" value={editing.production_notes} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, production_notes: v }))} multiline />
-              <Field label="AI image prompt" value={editing.image_prompt} onChangeText={(v: string) => setEditing((e: any) => ({ ...e, image_prompt: v }))} multiline testID="f-prompt" />
-            </ScrollView>
-          </KeyboardAvoidingView>
-        )}
-      </Modal>
+      {/* Inline editing (Sprint 2) replaces the scene edit modal */}
     </View>
   );
 }
@@ -304,88 +305,225 @@ function ProgStat({ label, value }: any) {
   return <View style={styles.progStat}><Text style={styles.progVal}>{value}</Text><Text style={styles.progLabel}>{label}</Text></View>;
 }
 
-const SB_FIELDS: [string, string][] = [
-  ["time_of_day", "Time of Day"], ["characters", "Characters"], ["visual_description", "Visual Description"],
-  ["subject_action", "Action"], ["dialogue", "Dialogue"], ["voice_over", "Voice Over"],
-  ["on_screen_text", "On Screen Text"], ["camera_angle", "Camera Angle"], ["camera_movement", "Camera Movement"],
-  ["focal_length", "Lens"], ["lighting", "Lighting"], ["color_palette", "Color Palette"],
-  ["sound_notes", "Audio Notes"], ["transition", "Transition"], ["director_notes", "Director Notes"],
-  ["production_notes", "Production Notes"],
+const CINE_FRAME = "https://images.unsplash.com/photo-1485846234645-a62644f84728?crop=entropy&cs=srgb&fm=jpg&q=80&w=1200";
+const STATUSES = ["Draft", "Needs Review", "Approved", "Completed"];
+const STATUS_TONE: Record<string, string> = { "Draft": C.onSurface2, "Needs Review": C.warning, "Approved": C.brand, "Completed": C.success };
+
+const GROUPS: { title: string; fields: [string, string, boolean?][] }[] = [
+  { title: "CREATIVE", fields: [["title", "Scene Title"], ["visual_description", "Visual Description", true], ["subject_action", "Action", true], ["dialogue", "Dialogue", true], ["voice_over", "Voice Over", true], ["on_screen_text", "On Screen Text"]] },
+  { title: "CAMERA", fields: [["shot_size", "Shot Size"], ["camera_angle", "Camera Angle"], ["camera_movement", "Camera Movement"], ["focal_length", "Lens"], ["camera_height", "Camera Height"], ["camera_direction", "Camera Direction"]] },
+  { title: "LIGHTING", fields: [["lighting", "Lighting Style", true], ["time_of_day", "Time of Day"], ["color_palette", "Color Palette"], ["mood", "Mood"]] },
+  { title: "PRODUCTION", fields: [["characters", "Characters"], ["props", "Props"], ["location", "Location"], ["wardrobe", "Wardrobe"], ["sound_notes", "Audio Notes", true], ["director_notes", "Director Notes", true], ["production_notes", "Production Notes", true]] },
+  { title: "AI", fields: [["image_prompt", "Image Prompt", true], ["ai_notes", "AI Notes", true]] },
 ];
 
-function StoryboardTab({ project, busyScene, expanded, setExpanded, onReorder, addScene, actions }: any) {
-  const scenes = project.scenes || [];
-  const renderItem = ({ item: s, drag, isActive, getIndex }: any) => {
-    const i = getIndex() ?? 0;
-    const open = expanded[s.id];
-    return (
-      <ScaleDecorator>
-        <View style={[styles.sbCard, isActive && styles.sbCardActive]} testID={`scene-card-${i}`}>
-          <View style={styles.sbHead}>
-            <Pressable onLongPress={drag} delayLongPress={140} style={styles.dragHandle} testID={`drag-${i}`}>
-              <Ionicons name="reorder-three-outline" size={22} color={C.onSurface2} />
-            </Pressable>
-            <View style={styles.sbNum}><Text style={styles.sbNumText}>{s.scene_number}</Text></View>
-            <Pressable style={{ flex: 1 }} onPress={() => setExpanded((e: any) => ({ ...e, [s.id]: !open }))} testID={`toggle-${i}`}>
-              <Text style={styles.sbTitle} numberOfLines={1}>{s.title}</Text>
-              <View style={styles.sbMetaRow}><Chip>{s.duration}</Chip><Chip>{s.shot_size}</Chip><Chip>{s.location || "—"}</Chip></View>
-            </Pressable>
-            <Pressable onPress={() => setExpanded((e: any) => ({ ...e, [s.id]: !open }))} hitSlop={8}>
-              <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={C.onSurface2} />
-            </Pressable>
-          </View>
-          {open && (
-            <View style={styles.sbBody}>
-              {SB_FIELDS.filter(([k]) => s[k]).map(([k, l]) => (
-                <View key={k} style={styles.kvRow}><Text style={styles.kvLabel}>{l}</Text><Text style={styles.kvVal}>{String(s[k])}</Text></View>
-              ))}
-              <View style={styles.promptBox}>
-                <Text style={styles.promptLabel}>AI IMAGE PROMPT</Text>
-                <Text style={styles.promptText}>{s.image_prompt || "—"}</Text>
-              </View>
-              <View style={styles.regenRow}>
-                <RegenChip icon="chatbubbles-outline" label="Dialogue" busy={busyScene === s.id + "-d"} onPress={() => actions.regenDialogue(s)} testID={`regen-dialogue-${i}`} />
-                <RegenChip icon="videocam-outline" label="Camera" busy={busyScene === s.id + "-c"} onPress={() => actions.regenCamera(s)} testID={`regen-camera-${i}`} />
-                <RegenChip icon="image-outline" label="Prompt" busy={busyScene === s.id + "-p"} onPress={() => actions.regenPrompt(s)} testID={`regen-prompt-${i}`} />
-              </View>
-              <View style={styles.actions}>
-                <IconBtn icon="create-outline" onPress={() => actions.edit(s)} testID={`edit-${i}`} />
-                <IconBtn icon="sparkles-outline" loading={busyScene === s.id} onPress={() => actions.regenScene(s)} testID={`regen-${i}`} />
-                <IconBtn icon="copy-outline" onPress={() => actions.dup(s)} testID={`dup-${i}`} />
-                <IconBtn icon="arrow-up" onPress={() => actions.move(s, -1)} testID={`up-${i}`} />
-                <IconBtn icon="arrow-down" onPress={() => actions.move(s, 1)} testID={`down-${i}`} />
-                <IconBtn icon="trash-outline" color={C.error} onPress={() => actions.del(s)} testID={`del-${i}`} />
+function EditableField({ label, value, onChange, multiline }: any) {
+  return (
+    <View style={styles.efWrap}>
+      <Text style={styles.efLabel}>{label}</Text>
+      <TextInput value={value} onChangeText={onChange} multiline={multiline} placeholder="Empty…"
+        placeholderTextColor={C.onSurface2}
+        style={[styles.efInput, multiline && { minHeight: 52, textAlignVertical: "top", paddingTop: 8 }]} />
+    </View>
+  );
+}
+
+function ImageFrame({ url, onRemove }: any) {
+  return (
+    <View style={styles.frameBig}>
+      {url ? <ExpoImage source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : (
+        <><LinearGradient colors={["#201c12", "#0b0b0b"]} style={StyleSheet.absoluteFill} />
+          <Ionicons name="image-outline" size={30} color={C.onSurface2} />
+          <Text style={styles.frameHint}>Storyboard frame</Text></>
+      )}
+      <View style={styles.frameBtns}>
+        <RegenChip icon="sparkles-outline" label="Generate" onPress={() => {}} />
+        <RegenChip icon="swap-horizontal-outline" label="Replace" onPress={() => onRemove(url ? "" : CINE_FRAME)} />
+        <RegenChip icon="trash-outline" label="Remove" onPress={() => onRemove("")} />
+      </View>
+    </View>
+  );
+}
+
+const SceneCard = React.memo(function SceneCard({ scene, index, open, version, busyScene, drag, isActive,
+  onToggle, commitScene, markUnsaved, setStatus, setImage, insertScene, copyScene, actions }: any) {
+  const [f, setF] = useState<any>(scene);
+  const latest = useRef(scene); latest.current = scene;
+  const t = useRef<any>(null);
+  useEffect(() => { setF(latest.current); }, [version]);
+  const change = (k: string) => (v: string) => {
+    setF((prev: any) => {
+      const nx = { ...prev, [k]: v };
+      markUnsaved();
+      if (t.current) clearTimeout(t.current);
+      t.current = setTimeout(() => commitScene(scene.id, { [k]: v }), 700);
+      return nx;
+    });
+  };
+  const regenMap: Record<string, any> = { CREATIVE: null };
+  return (
+    <ScaleDecorator>
+      <View style={[styles.sbCard, isActive && styles.sbCardActive]} testID={`scene-card-${index}`}>
+        <View style={styles.sbHead}>
+          <Pressable onLongPress={drag} delayLongPress={140} style={styles.dragHandle} testID={`drag-${index}`}>
+            <Ionicons name="reorder-three-outline" size={22} color={C.onSurface2} />
+          </Pressable>
+          <View style={styles.sbNum}><Text style={styles.sbNumText}>{scene.scene_number}</Text></View>
+          <Pressable style={{ flex: 1 }} onPress={() => onToggle(scene.id)} testID={`toggle-${index}`}>
+            <Text style={styles.sbTitle} numberOfLines={1}>{f.title || "Untitled scene"}</Text>
+            <View style={styles.sbMetaRow}>
+              <Chip>{f.duration || "—"}</Chip><Chip>{f.shot_size || "—"}</Chip><Chip>{f.location || "—"}</Chip>
+              <View style={[styles.statusBadge, { borderColor: STATUS_TONE[f.status] || C.onSurface2 }]}>
+                <View style={[styles.statusDot, { backgroundColor: STATUS_TONE[f.status] || C.onSurface2 }]} />
+                <Text style={[styles.statusText, { color: STATUS_TONE[f.status] || C.onSurface2 }]}>{f.status || "Draft"}</Text>
               </View>
             </View>
-          )}
+          </Pressable>
+          <Pressable onPress={() => onToggle(scene.id)} hitSlop={8}><Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={C.onSurface2} /></Pressable>
         </View>
-      </ScaleDecorator>
-    );
-  };
-  return (
-    <DraggableFlatList
-      data={scenes}
-      keyExtractor={(s: any) => s.id}
-      onDragEnd={({ data }: any) => onReorder(data.map((x: any, idx: number) => ({ ...x, scene_number: idx + 1 })))}
-      renderItem={renderItem}
-      activationDistance={12}
-      containerStyle={{ flex: 1 }}
-      contentContainerStyle={{ padding: S.lg, paddingBottom: 140, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}
-      ListHeaderComponent={
-        <View>
-          {project.mock_mode ? <View style={{ marginBottom: S.md }}><MockBadge /></View> : null}
-          <View style={styles.progress}>
-            <ProgStat label="Total Duration" value={totalDuration(scenes)} />
-            <View style={styles.progDiv} />
-            <ProgStat label="Total Scenes" value={String(scenes.length)} />
-            <View style={styles.progDiv} />
-            <ProgStat label="Est. Shooting Time" value={estShootTime(scenes)} />
+
+        {open && (
+          <View style={styles.sbBody}>
+            <ImageFrame url={f.image_url} onRemove={(u: string) => { setF((p: any) => ({ ...p, image_url: u })); setImage(scene, u); }} />
+
+            <Text style={styles.efLabel}>Status</Text>
+            <View style={styles.statusRow}>
+              {STATUSES.map((st) => (
+                <Pressable key={st} onPress={() => { setF((p: any) => ({ ...p, status: st })); setStatus(scene, st); }}
+                  style={[styles.statusChip, f.status === st && { borderColor: STATUS_TONE[st], backgroundColor: "rgba(197,160,89,0.12)" }]} testID={`status-${index}-${st}`}>
+                  <Text style={[styles.statusChipText, f.status === st && { color: STATUS_TONE[st] }]}>{st}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {GROUPS.map((g) => (
+              <View key={g.title} style={styles.group}>
+                <Text style={styles.groupTitle}>{g.title}</Text>
+                {g.fields.map(([k, l, ml]) => (
+                  <EditableField key={k} label={l} value={f[k]} onChange={change(k)} multiline={ml} />
+                ))}
+                {g.title === "CREATIVE" && (
+                  <View style={styles.regenRow}>
+                    <RegenChip icon="refresh" label="Description" busy={busyScene === scene.id + "-desc"} onPress={() => actions.regenDescription(scene)} testID={`regen-description-${index}`} />
+                    <RegenChip icon="chatbubbles-outline" label="Dialogue" busy={busyScene === scene.id + "-d"} onPress={() => actions.regenDialogue(scene)} testID={`regen-dialogue-${index}`} />
+                    <RegenChip icon="mic-outline" label="Voice Over" busy={busyScene === scene.id + "-vo"} onPress={() => actions.regenVoiceOver(scene)} testID={`regen-voiceover-${index}`} />
+                  </View>
+                )}
+                {g.title === "CAMERA" && (
+                  <View style={styles.regenRow}><RegenChip icon="videocam-outline" label="Camera Setup" busy={busyScene === scene.id + "-c"} onPress={() => actions.regenCamera(scene)} testID={`regen-camera-${index}`} /></View>
+                )}
+                {g.title === "LIGHTING" && (
+                  <View style={styles.regenRow}><RegenChip icon="bulb-outline" label="Lighting" busy={busyScene === scene.id + "-l"} onPress={() => actions.regenLighting(scene)} testID={`regen-lighting-${index}`} /></View>
+                )}
+                {g.title === "AI" && (
+                  <View style={styles.regenRow}>
+                    <RegenChip icon="image-outline" label="Image Prompt" busy={busyScene === scene.id + "-p"} onPress={() => actions.regenPrompt(scene)} testID={`regen-prompt-${index}`} />
+                    <RegenChip icon="sparkles-outline" label="Entire Scene" busy={busyScene === scene.id} onPress={() => actions.regenScene(scene)} testID={`regen-${index}`} />
+                  </View>
+                )}
+              </View>
+            ))}
+
+            <Text style={styles.efLabel}>Internal Comments</Text>
+            <TextInput value={f.comments} onChangeText={change("comments")} multiline placeholder="Notes visible only in this project…"
+              placeholderTextColor={C.onSurface2} style={[styles.efInput, { minHeight: 52, textAlignVertical: "top", paddingTop: 8 }]} testID={`comments-${index}`} />
+
+            <View style={styles.actions}>
+              <IconBtn icon="arrow-up-circle-outline" onPress={() => insertScene(scene.id, "above")} testID={`ins-above-${index}`} />
+              <IconBtn icon="arrow-down-circle-outline" onPress={() => insertScene(scene.id, "below")} testID={`ins-below-${index}`} />
+              <IconBtn icon="copy-outline" onPress={() => actions.dup(scene)} testID={`dup-${index}`} />
+              <IconBtn icon="clipboard-outline" onPress={() => copyScene(scene)} testID={`copy-${index}`} />
+              <IconBtn icon="arrow-up" onPress={() => actions.move(scene, -1)} testID={`up-${index}`} />
+              <IconBtn icon="arrow-down" onPress={() => actions.move(scene, 1)} testID={`down-${index}`} />
+              <IconBtn icon="trash-outline" color={C.error} onPress={() => actions.del(scene)} testID={`del-${index}`} />
+            </View>
           </View>
-          <Body muted style={{ fontSize: 11.5, marginBottom: S.md }}>Long-press the handle to drag & reorder scenes.</Body>
+        )}
+      </View>
+    </ScaleDecorator>
+  );
+});
+
+function SummaryPanel({ scenes, mobile }: any) {
+  const locations = Array.from(new Set(scenes.map((s: any) => (s.location || "").trim()).filter(Boolean)));
+  const chars = Array.from(new Set(scenes.flatMap((s: any) => String(s.characters || "").split(/[,;/]/).map((c: string) => c.trim()).filter(Boolean))));
+  const done = scenes.filter((s: any) => s.status === "Approved" || s.status === "Completed").length;
+  const pct = scenes.length ? Math.round((done / scenes.length) * 100) : 0;
+  return (
+    <View style={[styles.summary, mobile ? styles.summaryMobile : styles.summaryDesktop]}>
+      <Text style={styles.secLabel}>SUMMARY</Text>
+      <SumRow label="Total Scenes" value={String(scenes.length)} />
+      <SumRow label="Estimated Duration" value={totalDuration(scenes)} />
+      <SumRow label="Est. Shooting Time" value={estShootTime(scenes)} />
+      <SumRow label="Locations Used" value={String(locations.length)} />
+      <SumRow label="Characters" value={String(chars.length)} />
+      <View style={{ marginTop: S.sm }}>
+        <View style={styles.rowBetween}><Text style={styles.sumLabel}>Completion</Text><Text style={styles.sumVal}>{pct}%</Text></View>
+        <View style={styles.barTrack}><View style={[styles.barFill, { width: `${pct}%` }]} /></View>
+      </View>
+    </View>
+  );
+}
+function SumRow({ label, value }: any) { return <View style={styles.rowBetween}><Text style={styles.sumLabel}>{label}</Text><Text style={styles.sumVal}>{value}</Text></View>; }
+
+function StoryboardTab({ project, busyScene, expanded, setExpanded, onReorder, addScene, regenTicks,
+  commitScene, markUnsaved, setStatus, setImage, expandAll, collapseAll, insertScene, copyScene, onExport, onPdf, actions }: any) {
+  const scenes = project.scenes || [];
+  const { width } = useWindowDimensions();
+  const wide = width > 900;
+  const onToggle = (sid: string) => setExpanded((e: any) => ({ ...e, [sid]: !e[sid] }));
+  const renderItem = ({ item: s, drag, isActive, getIndex }: any) => (
+    <SceneCard scene={s} index={getIndex() ?? 0} open={!!expanded[s.id]} version={regenTicks[s.id] || 0}
+      busyScene={busyScene} drag={drag} isActive={isActive} onToggle={onToggle}
+      commitScene={commitScene} markUnsaved={markUnsaved} setStatus={setStatus} setImage={setImage}
+      insertScene={insertScene} copyScene={copyScene} actions={actions} />
+  );
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={styles.toolbar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.sm, alignItems: "center" }}>
+          <ToolBtn icon="add" label="Add Scene" onPress={addScene} testID="add-scene" primary />
+          <ToolBtn icon="expand-outline" label="Expand All" onPress={expandAll} testID="expand-all" />
+          <ToolBtn icon="contract-outline" label="Collapse All" onPress={collapseAll} testID="collapse-all" />
+          <ToolBtn icon="download-outline" label="Export" onPress={onExport} testID="tb-export" />
+          <ToolBtn icon="document-text-outline" label="Generate PDF" onPress={onPdf} testID="tb-pdf" />
+        </ScrollView>
+      </View>
+      <View style={{ flex: 1, flexDirection: wide ? "row" : "column" }}>
+        <View style={{ flex: 1 }}>
+          <DraggableFlatList
+            data={scenes} keyExtractor={(s: any) => s.id}
+            onDragEnd={({ data }: any) => onReorder(data.map((x: any, idx: number) => ({ ...x, scene_number: idx + 1 })))}
+            renderItem={renderItem} activationDistance={12} containerStyle={{ flex: 1 }}
+            contentContainerStyle={{ padding: S.lg, paddingBottom: 140, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}
+            ListHeaderComponent={
+              <View>
+                {project.mock_mode ? <View style={{ marginBottom: S.md }}><MockBadge /></View> : null}
+                <View style={styles.progress}>
+                  <ProgStat label="Total Duration" value={totalDuration(scenes)} />
+                  <View style={styles.progDiv} />
+                  <ProgStat label="Total Scenes" value={String(scenes.length)} />
+                  <View style={styles.progDiv} />
+                  <ProgStat label="Est. Shooting" value={estShootTime(scenes)} />
+                </View>
+                {!wide && <SummaryPanel scenes={scenes} mobile />}
+                <Body muted style={{ fontSize: 11.5, marginBottom: S.md }}>Long-press the handle to drag & reorder. Fields autosave as you type.</Body>
+              </View>
+            }
+            ListFooterComponent={<Btn title="Add Scene at End" variant="ghost" icon="add" onPress={addScene} testID="add-scene-end" style={{ marginTop: S.md }} />}
+          />
         </View>
-      }
-      ListFooterComponent={<Btn title="Add Scene" variant="ghost" icon="add" onPress={addScene} testID="add-scene" style={{ marginTop: S.md }} />}
-    />
+        {wide && <ScrollView style={styles.sideCol} contentContainerStyle={{ padding: S.lg }}><SummaryPanel scenes={scenes} /></ScrollView>}
+      </View>
+    </View>
+  );
+}
+function ToolBtn({ icon, label, onPress, primary, testID }: any) {
+  return (
+    <Pressable onPress={onPress} testID={testID} style={[styles.toolBtn, primary && { backgroundColor: C.brand, borderColor: C.brand }]}>
+      <Ionicons name={icon} size={15} color={primary ? C.onBrand : C.onSurface} />
+      <Text style={[styles.toolBtnText, primary && { color: C.onBrand }]}>{label}</Text>
+    </Pressable>
   );
 }
 function Chip({ children }: any) { return <View style={styles.chip}><Text style={styles.chipText}>{children}</Text></View>; }

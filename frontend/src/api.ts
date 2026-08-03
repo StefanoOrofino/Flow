@@ -61,5 +61,11 @@ export const api = {
     req(`/projects/${id}/scenes/${sid}/regenerate-dialogue`, "POST"),
   regenCamera: (id: string, sid: string) =>
     req(`/projects/${id}/scenes/${sid}/regenerate-camera`, "POST"),
+  regenDescription: (id: string, sid: string) =>
+    req(`/projects/${id}/scenes/${sid}/regenerate-description`, "POST"),
+  regenVoiceOver: (id: string, sid: string) =>
+    req(`/projects/${id}/scenes/${sid}/regenerate-voiceover`, "POST"),
+  regenLighting: (id: string, sid: string) =>
+    req(`/projects/${id}/scenes/${sid}/regenerate-lighting`, "POST"),
   templates: () => req("/templates"),
 };

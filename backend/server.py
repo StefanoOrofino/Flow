@@ -245,9 +245,10 @@ CAMERA_MOVES = ["Static", "Pan", "Tilt", "Dolly in", "Dolly out", "Tracking", "H
 
 SCENE_FIELDS = ["title", "duration", "location", "time_of_day", "characters", "visual_description",
                 "narrative", "subject_action", "dialogue", "voice_over", "on_screen_text", "shot_size",
-                "camera_angle", "camera_movement", "focal_length", "camera_position", "lighting", "color_palette",
-                "sound_notes", "transition", "frame_rate", "resolution", "equipment", "estimated_time",
-                "crew_notes", "director_notes", "production_notes", "image_prompt"]
+                "camera_angle", "camera_movement", "focal_length", "camera_position", "camera_height",
+                "camera_direction", "lighting", "color_palette", "mood", "props", "wardrobe", "sound_notes",
+                "transition", "frame_rate", "resolution", "equipment", "estimated_time", "crew_notes",
+                "director_notes", "production_notes", "comments", "ai_notes", "image_prompt", "image_url", "status"]
 
 
 def build_prompt(p: dict) -> str:
@@ -277,11 +278,14 @@ Respond with ONLY valid JSON (no markdown) matching EXACTLY this schema:
    "visual_description": "", "narrative": "the beat/story of this scene in prose", "subject_action": "",
    "dialogue": "", "voice_over": "", "on_screen_text": "", "shot_size": "one of {SHOT_SIZES}",
    "camera_angle": "e.g. Eye level/Low angle", "camera_movement": "one of {CAMERA_MOVES}",
-   "camera_position": "physical camera placement", "focal_length": "e.g. 35mm", "lighting": "lighting setup",
-   "color_palette": "color mood", "sound_notes": "audio notes", "transition": "e.g. Cut/Fade",
+   "camera_position": "physical camera placement", "camera_height": "e.g. eye level/low/high",
+   "camera_direction": "e.g. facing subject / 3-4 left", "focal_length": "e.g. 35mm", "lighting": "lighting setup",
+   "color_palette": "color mood", "mood": "scene mood", "props": "key props", "wardrobe": "wardrobe notes",
+   "sound_notes": "audio notes", "transition": "e.g. Cut/Fade",
    "frame_rate": "e.g. 24fps", "resolution": "e.g. 4K", "equipment": "camera + support + key gear for this shot",
    "estimated_time": "setup+shoot estimate in minutes e.g. 45 min", "crew_notes": "", "director_notes": "creative intent",
-   "production_notes": "logistics/risks", "image_prompt": "rich AI image prompt with style, lens, lighting, mood, composition"
+   "production_notes": "logistics/risks", "ai_notes": "notes for AI/image direction", "status": "Draft",
+   "image_prompt": "rich AI image prompt with style, lens, lighting, mood, composition"
  }}],
  "equipment": {{ "camera": "", "lens": "", "drone": "", "gimbal": "", "tripod": "", "lighting": "", "audio": "", "accessories": "" }},
  "crew": {{ "crew_size": "recommended total", "director": "", "producer": "", "dp": "", "camera_operator": "", "focus_puller": "", "gaffer": "", "sound": "", "drone_pilot": "", "production_assistant": "" }},
@@ -305,11 +309,14 @@ def mock_output(p: dict) -> dict:
             "dialogue": "", "voice_over": "Voice-over line placeholder.", "on_screen_text": p.get("goal", ""),
             "shot_size": SHOT_SIZES[i % len(SHOT_SIZES)], "camera_angle": "Eye level",
             "camera_movement": CAMERA_MOVES[i % len(CAMERA_MOVES)], "camera_position": "3/4 front, waist height",
-            "focal_length": "35mm", "lighting": "Soft key light with rim.",
-            "color_palette": p.get("visual_style", "Neutral"), "sound_notes": "Ambient score.", "transition": "Cut",
+            "focal_length": "35mm", "camera_height": "Eye level", "camera_direction": "Facing subject",
+            "lighting": "Soft key light with rim.",
+            "color_palette": p.get("visual_style", "Neutral"), "mood": p.get("mood", "Premium"),
+            "props": "Hero product", "wardrobe": "Tailored, neutral tones",
+            "sound_notes": "Ambient score.", "transition": "Cut",
             "frame_rate": "24fps", "resolution": "4K", "equipment": "Cinema camera, gimbal, key light",
             "estimated_time": "45 min", "crew_notes": "1 DP, 1 gaffer", "director_notes": "Keep it intimate.",
-            "production_notes": "Confirm location permit.",
+            "production_notes": "Confirm location permit.", "ai_notes": "Emphasize warm rim light.", "status": "Draft",
             "image_prompt": f"[MOCK] Cinematic {p.get('visual_style')} frame, {p.get('mood')} mood, scene {i}.",
         })
     return {
@@ -361,6 +368,8 @@ def normalize_scene(s: dict, idx: int) -> dict:
     out = {"id": s.get("id") or uuid.uuid4().hex[:10], "scene_number": s.get("scene_number", idx + 1)}
     for f in SCENE_FIELDS:
         out[f] = str(s.get(f, "") or "")
+    if not out.get("status"):
+        out["status"] = "Draft"
     return out
 
 
@@ -562,6 +571,44 @@ async def regenerate_camera(pid: str, sid: str, user=Depends(get_current_user)):
     mockmap = {"shot_size": "Medium shot", "camera_angle": "Low angle", "camera_movement": "Dolly in",
                "camera_position": "[MOCK] front, chest height", "focal_length": "50mm"}
     return await _regen_partial(pid, sid, user, ask, ["shot_size", "camera_angle", "camera_movement", "camera_position", "focal_length"], mockmap)
+
+
+@api_router.post("/projects/{pid}/scenes/{sid}/regenerate-description")
+async def regenerate_description(pid: str, sid: str, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    scene = next((s for s in doc.get("scenes", []) if s.get("id") == sid), None)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    ask = (f"Rewrite this film scene's visual description, narrative and on-camera action. Visual style: {doc.get('visual_style')}, "
+           f"mood: {doc.get('mood')}. Current: {scene.get('visual_description')}. "
+           f'Respond ONLY as JSON: {{"visual_description":"","narrative":"","subject_action":""}}')
+    mockmap = {"visual_description": "[MOCK] New visual description.", "narrative": "[MOCK] New narrative beat.", "subject_action": "[MOCK] New action."}
+    return await _regen_partial(pid, sid, user, ask, ["visual_description", "narrative", "subject_action"], mockmap)
+
+
+@api_router.post("/projects/{pid}/scenes/{sid}/regenerate-voiceover")
+async def regenerate_voiceover(pid: str, sid: str, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    scene = next((s for s in doc.get("scenes", []) if s.get("id") == sid), None)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    ask = (f"Write a fresh voice-over line for this scene. Tone: {doc.get('mood')}, language: {doc.get('language')}. "
+           f"Scene: {scene.get('visual_description')}. "
+           f'Respond ONLY as JSON: {{"voice_over":""}}')
+    return await _regen_partial(pid, sid, user, ask, ["voice_over"], {"voice_over": "[MOCK] New voice-over line."})
+
+
+@api_router.post("/projects/{pid}/scenes/{sid}/regenerate-lighting")
+async def regenerate_lighting(pid: str, sid: str, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    scene = next((s for s in doc.get("scenes", []) if s.get("id") == sid), None)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    ask = (f"Design a fresh lighting setup, color palette and mood for this scene. Lighting style: {doc.get('lighting_style')}, "
+           f"time of day: {scene.get('time_of_day')}. Scene: {scene.get('visual_description')}. "
+           f'Respond ONLY as JSON: {{"lighting":"","color_palette":"","mood":""}}')
+    mockmap = {"lighting": "[MOCK] New lighting setup.", "color_palette": "[MOCK] New palette.", "mood": "[MOCK] New mood."}
+    return await _regen_partial(pid, sid, user, ask, ["lighting", "color_palette", "mood"], mockmap)
 
 
 TEMPLATES = [
