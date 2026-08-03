@@ -67,5 +67,15 @@ export const api = {
     req(`/projects/${id}/scenes/${sid}/regenerate-voiceover`, "POST"),
   regenLighting: (id: string, sid: string) =>
     req(`/projects/${id}/scenes/${sid}/regenerate-lighting`, "POST"),
+  // Storyboard image frames (provider-agnostic; mock/none until a real provider is wired)
+  imageProvider: () => req("/image-provider"),
+  generateFrame: (id: string, sid: string, body: any = {}) =>
+    req(`/projects/${id}/scenes/${sid}/frames/generate`, "POST", body),
+  regenerateFrame: (id: string, sid: string, fid: string, body: any = {}) =>
+    req(`/projects/${id}/scenes/${sid}/frames/${fid}/regenerate`, "POST", body),
+  setActiveFrame: (id: string, sid: string, fid: string) =>
+    req(`/projects/${id}/scenes/${sid}/frames/${fid}/active`, "POST"),
+  deleteFrame: (id: string, sid: string, fid: string) =>
+    req(`/projects/${id}/scenes/${sid}/frames/${fid}`, "DELETE"),
   templates: () => req("/templates"),
 };

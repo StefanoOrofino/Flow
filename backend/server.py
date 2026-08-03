@@ -18,6 +18,8 @@ import httpx
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
+import image_service
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
@@ -104,6 +106,13 @@ class ProjectIn(BaseModel):
 
 class ProjectUpdate(BaseModel):
     data: dict
+
+
+class FrameIn(BaseModel):
+    prompt: Optional[str] = None
+    style_preset: Optional[str] = ""
+    aspect_ratio: Optional[str] = "16:9"
+    negative_prompt: Optional[str] = ""
 
 
 def hash_pw(pw: str) -> str:
@@ -370,6 +379,10 @@ def normalize_scene(s: dict, idx: int) -> dict:
         out[f] = str(s.get(f, "") or "")
     if not out.get("status"):
         out["status"] = "Draft"
+    # Preserve non-string structured fields (comments + image frames) across (re)generation.
+    out["comment_list"] = s.get("comment_list") or []
+    out["frames"] = s.get("frames") or []
+    out["active_frame_id"] = s.get("active_frame_id") or ""
     return out
 
 
@@ -490,6 +503,12 @@ async def regenerate_scene(pid: str, sid: str, user=Depends(get_current_user)):
             new_scene["id"] = sid
             new_scene["scene_number"] = scene.get("scene_number")
     scenes = [new_scene if s.get("id") == sid else s for s in doc["scenes"]]
+    # Preserve user-owned data (comments + image frames) across a full AI scene regen.
+    for x in scenes:
+        if x.get("id") == sid:
+            x["comment_list"] = scene.get("comment_list") or []
+            x["frames"] = scene.get("frames") or []
+            x["active_frame_id"] = scene.get("active_frame_id") or ""
     await db.projects.update_one({"id": pid, "user_id": user["user_id"]},
                                  {"$set": {"scenes": scenes, "updated_at": now_iso()}})
     return await _get_owned(pid, user)
@@ -609,6 +628,111 @@ async def regenerate_lighting(pid: str, sid: str, user=Depends(get_current_user)
            f'Respond ONLY as JSON: {{"lighting":"","color_palette":"","mood":""}}')
     mockmap = {"lighting": "[MOCK] New lighting setup.", "color_palette": "[MOCK] New palette.", "mood": "[MOCK] New mood."}
     return await _regen_partial(pid, sid, user, ask, ["lighting", "color_palette", "mood"], mockmap)
+
+
+# ---------------------------------------------------------------------------
+# Storyboard image frames (provider-agnostic; mock/none until a real provider is wired)
+# ---------------------------------------------------------------------------
+def _find_scene(doc: dict, sid: str) -> dict:
+    scene = next((s for s in doc.get("scenes", []) if s.get("id") == sid), None)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    return scene
+
+
+async def _save_scene(pid: str, user: dict, doc: dict, sid: str, updated_scene: dict):
+    scenes = [updated_scene if s.get("id") == sid else s for s in doc["scenes"]]
+    await db.projects.update_one({"id": pid, "user_id": user["user_id"]},
+                                 {"$set": {"scenes": scenes, "updated_at": now_iso()}})
+    return await _get_owned(pid, user)
+
+
+@api_router.post("/projects/{pid}/scenes/{sid}/frames/generate")
+async def generate_frame(pid: str, sid: str, body: FrameIn, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    scene = _find_scene(doc, sid)
+    prompt = (body.prompt or scene.get("image_prompt") or "").strip()
+    opts = {"style_preset": body.style_preset or "", "aspect_ratio": body.aspect_ratio or "16:9",
+            "negative_prompt": body.negative_prompt or "",
+            "label": f"SCENE {scene.get('scene_number')}"}
+    result = await image_service.generate_image(prompt, opts)
+    frames = list(scene.get("frames") or [])
+    version = (max([f.get("version", 0) for f in frames], default=0)) + 1
+    frame = image_service.make_frame(scene, pid, result, version, prompt, opts)
+    frames.append(frame)
+    updated = {**scene, "frames": frames, "image_prompt": prompt or scene.get("image_prompt", "")}
+    # Auto-select the newly generated frame if it succeeded
+    if frame["generation_status"] == image_service.STATUS_COMPLETED:
+        updated["active_frame_id"] = frame["id"]
+        updated["image_url"] = frame["image_url"]
+    return await _save_scene(pid, user, doc, sid, updated)
+
+
+@api_router.post("/projects/{pid}/scenes/{sid}/frames/{fid}/regenerate")
+async def regenerate_frame(pid: str, sid: str, fid: str, body: FrameIn, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    scene = _find_scene(doc, sid)
+    frames = list(scene.get("frames") or [])
+    old = next((f for f in frames if f.get("id") == fid), None)
+    if not old:
+        raise HTTPException(status_code=404, detail="Frame not found")
+    prompt = (body.prompt or old.get("prompt") or scene.get("image_prompt") or "").strip()
+    opts = {"style_preset": body.style_preset or old.get("style_preset", ""),
+            "aspect_ratio": body.aspect_ratio or old.get("aspect_ratio", "16:9"),
+            "negative_prompt": body.negative_prompt or old.get("negative_prompt", ""),
+            "label": f"SCENE {scene.get('scene_number')}"}
+    result = await image_service.regenerate_image(prompt, opts)
+    version = (max([f.get("version", 0) for f in frames], default=0)) + 1
+    frame = image_service.make_frame(scene, pid, result, version, prompt, opts)
+    frames.append(frame)
+    updated = {**scene, "frames": frames, "image_prompt": prompt or scene.get("image_prompt", "")}
+    if frame["generation_status"] == image_service.STATUS_COMPLETED:
+        updated["active_frame_id"] = frame["id"]
+        updated["image_url"] = frame["image_url"]
+    return await _save_scene(pid, user, doc, sid, updated)
+
+
+@api_router.post("/projects/{pid}/scenes/{sid}/frames/{fid}/active")
+async def set_active_frame(pid: str, sid: str, fid: str, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    scene = _find_scene(doc, sid)
+    frames = scene.get("frames") or []
+    frame = next((f for f in frames if f.get("id") == fid), None)
+    if not frame:
+        raise HTTPException(status_code=404, detail="Frame not found")
+    updated = {**scene, "active_frame_id": fid, "image_url": frame.get("image_url", "")}
+    return await _save_scene(pid, user, doc, sid, updated)
+
+
+@api_router.delete("/projects/{pid}/scenes/{sid}/frames/{fid}")
+async def delete_frame(pid: str, sid: str, fid: str, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    scene = _find_scene(doc, sid)
+    frames = [f for f in (scene.get("frames") or []) if f.get("id") != fid]
+    active = scene.get("active_frame_id") or ""
+    image_url = scene.get("image_url", "")
+    if active == fid:
+        active = frames[-1]["id"] if frames else ""
+        image_url = frames[-1]["image_url"] if frames else ""
+    updated = {**scene, "frames": frames, "active_frame_id": active, "image_url": image_url}
+    return await _save_scene(pid, user, doc, sid, updated)
+
+
+@api_router.get("/projects/{pid}/scenes/{sid}/frames/{fid}/status")
+async def frame_status(pid: str, sid: str, fid: str, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    scene = _find_scene(doc, sid)
+    frame = next((f for f in (scene.get("frames") or []) if f.get("id") == fid), None)
+    if not frame:
+        raise HTTPException(status_code=404, detail="Frame not found")
+    return {"status": image_service.get_generation_status(frame),
+            "error_message": frame.get("error_message", ""), "frame": frame}
+
+
+@api_router.get("/image-provider")
+async def image_provider(user=Depends(get_current_user)):
+    return {"provider": image_service.get_provider().name,
+            "configured": image_service.provider_configured()}
 
 
 TEMPLATES = [

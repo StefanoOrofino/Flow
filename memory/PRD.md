@@ -33,3 +33,12 @@ Auth + protected routes; Dashboard (stats, quick actions, continue working, rece
 1. Add AI image generation for storyboard frames (Gemini Nano Banana / GPT Image 1) to replace placeholders.
 2. Real drag-and-drop scene reordering.
 3. Billing/subscription tiers (Stripe) when monetization begins.
+
+## Sprint 2 (2026-06 / iteration 5) — Storyboard depth
+Implemented in strict priority order per user request:
+- **P1 Storyboard Editor** — verified complete (inline edit, autosave, drag-drop, scene actions, regen, expandable cards). NOTE: previous fork left many referenced StyleSheet keys undefined (RN silently ignored → unstyled). Added ALL missing styles (efInput, group, statusRow, frameBig, toolbar, summary, etc.).
+- **P2 Smart Shot List** — rewrote Shot List tab as a professional horizontal-scroll production table, auto-synced from `project.scenes` (single source of truth, zero duplication). `ShotListTab` in project/[id].tsx.
+- **P3 Storyboard PDF** — rewrote `buildHtml` in src/exporter.ts to a Storyboard-focused package: Cover, Project Summary (Concept/Treatment/Audience/Video Specs), Script, Storyboard (one page per scene + large 16:9 frame using active generated frame or placeholder), Shot List table, Final Notes. Removed Equipment/Crew/Schedule/Budget. Comments excluded. Web = print-to-PDF (Save as PDF).
+- **P4 Scene Comments** — full review system per scene: `scene.comment_list = [{id,text,author,created_at,updated_at,status}]`. Add/edit/delete own, Open/Resolved toggle, resolved collapsed by default. Owner-only for now. Persisted via autosave PUT. NOT in PDF. `CommentsPanel` component.
+- **P5 Image Gen Architecture (no real provider)** — `backend/image_service.py` provider-agnostic (mock/none via env IMAGE_PROVIDER, default mock=simulated SVG frame, no external calls/credits). Scene fields `frames[]` (full version metadata) + `active_frame_id`. Endpoints: frames/generate, frames/{fid}/regenerate, frames/{fid}/active, DELETE frames/{fid}, frames/{fid}/status, GET /image-provider. `StoryboardFrame` component: 16:9 preview, status pill, version chips, meta, prompt editor, actions (Generate/Regenerate/Replace/Edit Prompt/Remove/Full Screen), fullscreen viewer modal.
+- Backend smoke-tested (generate→v1/v2, delete, cleanup) OK. Frontend smoke screenshots OK.

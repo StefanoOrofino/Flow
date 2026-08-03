@@ -1,0 +1,129 @@
+"""Provider-agnostic storyboard image-generation service.
+
+Sprint 2: architecture-only. No external/paid providers are wired.
+- IMAGE_PROVIDER=mock  -> returns a clearly-labelled SIMULATED frame (default, for testing the full flow)
+- IMAGE_PROVIDER=none  -> returns a "Provider not configured" failed state
+
+A real provider (e.g. Gemini Nano Banana, GPT Image 1) can be added later by
+implementing ImageProvider.generate() and registering it in PROVIDERS, WITHOUT
+touching the Storyboard editor or the API endpoints.
+"""
+import os
+import uuid
+import base64
+from datetime import datetime, timezone
+
+IMAGE_PROVIDER = os.environ.get("IMAGE_PROVIDER", "mock").lower()
+
+# Generation status enum
+STATUS_NOT_GENERATED = "Not Generated"
+STATUS_QUEUED = "Queued"
+STATUS_GENERATING = "Generating"
+STATUS_COMPLETED = "Completed"
+STATUS_FAILED = "Failed"
+
+
+def now_iso():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _ratio_dims(aspect: str):
+    m = {"16:9": (1600, 900), "9:16": (900, 1600), "1:1": (1200, 1200),
+         "4:5": (960, 1200), "2.39:1": (1912, 800), "4:3": (1200, 900)}
+    return m.get(aspect, (1600, 900))
+
+
+def _placeholder_data_uri(label: str, aspect: str = "16:9", style: str = "") -> str:
+    w, h = _ratio_dims(aspect)
+    sub = (style or "Cinematic").strip()[:42]
+    svg = f"""<svg xmlns='http://www.w3.org/2000/svg' width='{w}' height='{h}' viewBox='0 0 {w} {h}'>
+<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+<stop offset='0' stop-color='#1c1810'/><stop offset='1' stop-color='#0a0a0a'/></linearGradient></defs>
+<rect width='100%' height='100%' fill='url(#g)'/>
+<rect x='2%' y='4%' width='96%' height='92%' fill='none' stroke='#C5A059' stroke-opacity='0.35' stroke-width='3' stroke-dasharray='14 10'/>
+<text x='50%' y='44%' fill='#C5A059' font-family='Georgia, serif' font-size='{int(h*0.075)}' text-anchor='middle'>{label}</text>
+<text x='50%' y='56%' fill='#8a8578' font-family='Arial' font-size='{int(h*0.036)}' text-anchor='middle'>SIMULATED · {aspect} · {sub}</text>
+</svg>"""
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
+
+
+class ImageProvider:
+    name = "base"
+
+    async def generate(self, prompt: str, opts: dict) -> dict:
+        raise NotImplementedError
+
+
+class NoneProvider(ImageProvider):
+    """No provider configured — never calls out, returns a failed state."""
+    name = "none"
+
+    async def generate(self, prompt: str, opts: dict) -> dict:
+        return {
+            "status": STATUS_FAILED,
+            "error_message": "Image provider not configured. Add server-side credentials to enable AI frame generation.",
+            "image_url": "", "thumbnail_url": "",
+            "provider": "none", "provider_job_id": "",
+        }
+
+
+class MockProvider(ImageProvider):
+    """Development-only simulated provider. No external API calls, no credits."""
+    name = "mock"
+
+    async def generate(self, prompt: str, opts: dict) -> dict:
+        uri = _placeholder_data_uri(
+            opts.get("label", "STORYBOARD FRAME"),
+            opts.get("aspect_ratio", "16:9"),
+            opts.get("style_preset", ""),
+        )
+        return {
+            "status": STATUS_COMPLETED,
+            "error_message": "",
+            "image_url": uri, "thumbnail_url": uri,
+            "provider": "mock", "provider_job_id": "mock_" + uuid.uuid4().hex[:8],
+        }
+
+
+PROVIDERS = {"none": NoneProvider(), "mock": MockProvider()}
+
+
+def get_provider() -> ImageProvider:
+    return PROVIDERS.get(IMAGE_PROVIDER, PROVIDERS["mock"])
+
+
+def provider_configured() -> bool:
+    return get_provider().name not in ("none",)
+
+
+async def generate_image(prompt: str, opts: dict) -> dict:
+    return await get_provider().generate(prompt, opts)
+
+
+async def regenerate_image(prompt: str, opts: dict) -> dict:
+    return await get_provider().generate(prompt, opts)
+
+
+def get_generation_status(frame: dict) -> str:
+    return (frame or {}).get("generation_status", STATUS_NOT_GENERATED)
+
+
+def make_frame(scene: dict, project_id: str, result: dict, version: int, prompt: str, opts: dict) -> dict:
+    return {
+        "id": uuid.uuid4().hex[:10],
+        "scene_id": scene.get("id"),
+        "project_id": project_id,
+        "image_url": result.get("image_url", ""),
+        "thumbnail_url": result.get("thumbnail_url", ""),
+        "prompt": prompt,
+        "negative_prompt": opts.get("negative_prompt", ""),
+        "style_preset": opts.get("style_preset", ""),
+        "aspect_ratio": opts.get("aspect_ratio", "16:9"),
+        "provider": result.get("provider", ""),
+        "provider_job_id": result.get("provider_job_id", ""),
+        "generation_status": result.get("status", STATUS_FAILED),
+        "version": version,
+        "error_message": result.get("error_message", ""),
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }

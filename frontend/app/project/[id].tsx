@@ -8,8 +8,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn } from "react-native-reanimated";
 import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
 import * as Clipboard from "expo-clipboard";
+import { Image as ExpoImage } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
+import { useAuth } from "@/src/auth";
 import { C, S, R, F, MAX_W } from "@/src/theme";
 import { Btn, H2, Body, Badge, MockBadge, AnimIn } from "@/src/components";
 import { exportPdf, exportCsv, printProject } from "@/src/exporter";
@@ -28,12 +30,16 @@ export default function Editor() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const author = user?.name || user?.email || "You";
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("Overview");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "unsaved">("idle");
   const [busyScene, setBusyScene] = useState<string | null>(null);
+  const [frameBusy, setFrameBusy] = useState<string | null>(null);
+  const [viewer, setViewer] = useState<string | null>(null);
   const [regenAll, setRegenAll] = useState(false);
   const [regenTicks, setRegenTicks] = useState<Record<string, number>>({});
   const timer = useRef<any>(null);
@@ -119,6 +125,13 @@ export default function Editor() {
   const regenVoiceOver = regenWrap("-vo", api.regenVoiceOver);
   const regenLighting = regenWrap("-l", api.regenLighting);
   const regenerateAll = async () => { setRegenAll(true); try { setProject(await api.generate(id)); setTab("Overview"); } catch {} finally { setRegenAll(false); } };
+
+  // Storyboard image frames (mock/none provider until a real one is wired)
+  const frameGenerate = async (s: any, body: any) => { setFrameBusy(s.id); try { setProject(await api.generateFrame(id, s.id, body)); } catch {} finally { setFrameBusy(null); } };
+  const frameRegenerate = async (s: any, fid: string, body: any) => { setFrameBusy(s.id); try { setProject(await api.regenerateFrame(id, s.id, fid, body)); } catch {} finally { setFrameBusy(null); } };
+  const frameSetActive = async (s: any, fid: string) => { try { setProject(await api.setActiveFrame(id, s.id, fid)); } catch {} };
+  const frameDelete = async (s: any, fid: string) => { setFrameBusy(s.id); try { setProject(await api.deleteFrame(id, s.id, fid)); } catch {} finally { setFrameBusy(null); } };
+  const frameActions = { generate: frameGenerate, regenerate: frameRegenerate, setActive: frameSetActive, del: frameDelete, view: setViewer };
   const doExport = async (fn: () => Promise<void>) => { try { await fn(); api.markExported(id).then(() => setProject((p: any) => ({ ...p, export_count: (p.export_count || 0) + 1 }))); } catch (e) { console.log(e); } };
 
   if (loading || !project) return <View style={styles.center}><ActivityIndicator color={C.brand} size="large" /></View>;
@@ -150,11 +163,12 @@ export default function Editor() {
 
       {tab === "Storyboard" && !notGenerated ? (
         <StoryboardTab
-          project={project} busyScene={busyScene} expanded={expanded} setExpanded={setExpanded}
-          onReorder={persistScenes} addScene={addScene} regenTicks={regenTicks}
+          project={project} busyScene={busyScene} frameBusy={frameBusy} expanded={expanded} setExpanded={setExpanded}
+          onReorder={persistScenes} addScene={addScene} regenTicks={regenTicks} author={author}
           commitScene={commitScene} markUnsaved={markUnsaved} setStatus={setStatus} setImage={setImage}
           expandAll={expandAll} collapseAll={collapseAll} insertScene={insertScene} copyScene={copyScene}
           onExport={() => doExport(() => exportCsv(project))} onPdf={() => doExport(() => exportPdf(project))}
+          frameActions={frameActions}
           actions={{ dup: dupScene, del: delScene, move,
             regenScene, regenDialogue, regenCamera, regenPrompt, regenDescription, regenVoiceOver, regenLighting }}
         />
@@ -173,37 +187,7 @@ export default function Editor() {
             <>
               {tab === "Overview" && <Overview p={project} />}
               {/* Storyboard tab is rendered separately below via DraggableFlatList */}
-              {tab === "Shot List" && (
-                <View>
-                  {project.scenes.map((s: any, i: number) => {
-                    const open = expanded[s.id];
-                    return (
-                      <View key={s.id} style={styles.shotRow} testID={`shot-row-${i}`}>
-                        <Pressable style={styles.shotHead} onPress={() => setExpanded((e) => ({ ...e, [s.id]: !open }))}>
-                          <View style={styles.shotNum}><Text style={styles.shotNumText}>{i + 1}</Text></View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.shotTitle} numberOfLines={1}>{s.title}</Text>
-                            <Body muted style={{ fontSize: 12 }} numberOfLines={open ? undefined : 1}>{s.visual_description}</Body>
-                          </View>
-                          <Text style={styles.shotMeta}>{s.shot_size}</Text>
-                          <Ionicons name={open ? "chevron-up" : "chevron-down"} size={16} color={C.onSurface2} />
-                        </Pressable>
-                        {open && (
-                          <View style={styles.shotDetail}>
-                            {[["Scene", s.scene_number], ["Shot size", s.shot_size], ["Angle", s.camera_angle], ["Movement", s.camera_movement],
-                              ["Lens", s.focal_length], ["Frame rate", s.frame_rate], ["Resolution", s.resolution], ["Location", s.location],
-                              ["Time", s.time_of_day], ["Lighting", s.lighting], ["Audio", s.sound_notes], ["Equipment", s.equipment],
-                              ["Est. time", s.estimated_time], ["Crew notes", s.crew_notes], ["Duration", s.duration], ["Transition", s.transition]].map((r) => (
-                              <View key={String(r[0])} style={styles.dRow}><Text style={styles.dLabel}>{r[0]}</Text><Text style={styles.dVal}>{String(r[1] || "—")}</Text></View>
-                            ))}
-                            <Pressable style={styles.miniRow} onPress={() => { setTab("Storyboard"); setExpanded((e: any) => ({ ...e, [s.id]: true })); }} testID={`shot-edit-${i}`}><Ionicons name="create-outline" size={14} color={C.brand} /><Text style={styles.miniLink}>Edit in Storyboard</Text></Pressable>
-                          </View>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
+              {tab === "Shot List" && <ShotListTab scenes={project.scenes} onEdit={(sid: string) => { setTab("Storyboard"); setExpanded((e: any) => ({ ...e, [sid]: true })); }} />}
               {tab === "Script" && (
                 <View>
                   {project.scenes.map((s: any, i: number) => (
@@ -253,6 +237,14 @@ export default function Editor() {
       )}
 
       {/* Inline editing (Sprint 2) replaces the scene edit modal */}
+
+      {/* Fullscreen storyboard frame viewer */}
+      <Modal visible={!!viewer} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
+        <Pressable style={styles.viewerBg} onPress={() => setViewer(null)} testID="frame-viewer">
+          {viewer ? <ExpoImage source={{ uri: viewer }} style={styles.viewerImg} contentFit="contain" /> : null}
+          <View style={[styles.viewerClose, { top: insets.top + S.md }]}><Ionicons name="close" size={26} color="#fff" /></View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -328,25 +320,158 @@ function EditableField({ label, value, onChange, multiline }: any) {
   );
 }
 
-function ImageFrame({ url, onRemove }: any) {
+const FRAME_STATUS_META: Record<string, { c: string; i: string }> = {
+  "Not Generated": { c: C.onSurface2, i: "ellipse-outline" },
+  "Queued": { c: C.warning, i: "time-outline" },
+  "Generating": { c: C.warning, i: "sync-outline" },
+  "Completed": { c: C.success, i: "checkmark-circle-outline" },
+  "Failed": { c: C.error, i: "alert-circle-outline" },
+};
+
+function StoryboardFrame({ scene, promptValue, aspect, busy, frameActions, onEditPrompt }: any) {
+  const frames = scene.frames || [];
+  const active = frames.find((x: any) => x.id === scene.active_frame_id) || frames[frames.length - 1] || null;
+  const url = active?.image_url || "";
+  const status = active?.generation_status || "Not Generated";
+  const meta = FRAME_STATUS_META[status] || FRAME_STATUS_META["Not Generated"];
+  const [editing, setEditing] = useState(false);
+  const ar = active?.aspect_ratio || aspect || "16:9";
+  const opts = () => ({ prompt: promptValue, aspect_ratio: aspect || "16:9" });
   return (
-    <View style={styles.frameBig}>
-      {url ? <ExpoImage source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : (
-        <><LinearGradient colors={["#201c12", "#0b0b0b"]} style={StyleSheet.absoluteFill} />
-          <Ionicons name="image-outline" size={30} color={C.onSurface2} />
-          <Text style={styles.frameHint}>Storyboard frame</Text></>
-      )}
-      <View style={styles.frameBtns}>
-        <RegenChip icon="sparkles-outline" label="Generate" onPress={() => {}} />
-        <RegenChip icon="swap-horizontal-outline" label="Replace" onPress={() => onRemove(url ? "" : CINE_FRAME)} />
-        <RegenChip icon="trash-outline" label="Remove" onPress={() => onRemove("")} />
+    <View style={styles.frameWrap}>
+      <View style={styles.frameBig}>
+        {url ? <ExpoImage source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : (
+          <><LinearGradient colors={["#201c12", "#0b0b0b"]} style={StyleSheet.absoluteFill} />
+            <Ionicons name="image-outline" size={30} color={C.onSurface2} />
+            <Text style={styles.frameHint}>No storyboard frame yet</Text></>
+        )}
+        <View style={[styles.framePill, { borderColor: meta.c }]}>
+          <Ionicons name={meta.i as any} size={11} color={meta.c} />
+          <Text style={[styles.framePillText, { color: meta.c }]}>{status}</Text>
+        </View>
+        {busy && <View style={styles.frameLoading}><ActivityIndicator color={C.brand} /><Text style={styles.frameLoadingText}>Generating…</Text></View>}
+        {url ? <Pressable style={styles.frameExpand} onPress={() => frameActions.view(url)} testID={`frame-view-${scene.scene_number}`}><Ionicons name="expand-outline" size={16} color="#fff" /></Pressable> : null}
       </View>
+
+      {active && (
+        <View style={styles.frameMeta}>
+          <Text style={styles.frameMetaText}>Version {active.version} · {ar} · {active.provider === "mock" ? "SIMULATED" : (active.provider || "—")}{active.created_at ? ` · ${new Date(active.created_at).toLocaleDateString()}` : ""}</Text>
+          {active.style_preset ? <Text style={styles.frameMetaText}>Style: {active.style_preset}</Text> : null}
+          {active.error_message ? <Text style={[styles.frameMetaText, { color: C.error }]}>{active.error_message}</Text> : null}
+        </View>
+      )}
+
+      {frames.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 4 }}>
+          {frames.map((fr: any) => (
+            <Pressable key={fr.id} onPress={() => frameActions.setActive(scene, fr.id)}
+              style={[styles.versionChip, fr.id === (scene.active_frame_id || active?.id) && styles.versionChipActive]} testID={`frame-v-${scene.scene_number}-${fr.version}`}>
+              <Text style={[styles.versionChipText, fr.id === (scene.active_frame_id || active?.id) && { color: C.brand }]}>v{fr.version}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+
+      {editing ? (
+        <TextInput value={promptValue} onChangeText={onEditPrompt} multiline placeholder="Describe the frame for image generation…"
+          placeholderTextColor={C.onSurface2} style={[styles.efInput, { minHeight: 60, textAlignVertical: "top", paddingTop: 8, marginTop: 6 }]} testID={`frame-prompt-${scene.scene_number}`} />
+      ) : (
+        <Text style={styles.framePrompt} numberOfLines={2}>{promptValue || "No image prompt yet — regenerate it in the AI section."}</Text>
+      )}
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingTop: 6 }}>
+        <RegenChip icon="sparkles-outline" label={frames.length ? "New Version" : "Generate Frame"} busy={busy} onPress={() => frameActions.generate(scene, opts())} testID={`frame-generate-${scene.scene_number}`} />
+        <RegenChip icon="refresh" label="Regenerate" onPress={() => active ? frameActions.regenerate(scene, active.id, opts()) : frameActions.generate(scene, opts())} testID={`frame-regenerate-${scene.scene_number}`} />
+        <RegenChip icon="swap-horizontal-outline" label="Replace" onPress={() => frameActions.generate(scene, opts())} testID={`frame-replace-${scene.scene_number}`} />
+        <RegenChip icon="create-outline" label="Edit Prompt" onPress={() => setEditing((e) => !e)} testID={`frame-edit-${scene.scene_number}`} />
+        {active ? <RegenChip icon="trash-outline" label="Remove" onPress={() => frameActions.del(scene, active.id)} testID={`frame-remove-${scene.scene_number}`} /> : null}
+        {url ? <RegenChip icon="expand-outline" label="Full Screen" onPress={() => frameActions.view(url)} testID={`frame-full-${scene.scene_number}`} /> : null}
+      </ScrollView>
     </View>
   );
 }
 
-const SceneCard = React.memo(function SceneCard({ scene, index, open, version, busyScene, drag, isActive,
-  onToggle, commitScene, markUnsaved, setStatus, setImage, insertScene, copyScene, actions }: any) {
+const rid = () => Math.random().toString(36).slice(2, 10);
+function CommentsPanel({ scene, author, onChange }: any) {
+  const list: any[] = scene.comment_list || [];
+  const [text, setText] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [showResolved, setShowResolved] = useState(false);
+  const openList = list.filter((c) => c.status !== "Resolved");
+  const resolvedList = list.filter((c) => c.status === "Resolved");
+  const nowIso = () => new Date().toISOString();
+  const add = () => {
+    const t = text.trim(); if (!t) return;
+    onChange([...list, { id: rid(), text: t, author, created_at: nowIso(), updated_at: nowIso(), status: "Open" }]);
+    setText("");
+  };
+  const patch = (cid: string, p: any) => onChange(list.map((c) => (c.id === cid ? { ...c, ...p, updated_at: nowIso() } : c)));
+  const del = (cid: string) => onChange(list.filter((c) => c.id !== cid));
+  const saveEdit = () => { if (editId) patch(editId, { text: editText.trim() }); setEditId(null); setEditText(""); };
+  const fmt = (iso: string) => { try { return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
+
+  const Row = ({ c }: any) => {
+    const mine = c.author === author;
+    const resolved = c.status === "Resolved";
+    if (editId === c.id) {
+      return (
+        <View style={styles.commentCard}>
+          <TextInput value={editText} onChangeText={setEditText} multiline autoFocus
+            placeholderTextColor={C.onSurface2} style={[styles.efInput, { minHeight: 44, textAlignVertical: "top", paddingTop: 8 }]} testID={`comment-edit-input-${c.id}`} />
+          <View style={styles.commentBtns}>
+            <RegenChip icon="checkmark" label="Save" onPress={saveEdit} testID={`comment-save-${c.id}`} />
+            <RegenChip icon="close" label="Cancel" onPress={() => { setEditId(null); setEditText(""); }} />
+          </View>
+        </View>
+      );
+    }
+    return (
+      <View style={[styles.commentCard, resolved && { opacity: 0.7 }]} testID={`comment-${c.id}`}>
+        <View style={styles.commentTop}>
+          <Text style={styles.commentAuthor}>{c.author}</Text>
+          <Text style={styles.commentTime}>{fmt(c.created_at)}</Text>
+          <View style={[styles.commentStatus, { borderColor: resolved ? C.success : C.warning }]}>
+            <Text style={[styles.commentStatusText, { color: resolved ? C.success : C.warning }]}>{resolved ? "Resolved" : "Open"}</Text>
+          </View>
+        </View>
+        <Text style={styles.commentText}>{c.text}</Text>
+        <View style={styles.commentBtns}>
+          <RegenChip icon={resolved ? "arrow-undo-outline" : "checkmark-done-outline"} label={resolved ? "Reopen" : "Resolve"} onPress={() => patch(c.id, { status: resolved ? "Open" : "Resolved" })} testID={`comment-toggle-${c.id}`} />
+          {mine && <RegenChip icon="create-outline" label="Edit" onPress={() => { setEditId(c.id); setEditText(c.text); }} testID={`comment-editbtn-${c.id}`} />}
+          {mine && <RegenChip icon="trash-outline" label="Delete" onPress={() => del(c.id)} testID={`comment-delete-${c.id}`} />}
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.commentsWrap}>
+      <View style={styles.rowBetween}>
+        <Text style={styles.groupTitle}>COMMENTS</Text>
+        <Text style={styles.commentTime}>{openList.length} open</Text>
+      </View>
+      {openList.map((c) => <Row key={c.id} c={c} />)}
+      <View style={styles.commentInputRow}>
+        <TextInput value={text} onChangeText={setText} multiline placeholder="Add an internal note (not shown in exports)…"
+          placeholderTextColor={C.onSurface2} style={[styles.efInput, { flex: 1, minHeight: 44, textAlignVertical: "top", paddingTop: 8 }]} testID={`comment-input-${scene.scene_number}`} />
+        <Pressable style={styles.commentSend} onPress={add} testID={`comment-add-${scene.scene_number}`}><Ionicons name="send" size={16} color={C.onBrand} /></Pressable>
+      </View>
+      {resolvedList.length > 0 && (
+        <>
+          <Pressable style={styles.miniRow} onPress={() => setShowResolved((v) => !v)} testID={`comment-toggle-resolved-${scene.scene_number}`}>
+            <Ionicons name={showResolved ? "chevron-up" : "chevron-down"} size={14} color={C.brand} />
+            <Text style={styles.miniLink}>{showResolved ? "Hide" : "Show"} {resolvedList.length} resolved</Text>
+          </Pressable>
+          {showResolved && resolvedList.map((c) => <Row key={c.id} c={c} />)}
+        </>
+      )}
+    </View>
+  );
+}
+
+const SceneCard = React.memo(function SceneCard({ scene, index, open, version, busyScene, frameBusy, drag, isActive,
+  onToggle, commitScene, markUnsaved, setStatus, setImage, insertScene, copyScene, actions, frameActions, aspect, author }: any) {
   const [f, setF] = useState<any>(scene);
   const latest = useRef(scene); latest.current = scene;
   const t = useRef<any>(null);
@@ -384,7 +509,8 @@ const SceneCard = React.memo(function SceneCard({ scene, index, open, version, b
 
         {open && (
           <View style={styles.sbBody}>
-            <ImageFrame url={f.image_url} onRemove={(u: string) => { setF((p: any) => ({ ...p, image_url: u })); setImage(scene, u); }} />
+            <StoryboardFrame scene={scene} promptValue={f.image_prompt} aspect={aspect} busy={frameBusy}
+              frameActions={frameActions} onEditPrompt={change("image_prompt")} />
 
             <Text style={styles.efLabel}>Status</Text>
             <View style={styles.statusRow}>
@@ -424,9 +550,8 @@ const SceneCard = React.memo(function SceneCard({ scene, index, open, version, b
               </View>
             ))}
 
-            <Text style={styles.efLabel}>Internal Comments</Text>
-            <TextInput value={f.comments} onChangeText={change("comments")} multiline placeholder="Notes visible only in this project…"
-              placeholderTextColor={C.onSurface2} style={[styles.efInput, { minHeight: 52, textAlignVertical: "top", paddingTop: 8 }]} testID={`comments-${index}`} />
+            <CommentsPanel scene={scene} author={author}
+              onChange={(list: any[]) => commitScene(scene.id, { comment_list: list })} />
 
             <View style={styles.actions}>
               <IconBtn icon="arrow-up-circle-outline" onPress={() => insertScene(scene.id, "above")} testID={`ins-above-${index}`} />
@@ -443,6 +568,53 @@ const SceneCard = React.memo(function SceneCard({ scene, index, open, version, b
     </ScaleDecorator>
   );
 });
+
+const SHOT_COLS: { key: string; label: string; w: number }[] = [
+  { key: "scene_number", label: "#", w: 42 },
+  { key: "title", label: "Scene", w: 140 },
+  { key: "shot_size", label: "Shot Size", w: 120 },
+  { key: "camera_angle", label: "Angle", w: 110 },
+  { key: "camera_movement", label: "Movement", w: 110 },
+  { key: "focal_length", label: "Lens", w: 80 },
+  { key: "frame_rate", label: "FPS", w: 70 },
+  { key: "resolution", label: "Res", w: 70 },
+  { key: "location", label: "Location", w: 130 },
+  { key: "time_of_day", label: "Time", w: 90 },
+  { key: "duration", label: "Duration", w: 80 },
+];
+function ShotListTab({ scenes, onEdit }: any) {
+  const tableW = SHOT_COLS.reduce((n, c) => n + c.w, 0) + 56;
+  return (
+    <View>
+      <View style={styles.syncNote}>
+        <Ionicons name="sync-outline" size={14} color={C.brand} />
+        <Body muted style={{ fontSize: 12, flex: 1 }}>Auto-synced from your Storyboard. Edit any scene there and the shot list updates instantly — no duplicate data.</Body>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableScroll}>
+        <View style={{ width: tableW }}>
+          <View style={[styles.tRow, styles.tHead]}>
+            {SHOT_COLS.map((c) => (
+              <Text key={c.key} style={[styles.tHeadCell, { width: c.w }]} numberOfLines={1}>{c.label}</Text>
+            ))}
+            <Text style={[styles.tHeadCell, { width: 56, textAlign: "center" }]}>Edit</Text>
+          </View>
+          {(scenes || []).map((s: any, i: number) => (
+            <View key={s.id} style={[styles.tRow, i % 2 === 1 && styles.tRowAlt]} testID={`shot-row-${i}`}>
+              {SHOT_COLS.map((c) => (
+                <Text key={c.key} style={[styles.tCell, { width: c.w }, c.key === "scene_number" && { color: C.brand, fontWeight: "600" }, c.key === "title" && { color: C.onSurface }]} numberOfLines={2}>
+                  {String(s[c.key] || "—")}
+                </Text>
+              ))}
+              <Pressable style={styles.tEdit} onPress={() => onEdit(s.id)} testID={`shot-edit-${i}`}>
+                <Ionicons name="create-outline" size={16} color={C.brand} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
 
 function SummaryPanel({ scenes, mobile }: any) {
   const locations = Array.from(new Set(scenes.map((s: any) => (s.location || "").trim()).filter(Boolean)));
@@ -466,17 +638,18 @@ function SummaryPanel({ scenes, mobile }: any) {
 }
 function SumRow({ label, value }: any) { return <View style={styles.rowBetween}><Text style={styles.sumLabel}>{label}</Text><Text style={styles.sumVal}>{value}</Text></View>; }
 
-function StoryboardTab({ project, busyScene, expanded, setExpanded, onReorder, addScene, regenTicks,
-  commitScene, markUnsaved, setStatus, setImage, expandAll, collapseAll, insertScene, copyScene, onExport, onPdf, actions }: any) {
+function StoryboardTab({ project, busyScene, frameBusy, expanded, setExpanded, onReorder, addScene, regenTicks, author,
+  commitScene, markUnsaved, setStatus, setImage, expandAll, collapseAll, insertScene, copyScene, onExport, onPdf, actions, frameActions }: any) {
   const scenes = project.scenes || [];
   const { width } = useWindowDimensions();
   const wide = width > 900;
   const onToggle = (sid: string) => setExpanded((e: any) => ({ ...e, [sid]: !e[sid] }));
   const renderItem = ({ item: s, drag, isActive, getIndex }: any) => (
     <SceneCard scene={s} index={getIndex() ?? 0} open={!!expanded[s.id]} version={regenTicks[s.id] || 0}
-      busyScene={busyScene} drag={drag} isActive={isActive} onToggle={onToggle}
+      busyScene={busyScene} frameBusy={frameBusy === s.id} drag={drag} isActive={isActive} onToggle={onToggle}
       commitScene={commitScene} markUnsaved={markUnsaved} setStatus={setStatus} setImage={setImage}
-      insertScene={insertScene} copyScene={copyScene} actions={actions} />
+      insertScene={insertScene} copyScene={copyScene} actions={actions} frameActions={frameActions}
+      aspect={project.aspect_ratio} author={author} />
   );
   return (
     <View style={{ flex: 1 }}>
@@ -641,4 +814,79 @@ const styles = StyleSheet.create({
   modalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", padding: S.xl },
   centerSheet: { backgroundColor: C.surface2, borderRadius: R.lg, padding: S.lg, borderWidth: 1, borderColor: C.borderStrong, maxWidth: 420, width: "100%", alignSelf: "center" },
   sheetTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 21, marginBottom: S.md },
+
+  // Editable fields
+  efWrap: { marginBottom: S.sm },
+  efLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4, marginTop: 6 },
+  efInput: { backgroundColor: C.surface, borderRadius: R.sm, borderWidth: 1, borderColor: C.border, color: C.onSurface, fontFamily: F.text, fontSize: 13.5, paddingHorizontal: 10, paddingVertical: 8, minHeight: 40 },
+  group: { marginTop: S.md, paddingTop: S.sm, borderTopWidth: 1, borderTopColor: C.border },
+  groupTitle: { color: C.brand, fontFamily: F.text, fontSize: 11, letterSpacing: 1.4, marginBottom: 4 },
+
+  // Status
+  statusRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6, marginBottom: 4 },
+  statusChip: { borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 6 },
+  statusChipText: { color: C.onSurface2, fontFamily: F.text, fontSize: 12 },
+  statusBadge: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1, borderRadius: R.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontFamily: F.text, fontSize: 10.5 },
+
+  // Storyboard frame
+  frameWrap: { marginBottom: S.md },
+  frameBig: { width: "100%", aspectRatio: 16 / 9, borderRadius: R.md, overflow: "hidden", backgroundColor: "#0b0b0b", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border },
+  frameHint: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, marginTop: 6 },
+  framePill: { position: "absolute", top: 8, left: 8, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(0,0,0,0.6)", borderWidth: 1, borderRadius: R.pill, paddingHorizontal: 8, paddingVertical: 3 },
+  framePillText: { fontFamily: F.text, fontSize: 10.5 },
+  frameLoading: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)" },
+  frameLoadingText: { color: C.brand, fontFamily: F.text, fontSize: 12, marginTop: 6 },
+  frameExpand: { position: "absolute", top: 8, right: 8, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" },
+  frameMeta: { marginTop: 6 },
+  frameMetaText: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, lineHeight: 16 },
+  versionChip: { borderWidth: 1, borderColor: C.border, borderRadius: R.sm, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: C.surface },
+  versionChipActive: { borderColor: C.brand, backgroundColor: C.brandTint },
+  versionChipText: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5 },
+  framePrompt: { color: C.onSurface3, fontFamily: F.text, fontSize: 12, marginTop: 6, lineHeight: 17, fontStyle: "italic" },
+
+  // Comments
+  commentsWrap: { marginTop: S.md, paddingTop: S.sm, borderTopWidth: 1, borderTopColor: C.border },
+  commentCard: { backgroundColor: C.surface, borderRadius: R.sm, borderWidth: 1, borderColor: C.border, padding: S.sm, marginTop: 6 },
+  commentTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  commentAuthor: { color: C.onSurface, fontFamily: F.text, fontSize: 12.5, fontWeight: "600" },
+  commentTime: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, flex: 1 },
+  commentStatus: { borderWidth: 1, borderRadius: R.pill, paddingHorizontal: 8, paddingVertical: 2 },
+  commentStatusText: { fontFamily: F.text, fontSize: 10 },
+  commentText: { color: C.onSurface, fontFamily: F.text, fontSize: 13, lineHeight: 19 },
+  commentBtns: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  commentInputRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 8 },
+  commentSend: { width: 40, height: 40, borderRadius: R.sm, backgroundColor: C.brand, alignItems: "center", justifyContent: "center" },
+
+  // Shot list table
+  syncNote: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md, marginBottom: S.md },
+  tableScroll: { borderRadius: R.md, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface2 },
+  tRow: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, borderBottomColor: C.border, paddingVertical: 10, paddingHorizontal: S.sm },
+  tHead: { backgroundColor: C.surface3, borderTopLeftRadius: R.md, borderTopRightRadius: R.md },
+  tRowAlt: { backgroundColor: C.surface },
+  tHeadCell: { color: C.brand, fontFamily: F.text, fontSize: 11, letterSpacing: 0.6, paddingHorizontal: 6, textTransform: "uppercase" },
+  tCell: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, paddingHorizontal: 6 },
+  tEdit: { width: 56, alignItems: "center", justifyContent: "center" },
+
+  // Toolbar
+  toolbar: { paddingHorizontal: S.lg, paddingVertical: S.sm, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface2 },
+  toolBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: C.surface },
+  toolBtnText: { color: C.onSurface, fontFamily: F.text, fontSize: 12.5, fontWeight: "500" },
+
+  // Summary panel
+  sideCol: { width: 300, borderLeftWidth: 1, borderLeftColor: C.border, backgroundColor: C.surface2 },
+  summary: { backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.lg },
+  summaryMobile: { marginBottom: S.md },
+  summaryDesktop: {},
+  rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sumLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, paddingVertical: 6 },
+  sumVal: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5, fontWeight: "600" },
+  barTrack: { height: 6, borderRadius: 3, backgroundColor: C.surface3, marginTop: 6, overflow: "hidden" },
+  barFill: { height: 6, borderRadius: 3, backgroundColor: C.brand },
+
+  // Fullscreen viewer
+  viewerBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.92)", alignItems: "center", justifyContent: "center" },
+  viewerImg: { width: "100%", height: "80%" },
+  viewerClose: { position: "absolute", right: S.lg, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
 });
