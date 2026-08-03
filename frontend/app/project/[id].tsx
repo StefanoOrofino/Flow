@@ -12,6 +12,7 @@ import { Image as ExpoImage } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
 import { useProjectStore } from "@/src/useProjectStore";
+import AIDirector from "@/src/AIDirector";
 import { useAuth } from "@/src/auth";
 import { C, S, R, F, MAX_W } from "@/src/theme";
 import { Btn, H2, Body, Badge, MockBadge, AnimIn } from "@/src/components";
@@ -41,6 +42,7 @@ export default function Editor() {
   const [busyScene, setBusyScene] = useState<string | null>(null);
   const [frameBusy, setFrameBusy] = useState<string | null>(null);
   const [viewer, setViewer] = useState<string | null>(null);
+  const [directorOpen, setDirectorOpen] = useState(false);
   const [regenAll, setRegenAll] = useState(false);
   const [regenTicks, setRegenTicks] = useState<Record<string, number>>({});
 
@@ -168,6 +170,7 @@ export default function Editor() {
         </View>
         <Pressable onPress={store.undo} disabled={!store.canUndo} testID="undo-btn" hitSlop={8} style={{ opacity: store.canUndo ? 1 : 0.35, marginRight: 14 }}><Ionicons name="arrow-undo-outline" size={20} color={C.onSurface} /></Pressable>
         <Pressable onPress={store.redo} disabled={!store.canRedo} testID="redo-btn" hitSlop={8} style={{ opacity: store.canRedo ? 1 : 0.35, marginRight: 14 }}><Ionicons name="arrow-redo-outline" size={20} color={C.onSurface} /></Pressable>
+        <Pressable onPress={() => setDirectorOpen(true)} testID="director-open" hitSlop={8} style={{ marginRight: 14 }}><Ionicons name="sparkles" size={21} color={C.brand} /></Pressable>
         <Pressable onPress={() => setTab("Exports")} testID="export-btn" hitSlop={8}><Ionicons name="share-outline" size={22} color={C.brand} /></Pressable>
       </View>
 
@@ -258,6 +261,10 @@ export default function Editor() {
       )}
 
       {/* Inline editing (Sprint 2) replaces the scene edit modal */}
+
+      {/* AI Director — iterative revision panel */}
+      <AIDirector visible={directorOpen} onClose={() => setDirectorOpen(false)} projectId={id}
+        onApplied={(updated: any) => store.applyServer(updated)} />
 
       {/* Confirm real AI generation (uses credits) */}
       <Modal visible={!!confirmGen} transparent animationType="fade" onRequestClose={() => setConfirmGen(null)}>

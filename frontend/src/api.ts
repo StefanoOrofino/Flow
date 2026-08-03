@@ -78,4 +78,13 @@ export const api = {
   deleteFrame: (id: string, sid: string, fid: string) =>
     req(`/projects/${id}/scenes/${sid}/frames/${fid}`, "DELETE"),
   templates: () => req("/templates"),
+  // AI Director (provider-agnostic revision engine)
+  directorRevise: (id: string, instruction: string, scope: string) =>
+    req(`/projects/${id}/director/revise`, "POST", { instruction, scope }),
+  directorApply: (id: string, preview: any, summary: string) =>
+    req(`/projects/${id}/director/apply`, "POST", { preview, summary }),
+  listVersions: (id: string) => req(`/projects/${id}/versions`),
+  restoreVersion: (id: string, vid: string) => req(`/projects/${id}/versions/${vid}/restore`, "POST"),
+  renameVersion: (id: string, vid: string, name: string) => req(`/projects/${id}/versions/${vid}`, "PUT", { name }),
+  deleteVersion: (id: string, vid: string) => req(`/projects/${id}/versions/${vid}`, "DELETE"),
 };

@@ -19,6 +19,7 @@ import httpx
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 import image_service
+import ai_director
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -771,6 +772,145 @@ async def image_provider(user=Depends(get_current_user)):
     return {"provider": image_service.get_provider().name,
             "configured": image_service.provider_configured(),
             "dev_limit": DEV_IMAGE_LIMIT}
+
+
+# ---------------------------------------------------------------------------
+# AI Director — iterative, provider-agnostic project revision (preview → apply)
+# ---------------------------------------------------------------------------
+class DirectorIn(BaseModel):
+    instruction: str
+    scope: Optional[str] = "project"
+
+
+class VersionRename(BaseModel):
+    name: str
+
+
+SCOPE_SCENE_KEYS = {
+    "dialogue": ["dialogue", "voice_over", "on_screen_text"],
+    "camera": ["shot_size", "camera_angle", "camera_movement", "camera_position", "camera_height", "camera_direction", "focal_length", "frame_rate", "resolution"],
+    "shotlist": ["shot_size", "camera_angle", "camera_movement", "camera_position", "camera_height", "camera_direction", "focal_length", "frame_rate", "resolution"],
+    "lighting": ["lighting", "color_palette", "mood"],
+    "prompts": ["image_prompt"],
+    "script": ["visual_description", "narrative", "subject_action", "dialogue", "voice_over", "on_screen_text"],
+}
+WIDE_SCOPES = {"project", "storyboard", "scene"}
+
+
+def _apply_patches(project: dict, revision: dict, scope: str) -> dict:
+    import copy
+    preview = copy.deepcopy(project)
+    allowed = set(SCENE_FIELDS if scope in WIDE_SCOPES else SCOPE_SCENE_KEYS.get(scope, SCENE_FIELDS))
+    if scope in WIDE_SCOPES or scope == "script":
+        pp = revision.get("project_patch") or {}
+        for k, v in pp.items():
+            if k in ("concept", "treatment", "equipment", "crew", "schedule", "budget") and isinstance(v, dict) and isinstance(preview.get(k), dict):
+                preview[k] = {**preview[k], **v}
+            elif k in ("title", "video_type", "platform", "target_audience", "goal", "script", "notes", "aspect_ratio", "duration", "language"):
+                preview[k] = v
+    patches = {p.get("id"): (p.get("changes") or {}) for p in (revision.get("scene_patches") or []) if p.get("id")}
+    for s in preview.get("scenes", []):
+        ch = patches.get(s.get("id"))
+        if not ch:
+            continue
+        for k, val in ch.items():
+            if k in allowed:
+                s[k] = str(val)
+    return preview
+
+
+def _diff(old: dict, new: dict) -> list:
+    diffs = []
+    for k in ["title", "video_type", "platform", "target_audience", "goal", "script", "notes", "aspect_ratio", "duration"]:
+        if str(old.get(k, "") or "") != str(new.get(k, "") or ""):
+            diffs.append({"label": k.replace("_", " ").title(), "old": str(old.get(k, "") or ""), "new": str(new.get(k, "") or "")})
+    for grp in ["concept", "treatment"]:
+        o, n = old.get(grp) or {}, new.get(grp) or {}
+        for kk in sorted(set(list(o.keys()) + list(n.keys()))):
+            if str(o.get(kk, "") or "") != str(n.get(kk, "") or ""):
+                diffs.append({"label": f"{grp.title()} · {kk.replace('_', ' ')}", "old": str(o.get(kk, "") or ""), "new": str(n.get(kk, "") or "")})
+    omap = {s.get("id"): s for s in old.get("scenes", [])}
+    for s in new.get("scenes", []):
+        os_ = omap.get(s.get("id"))
+        if not os_:
+            continue
+        for k in SCENE_FIELDS:
+            if str(os_.get(k, "") or "") != str(s.get(k, "") or ""):
+                diffs.append({"label": f"Scene {s.get('scene_number')} · {k.replace('_', ' ')}",
+                              "old": str(os_.get(k, "") or ""), "new": str(s.get(k, "") or "")})
+    return diffs
+
+
+@api_router.post("/projects/{pid}/director/revise")
+async def director_revise(pid: str, body: DirectorIn, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    if not (body.instruction or "").strip():
+        raise HTTPException(status_code=400, detail="Please describe what to improve.")
+    try:
+        revision = await ai_director.revise(doc, body.instruction.strip(), body.scope or "project")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI Director could not complete the revision: {str(e)[:180]}")
+    preview = _apply_patches(doc, revision, body.scope or "project")
+    diff = _diff(doc, preview)
+    return {"summary": revision.get("summary"), "runtime_delta": revision.get("runtime_delta"),
+            "plan": revision.get("plan", []), "diff": diff, "preview": preview}
+
+
+@api_router.post("/projects/{pid}/director/apply")
+async def director_apply(pid: str, body: dict, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    preview = body.get("preview")
+    summary = (body.get("summary") or "AI Director revision")[:80]
+    if not preview or not isinstance(preview.get("scenes"), list):
+        raise HTTPException(status_code=400, detail="Invalid preview payload.")
+    version = {"id": uuid.uuid4().hex[:10], "project_id": pid, "user_id": user["user_id"],
+               "name": summary, "summary": summary, "created_at": now_iso(),
+               "snapshot": {k: v for k, v in doc.items() if k != "_id"}}
+    await db.versions.insert_one(dict(version))
+    setdata = {k: v for k, v in preview.items() if k not in ("id", "user_id", "_id")}
+    setdata["updated_at"] = now_iso()
+    await db.projects.update_one({"id": pid, "user_id": user["user_id"]}, {"$set": setdata})
+    return await _get_owned(pid, user)
+
+
+@api_router.get("/projects/{pid}/versions")
+async def list_versions(pid: str, user=Depends(get_current_user)):
+    await _get_owned(pid, user)
+    return await db.versions.find({"project_id": pid, "user_id": user["user_id"]},
+                                  {"_id": 0, "snapshot": 0}).sort("created_at", -1).to_list(200)
+
+
+@api_router.post("/projects/{pid}/versions/{vid}/restore")
+async def restore_version(pid: str, vid: str, user=Depends(get_current_user)):
+    doc = await _get_owned(pid, user)
+    ver = await db.versions.find_one({"id": vid, "project_id": pid, "user_id": user["user_id"]}, {"_id": 0})
+    if not ver:
+        raise HTTPException(status_code=404, detail="Version not found")
+    snap_cur = {"id": uuid.uuid4().hex[:10], "project_id": pid, "user_id": user["user_id"],
+                "name": f"Auto-snapshot before restore", "summary": "Snapshot before restore",
+                "created_at": now_iso(), "snapshot": {k: v for k, v in doc.items() if k != "_id"}}
+    await db.versions.insert_one(dict(snap_cur))
+    snap = ver.get("snapshot") or {}
+    setdata = {k: v for k, v in snap.items() if k not in ("id", "user_id", "_id")}
+    setdata["updated_at"] = now_iso()
+    await db.projects.update_one({"id": pid, "user_id": user["user_id"]}, {"$set": setdata})
+    return await _get_owned(pid, user)
+
+
+@api_router.put("/projects/{pid}/versions/{vid}")
+async def rename_version(pid: str, vid: str, body: VersionRename, user=Depends(get_current_user)):
+    await _get_owned(pid, user)
+    r = await db.versions.update_one({"id": vid, "project_id": pid, "user_id": user["user_id"]}, {"$set": {"name": body.name[:80]}})
+    if not r.matched_count:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return {"ok": True}
+
+
+@api_router.delete("/projects/{pid}/versions/{vid}")
+async def delete_version(pid: str, vid: str, user=Depends(get_current_user)):
+    await _get_owned(pid, user)
+    await db.versions.delete_one({"id": vid, "project_id": pid, "user_id": user["user_id"]})
+    return {"ok": True}
 
 
 TEMPLATES = [

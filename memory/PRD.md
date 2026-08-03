@@ -34,6 +34,14 @@ Auth + protected routes; Dashboard (stats, quick actions, continue working, rece
 2. Real drag-and-drop scene reordering.
 3. Billing/subscription tiers (Stripe) when monetization begins.
 
+## Sprint 5 (2026-06 / iteration 8) — AI Director (iterative revision engine)
+- **Not a chatbot**: `ai_director.py` (provider-agnostic; AI_PROVIDER/AI_MODEL, EMERGENT_LLM_KEY) loads FULL project context (brief, concept, treatment, script, scenes, style, client, notes, scene comments) and returns STRICT JSON: summary + Change Plan + project_patch + scene_patches (never chats).
+- **Preview → Apply**: `POST /director/revise` returns {summary, runtime_delta, plan, diff (old→new), preview} WITHOUT saving. `POST /director/apply` snapshots current as a Version, then persists the preview. Scope-enforced patching (`_apply_patches`) + field-level diff (`_diff`).
+- **Selective scope**: project / storyboard / script / dialogue / shotlist / camera / lighting / prompts (narrow scopes only touch their fields; project_patch ignored for narrow scopes).
+- **Version history** (`db.versions`, snapshots exclude nothing): list / restore (auto-snapshots current first) / rename / delete. Endpoints under `/projects/{pid}/versions`.
+- **Frontend** `AIDirector.tsx`: collapsible right sidebar (wand button in editor header), scope chips, instruction input, 12 quick actions (Improve Story/Dialogue/Visual Style/Pacing/Cinematography, Simplify Script, Increase Emotion, Luxury/Apple/Nike/Documentary/Premium), Change Plan, Old→New diff toggle, Apply/Discard, Version History with restore/rename/delete. Applied revisions go through `store.applyServer` (undo-aware). api.ts: directorRevise/Apply, list/restore/rename/deleteVersion.
+- Verified: revise (dialogue scope → 7 diffs), apply (VO changed + version created), restore (reverted), rename, delete — backend + UI. Seed project c73286507b42 kept clean.
+
 ## Sprint 4 (2026-06 / iteration 7) — Real Gemini Nano Banana image generation (LIVE)
 - **Provider**: `GeminiProvider` in image_service.py (`gemini-3.1-flash-image-preview`) via Emergent Universal Key, server-side only. Abstraction intact; `mock` + `none` kept for dev/fallback. `IMAGE_PROVIDER=gemini` in backend/.env. get_provider() reads env lazily (load_dotenv runs after import).
 - **Cost/safety controls**: DEV_IMAGE_LIMIT=3 real gens per project (`project.image_gen_count`, 429 when exceeded); 1 active generation per project (in-memory `_active_generations` lock → 409); frontend single-active lock (frameBusy) + disabled buttons; confirmation modal "Generate this storyboard frame? This action uses AI credits." before every generate/regenerate/new-version.

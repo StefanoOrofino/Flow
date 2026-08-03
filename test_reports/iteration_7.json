@@ -1,0 +1,48 @@
+{
+  "summary": "Sprint 5 (AI Director) verified end-to-end against seed project c73286507b42 with real OpenAI gpt-5.4 via EMERGENT_LLM_KEY. BACKEND: new suite /app/backend/tests/test_ai_director.py -> 16/16 PASSED in ~21s. Covers (1) seed sanity, (2) revise-preview shape {summary, runtime_delta, plan, diff, preview}, (3) preview does NOT persist to db, (4) empty instruction -> 400, (5) scope enforcement: dialogue-only edits leave camera/lighting/project-level alone; camera-only edits leave dialogue+project-level alone, (6) apply persists preview AND creates a version, (7) versions list endpoint does NOT leak `snapshot` or `_id`, (8) rename version PUT, (9) restore reverts project (title + scene ids + count match pre-apply snapshot) and creates an auto-snapshot version, (10) delete version, (11) apply validation (400 on missing preview / non-list scenes), (12) auth 401 on unauth versions list, (13) 404 on unknown project revise and unknown version restore. All tests operate on a DUPLICATE of the seed (safe) and clean up on teardown. FRONTEND E2E (desktop 1280x900, seed sb_1785767871@studio.com): director-open opens right sidebar (title 'AI Director', subtitle 'Iterative creative revisions — no chat'); all 8 scope chips visible; all 12 quick-action chips visible with exact expected testIDs; director-input placeholder correct; scope-dialogue + real revise -> director-result rendered with change plan, diff toggle expands, diff-0 present; director-discard clears result; director-versions-toggle reveals empty state; director-close and director-backdrop both close the panel. FULL APPLY CYCLE ON SEED (with cleanup): director-apply persisted a real dialogue tweak to scene 1 voice_over ('Warmth on skin. Silence in bloom.' -> 'Warmth on skin. Golden silence in bloom.'), version-{id} card appeared, version-rename-{id} -> input -> save renamed OK, version-restore-{id} reverted scene 1 voice_over back to the exact original, and version-delete-{id} + backend cleanup removed all versions. UNDO/REDO INTEGRATION: undo-btn opacity 0.35 pre-Apply, 1.0 post-Apply; clicking undo-btn reverted the AI change (single-source-of-truth store honours AI Apply as an undo-able mutation via onApplied). Real-AI revise latency ~5-8s per call — well within budget. Seed project confirmed pristine at end of run: 8 scenes, scene 1 vo exactly 'Warmth on skin. Silence in bloom.', image_gen_count=0, no frames, no versions. No red screen, no PAGEERRORs. Only cosmetic console warnings: 'shadow*' style prop deprecated on react-native-web (unchanged from iteration_6). NOTE: Image-frame regression (frame-generate-1 real Gemini) was intentionally SKIPPED to preserve the seed — it was fully verified in iteration_6 and no code path in Sprint 5 touches image_service.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "react-native-web console warning", "issue": "'shadow*' style props are deprecated. Use 'boxShadow'. Cosmetic only, no runtime impact. Same as iteration_6."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_ai_director.py",
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_storyboard_api.py",
+    "/app/backend/tests/test_frames_and_comments.py",
+    "/app/test_reports/pytest/ai_director_results.xml"
+  ],
+  "action_items": [
+    "No functional action required for Sprint 5. All scope-enforcement, preview-only semantics, version snapshot leak protection, apply/restore/rename/delete, and undo/redo integration verified.",
+    "OPTIONAL cosmetic: bulk-replace remaining 'shadow*' style props with boxShadow to silence RN-web deprecation warnings (carry-over from iteration_6).",
+    "OPTIONAL nit: /api/projects/{pid}/director/apply accepts a raw dict body — consider a Pydantic model for stricter validation (currently returns 400 for missing preview or non-list scenes, which is correct behaviour, but the shape isn't documented).",
+    "OPTIONAL nit: server.py is 995 lines. Consider extracting the AI Director router (/director/* + /versions/*) into a separate module to keep server.py under the 700-line guideline."
+  ],
+  "critical_code_review_comments": [
+    "ai_director.py cleanly separates provider concerns (AI_PROVIDER / AI_MODEL env, falls back to _mock_revision when EMERGENT_LLM_KEY missing). parse_json is robust to fenced markdown. Good.",
+    "server.py::_apply_patches enforces SCOPE_SCENE_KEYS strictly on scene fields and only allows project-level patches for scope in WIDE_SCOPES or 'script'. Verified via automated test — dialogue/camera scopes DID NOT leak into non-allowed fields in real-AI runs.",
+    "server.py::director_apply snapshots the CURRENT document into db.versions BEFORE applying preview — snapshot excludes _id. list_versions projects out {_id:0, snapshot:0} so the list endpoint cannot leak snapshots to the client. Verified.",
+    "server.py::restore_version auto-snapshots the current project before restoring — enables round-trip. Verified.",
+    "AIDirector.tsx is a single self-contained panel component. Uses testIDs consistently. The rename input testID is `version-rename-input-{v.id}` (per-row, not the ambient `version-rename-input` mentioned in the PRD) — this is actually MORE robust and works. Main agent should update the PRD or leave as-is.",
+    "AIDirector.tsx calls onApplied?.(updated) so the parent project store treats an AI apply as an undoable mutation — verified via UI: undo-btn opacity 0.35 -> 1 after Apply, and Ctrl-undo reverts the AI-applied change."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_ai_director.py (new — 16 tests, 5 test classes)"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 new AI Director tests; existing suites unchanged from iteration_6)",
+    "frontend": "100% for all Sprint 5 in-scope AI Director flows (panel open/close/backdrop, scope+quick chips, revise->change plan->diff, discard, apply->version created, rename, restore reverts, delete, undo/redo integration)"
+  },
+  "seed_data_creation": "Seed project c73286507b42 verified pristine at END of run: 8 scenes, scene1 voice_over = 'Warmth on skin. Silence in bloom.', image_gen_count = 0, no frames on any scene, 0 versions, title 'Solstice Perfume'. All backend tests ran on a DUPLICATE project (safely deleted in teardown). UI Apply/Restore/Rename/Delete cycle ran on the seed itself and was fully reversed at end — Restore returned scene1 vo to the exact original, then all versions were deleted via API, and a safety PUT re-asserted the original vo + image_gen_count=0.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "AI Director endpoints all live under /api/projects/{pid}/. Revise takes ~5-8s real-AI in this env (well under the Cloudflare 60s edge timeout that hits /generate). Scope enforcement lives in server.py::_apply_patches (SCOPE_SCENE_KEYS map + WIDE_SCOPES set); if you add new scopes, update both. Version list projects out snapshot+_id — do NOT drop the projection. director_apply auto-snapshots BEFORE mutating; restore_version auto-snapshots BEFORE restoring — so after a Restore you always see N+1 versions. The UI rename input testID is per-row: 'version-rename-input-{vid}' (not the ambient 'version-rename-input' mentioned in some specs). Undo integration: onApplied?.() -> project store applyServer records history — verified undo reverts an AI Apply. To test safely without touching the seed, POST /api/projects/{seed_pid}/duplicate first (as the test suite does), then delete the duplicate + its versions at teardown. Backend base: https://frameflow-studio-15.preview.emergentagent.com/api. Seed login: sb_1785767871@studio.com / secret123.",
+  "rca_of_issue": "N/A — no bugs found in Sprint 5. Every requested behaviour verified: scope enforcement (dialogue leaves camera/lighting alone; camera leaves dialogue+project alone), preview-only semantics (no persistence until Apply), Apply creates a version, Restore reverts + auto-snapshots, versions list does not leak snapshots, unauth returns 401, unknown ids return 404, empty instruction returns 400, invalid preview shape returns 400. UI + API integration behaves identically."
+}
