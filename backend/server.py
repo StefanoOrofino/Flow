@@ -22,7 +22,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("frameflow")
+logger = logging.getLogger("storyboard")
 
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -550,7 +550,7 @@ async def get_templates(user=Depends(get_current_user)):
 
 @api_router.get("/")
 async def root():
-    return {"message": "FrameFlow Studio API", "mock_mode": MOCK_MODE}
+    return {"message": "Storyboard AI API", "mock_mode": MOCK_MODE}
 
 
 app.include_router(api_router)
@@ -564,7 +564,7 @@ async def startup():
     await db.users.create_index("user_id", unique=True)
     await db.user_sessions.create_index("session_token", unique=True)
     await db.projects.create_index("user_id")
-    logger.info(f"FrameFlow Studio started. MOCK_MODE={MOCK_MODE} provider={AI_PROVIDER} model={AI_MODEL}")
+    logger.info(f"Storyboard AI started. MOCK_MODE={MOCK_MODE} provider={AI_PROVIDER} model={AI_MODEL}")
 
 
 @app.on_event("shutdown")

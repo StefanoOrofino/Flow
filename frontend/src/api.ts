@@ -52,6 +52,7 @@ export const api = {
   updateProject: (id: string, data: any) => req(`/projects/${id}`, "PUT", { data }),
   deleteProject: (id: string) => req(`/projects/${id}`, "DELETE"),
   duplicateProject: (id: string) => req(`/projects/${id}/duplicate`, "POST"),
+  markExported: (id: string) => req(`/projects/${id}/exported`, "POST"),
   generate: (id: string) => req(`/projects/${id}/generate`, "POST"),
   regenScene: (id: string, sid: string) => req(`/projects/${id}/scenes/${sid}/regenerate`, "POST"),
   regenImagePrompt: (id: string, sid: string) =>

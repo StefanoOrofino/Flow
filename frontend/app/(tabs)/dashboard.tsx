@@ -71,7 +71,7 @@ export default function Dashboard() {
         <Image source={{ uri: HERO }} style={StyleSheet.absoluteFill} contentFit="cover" />
         <LinearGradient colors={["rgba(10,10,10,0.55)", "rgba(10,10,10,0.97)"]} style={StyleSheet.absoluteFill} />
         <View style={[styles.heroInner, { paddingTop: insets.top + S.xl }]}>
-          <Text style={styles.kicker}>FRAMEFLOW STUDIO</Text>
+          <Text style={styles.kicker}>STORYBOARD AI</Text>
           <H1 style={{ marginTop: S.sm }}>Welcome back, {user?.name?.split(" ")[0] || "Director"}</H1>
           <Body muted style={{ marginTop: 4 }}>Your creative operating system for video production.</Body>
         </View>

@@ -78,14 +78,17 @@ class TestTemplates:
         r = requests.get(f"{api}/templates", timeout=15)
         assert r.status_code == 401
 
-    def test_templates_returns_seven(self, api, auth_headers_a):
+    def test_templates_returns_twelve_categorized(self, api, auth_headers_a):
         r = requests.get(f"{api}/templates", headers=auth_headers_a, timeout=15)
         assert r.status_code == 200
         arr = r.json()
-        assert isinstance(arr, list) and len(arr) == 7
+        assert isinstance(arr, list) and len(arr) == 12
         for t in arr:
-            for k in ("id", "name", "video_type", "duration", "num_scenes"):
-                assert k in t
+            for k in ("id", "name", "category", "video_type", "duration", "num_scenes"):
+                assert k in t, f"template missing {k}: {t}"
+        # ensure diverse categories
+        cats = {t["category"] for t in arr}
+        assert len(cats) >= 8, f"too few categories: {cats}"
 
 
 # ==== Projects CRUD + Ownership ====

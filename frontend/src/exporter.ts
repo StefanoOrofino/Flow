@@ -59,7 +59,7 @@ export function buildHtml(p: any): string {
     .foot { text-align: center; color: #999; font-size: 10px; margin-top: 24px; }
   </style></head><body>
     <div class="cover">
-      <div><div class="kicker">FRAMEFLOW STUDIO · PRE-PRODUCTION PACKAGE</div>
+      <div><div class="kicker">STORYBOARD AI · PRE-PRODUCTION PACKAGE</div>
         <h1>${esc(p.title)}</h1>
         <div class="client">${esc(p.client || "—")}${p.campaign ? " · " + esc(p.campaign) : ""}</div></div>
       <div class="grid">
@@ -80,7 +80,7 @@ export function buildHtml(p: any): string {
     <h2>Technical Shot List</h2>
     <table><thead><tr><th>#</th><th>Scene</th><th>Description</th><th>Shot</th><th>Lens</th><th>Move</th><th>FPS</th><th>Res</th><th>Location</th><th>Audio</th><th>Lighting</th><th>Equipment</th><th>Est.</th><th>Crew</th></tr></thead><tbody>${rows}</tbody></table>
     ${p.production_notes ? `<h2>Production Notes</h2><p>${br(p.production_notes)}</p>` : ""}
-    <div class="foot">FrameFlow Studio · ${esc(p.title)} · Generated ${date}</div>
+    <div class="foot">Storyboard AI · ${esc(p.title)} · Generated ${date}</div>
   </body></html>`;
 }
 
