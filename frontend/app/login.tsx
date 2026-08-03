@@ -1,19 +1,18 @@
 import React, { useState } from "react";
-import { View, ScrollView, StyleSheet, Pressable, Text, KeyboardAvoidingView, Platform } from "react-native";
+import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/src/auth";
-import { C, S, F, MAX_W } from "@/src/theme";
-import { Field, Btn, H1, Body } from "@/src/components";
+import { C, S, F } from "@/src/theme";
+import { Field, Btn } from "@/src/components";
+import AuthShell from "@/src/AuthShell";
 
 export default function Login() {
   const { login, loginWithGoogle } = useAuth();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
@@ -31,55 +30,46 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.surface }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={[styles.wrap, { paddingTop: insets.top + S.xxxl }]}>
-        <View style={styles.inner}>
-          <View style={styles.brandRow}>
-            <Ionicons name="film-outline" size={24} color={C.brand} />
-            <Text style={styles.brandText}>FRAMEFLOW STUDIO</Text>
-          </View>
-          <H1 style={{ marginBottom: S.sm }}>Welcome back</H1>
-          <Body muted style={{ marginBottom: S.xl }}>Sign in to your production suite.</Body>
+    <AuthShell title="Welcome back" subtitle="Sign in to your production suite.">
+      {err ? <View style={styles.errBox}><Text style={styles.errText}>{err}</Text></View> : null}
+      {notice ? <View style={styles.noticeBox}><Text style={styles.noticeText}>{notice}</Text></View> : null}
 
-          {err ? <View style={styles.errBox}><Text style={styles.errText}>{err}</Text></View> : null}
+      <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@studio.com"
+        keyboardType="email-address" testID="login-email" />
+      <Field label="Password" value={password} onChangeText={setPassword} placeholder="••••••••"
+        secureTextEntry testID="login-password" />
 
-          <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@studio.com"
-            keyboardType="email-address" testID="login-email" />
-          <Field label="Password" value={password} onChangeText={setPassword} placeholder="••••••••"
-            secureTextEntry testID="login-password" />
+      <Pressable onPress={() => router.push("/reset")} testID="forgot-link" style={{ alignSelf: "flex-end" }}>
+        <Text style={styles.link}>Forgot password?</Text>
+      </Pressable>
 
-          <Pressable onPress={() => router.push("/reset")} testID="forgot-link">
-            <Text style={styles.link}>Forgot password?</Text>
-          </Pressable>
+      <Btn title="Continue" onPress={submit} loading={loading} testID="login-submit" style={{ marginTop: S.md }} />
 
-          <Btn title="Sign In" onPress={submit} loading={loading} testID="login-submit" style={{ marginTop: S.lg }} />
+      <View style={styles.divider}><View style={styles.line} /><Text style={styles.dividerText}>OR</Text><View style={styles.line} /></View>
 
-          <View style={styles.divider}><Text style={styles.dividerText}>OR</Text></View>
+      <Btn title="Sign in with Google" variant="ghost" icon="logo-google" onPress={loginWithGoogle} testID="google-login" style={{ marginBottom: S.sm }} />
+      <Btn title="Sign in with Apple" variant="ghost" icon="logo-apple"
+        onPress={() => setNotice("Apple Sign-In is coming soon — please continue with email or Google.")} testID="apple-login" />
 
-          <Btn title="Continue with Google" variant="ghost" icon="logo-google"
-            onPress={loginWithGoogle} testID="google-login" />
-
-          <View style={styles.footer}>
-            <Body muted>New here? </Body>
-            <Pressable onPress={() => router.push("/signup")} testID="goto-signup">
-              <Text style={styles.link}>Create an account</Text>
-            </Pressable>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <View style={styles.footer}>
+        <Text style={styles.muted}>New here? </Text>
+        <Pressable onPress={() => router.push("/signup")} testID="goto-signup">
+          <Text style={styles.link}>Create account</Text>
+        </Pressable>
+      </View>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexGrow: 1, alignItems: "center", padding: S.xl },
-  inner: { width: "100%", maxWidth: 440 },
-  brandRow: { flexDirection: "row", alignItems: "center", marginBottom: S.xxl },
-  brandText: { color: C.brand, fontFamily: F.text, fontSize: 14, letterSpacing: 3, marginLeft: 8, fontWeight: "600" },
   link: { color: C.brand, fontFamily: F.text, fontSize: 14, marginTop: 4 },
-  divider: { alignItems: "center", marginVertical: S.lg },
+  muted: { color: C.onSurface2, fontFamily: F.text, fontSize: 14 },
+  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: S.lg },
+  line: { flex: 1, height: 1, backgroundColor: C.border },
   dividerText: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, letterSpacing: 2 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: S.xl },
-  errBox: { backgroundColor: C.error, borderRadius: 8, padding: S.md, marginBottom: S.lg },
-  errText: { color: "#fff", fontFamily: F.text, fontSize: 13 },
+  errBox: { backgroundColor: "rgba(139,43,43,0.18)", borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.md },
+  errText: { color: "#F2C9C9", fontFamily: F.text, fontSize: 13 },
+  noticeBox: { backgroundColor: C.brandTint, borderWidth: 1, borderColor: "rgba(197,160,89,0.4)", borderRadius: 10, padding: S.md, marginBottom: S.md },
+  noticeText: { color: C.onBrandTint, fontFamily: F.text, fontSize: 13 },
 });

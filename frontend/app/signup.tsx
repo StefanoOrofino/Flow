@@ -1,16 +1,14 @@
 import React, { useState } from "react";
-import { View, ScrollView, StyleSheet, Pressable, Text, KeyboardAvoidingView, Platform } from "react-native";
+import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/src/auth";
 import { C, S, F } from "@/src/theme";
-import { Field, Btn, H1, Body } from "@/src/components";
+import { Field, Btn } from "@/src/components";
+import AuthShell from "@/src/AuthShell";
 
 export default function Signup() {
   const { register, loginWithGoogle } = useAuth();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,50 +31,37 @@ export default function Signup() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.surface }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView contentContainerStyle={[styles.wrap, { paddingTop: insets.top + S.xxxl }]}>
-        <View style={styles.inner}>
-          <View style={styles.brandRow}>
-            <Ionicons name="film-outline" size={24} color={C.brand} />
-            <Text style={styles.brandText}>FRAMEFLOW STUDIO</Text>
-          </View>
-          <H1 style={{ marginBottom: S.sm }}>Create account</H1>
-          <Body muted style={{ marginBottom: S.xl }}>Start building cinematic storyboards.</Body>
+    <AuthShell title="Create account" subtitle="Start building cinematic productions with AI.">
+      {err ? <View style={styles.errBox}><Text style={styles.errText}>{err}</Text></View> : null}
 
-          {err ? <View style={styles.errBox}><Text style={styles.errText}>{err}</Text></View> : null}
+      <Field label="Name" value={name} onChangeText={setName} placeholder="Your name" testID="signup-name" />
+      <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@studio.com"
+        keyboardType="email-address" testID="signup-email" />
+      <Field label="Password" value={password} onChangeText={setPassword} placeholder="At least 6 characters"
+        secureTextEntry testID="signup-password" />
 
-          <Field label="Name" value={name} onChangeText={setName} placeholder="Your name" testID="signup-name" />
-          <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@studio.com"
-            keyboardType="email-address" testID="signup-email" />
-          <Field label="Password" value={password} onChangeText={setPassword} placeholder="At least 6 characters"
-            secureTextEntry testID="signup-password" />
+      <Btn title="Create Account" onPress={submit} loading={loading} testID="signup-submit" style={{ marginTop: S.md }} />
 
-          <Btn title="Create Account" onPress={submit} loading={loading} testID="signup-submit" style={{ marginTop: S.sm }} />
+      <View style={styles.divider}><View style={styles.line} /><Text style={styles.dividerText}>OR</Text><View style={styles.line} /></View>
+      <Btn title="Sign in with Google" variant="ghost" icon="logo-google" onPress={loginWithGoogle} testID="google-signup" />
 
-          <View style={styles.divider}><Text style={styles.dividerText}>OR</Text></View>
-          <Btn title="Continue with Google" variant="ghost" icon="logo-google" onPress={loginWithGoogle} testID="google-signup" />
-
-          <View style={styles.footer}>
-            <Body muted>Already have an account? </Body>
-            <Pressable onPress={() => router.replace("/login")} testID="goto-login">
-              <Text style={styles.link}>Sign in</Text>
-            </Pressable>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <View style={styles.footer}>
+        <Text style={styles.muted}>Already have an account? </Text>
+        <Pressable onPress={() => router.replace("/login")} testID="goto-login">
+          <Text style={styles.link}>Sign in</Text>
+        </Pressable>
+      </View>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexGrow: 1, alignItems: "center", padding: S.xl },
-  inner: { width: "100%", maxWidth: 440 },
-  brandRow: { flexDirection: "row", alignItems: "center", marginBottom: S.xxl },
-  brandText: { color: C.brand, fontFamily: F.text, fontSize: 14, letterSpacing: 3, marginLeft: 8, fontWeight: "600" },
   link: { color: C.brand, fontFamily: F.text, fontSize: 14 },
-  divider: { alignItems: "center", marginVertical: S.lg },
+  muted: { color: C.onSurface2, fontFamily: F.text, fontSize: 14 },
+  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: S.lg },
+  line: { flex: 1, height: 1, backgroundColor: C.border },
   dividerText: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, letterSpacing: 2 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: S.xl },
-  errBox: { backgroundColor: C.error, borderRadius: 8, padding: S.md, marginBottom: S.lg },
-  errText: { color: "#fff", fontFamily: F.text, fontSize: 13 },
+  errBox: { backgroundColor: "rgba(139,43,43,0.18)", borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.md },
+  errText: { color: "#F2C9C9", fontFamily: F.text, fontSize: 13 },
 });
