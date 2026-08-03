@@ -1,0 +1,146 @@
+{
+  "app_name": "Storyboard AI",
+  "personality": "6 Glass / Luxe DARK",
+  "personality_one_liner": "A cinematic, premium pre-production suite using deep charcoal and muted gold to feel like a high-end film set tool.",
+  "color": {
+    "surface": "#0A0A0A",
+    "onSurface": "#F2F2F2",
+    "surfaceSecondary": "#1A1A1A",
+    "onSurfaceSecondary": "#A3A3A3",
+    "surfaceTertiary": "#262626",
+    "onSurfaceTertiary": "#D4D4D4",
+    "surfaceInverse": "#F2F2F2",
+    "onSurfaceInverse": "#0A0A0A",
+    "brand": "#C5A059",
+    "brandPrimary": "#C5A059",
+    "onBrandPrimary": "#0A0A0A",
+    "brandSecondary": "#8C7335",
+    "onBrandSecondary": "#F2F2F2",
+    "brandTertiary": "#2E2413",
+    "onBrandTertiary": "#E8C98B",
+    "success": "#3E6646",
+    "onSuccess": "#F2F2F2",
+    "warning": "#8C6335",
+    "onWarning": "#F2F2F2",
+    "error": "#8B2B2B",
+    "onError": "#F2F2F2",
+    "info": "#595959",
+    "onInfo": "#F2F2F2",
+    "border": "#262626",
+    "borderStrong": "#404040",
+    "divider": "#1A1A1A"
+  },
+  "typography": {
+    "displayFontFamily": "Cormorant Garamond",
+    "textFontFamily": "Geist",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous spacing for headers and sections to create a cinematic feel. Tighter, precise grouping inside technical shot list cards.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use heavy glass with a dark translucent tint (>=75% opacity) over background images for hero headers.",
+      "Apply frosted glass to the bottom sticky CTA containers in wizard steps.",
+      "Apply frosted glass to the bottom tab bar.",
+      "Use glass headers when scrolling through long shot lists."
+    ],
+    "dont's": [
+      "Never use glass for dense data rows or form inputs.",
+      "Don't stack glass on top of glass.",
+      "Do not use glass if the background is a solid color; use surfaceSecondary instead."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Dashboard",
+      "purpose": "A premium cinematic overview of recent projects and production stats.",
+      "states": {
+        "loading": "Centered dark spinner on surface",
+        "empty": "Glassy card with 'clapperboard' image, prompting the user to create their first production.",
+        "error": "Muted error text with a 'Reload' button."
+      },
+      "layout": "Hero section at the top featuring a blurred cinematic camera lens background overlaid with a heavy dark glass greeting and high-level stats. Below, a horizontal scrolling list of recent projects using image-first cards. A 'Templates' gallery section below."
+    },
+    {
+      "name": "New Project Wizard",
+      "purpose": "Step-by-step setup for a new production (Info, Settings, Creative, Generate).",
+      "states": {
+        "loading": "Skeleton of the form inputs.",
+        "empty": "N/A",
+        "error": "Inline error messaging below failed inputs."
+      },
+      "layout": "Immersive full-screen wizard. A top glass header indicating step progress (e.g., 'Step 1 of 4'). Form fields are clean, large, and minimal on surfaceTertiary backgrounds. A prominent sticky primary CTA pinned at the bottom in a frosted glass container over the scrolling form content."
+    },
+    {
+      "name": "Project Editor (Storyboard & Shot List)",
+      "purpose": "The core workspace for filmmakers to view the visual storyboard and technical shot list.",
+      "states": {
+        "loading": "Skeleton rows indicating shot list loading.",
+        "empty": "Graphic of empty storyboard sketches with a 'Generate AI Storyboard' CTA.",
+        "error": "Error state with a retry icon and text."
+      },
+      "layout": "Top navigation header with a segmented control to toggle between 'Storyboard' (Grid) and 'Shot List' (List). Storyboard view uses a 2-col or 1-col image-first card grid (large aspect-ratio thumbnails). Shot List view uses a dense vertical card list. Each row shows a small thumbnail left, Shot ID and description right. Collapsible card design to reveal framing, lens, and audio details without cluttering the main list. Drag handles visible for reordering."
+    }
+  ],
+  "images": {
+    "dashboard_hero_bg": {
+      "url": "https://images.unsplash.com/photo-1608186336271-53313eeaf864?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBjYW1lcmElMjBsZW5zJTIwZGFya3xlbnwwfHx8fDE3ODU3NjIxNDZ8MA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1608186336271-53313eeaf864?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBjYW1lcmElMjBsZW5zJTIwZGFya3xlbnwwfHx8fDE3ODU3NjIxNDZ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Cinematic camera lens with dramatic dark lighting"
+    },
+    "empty_storyboard": {
+      "url": "https://images.unsplash.com/photo-1561123760-0b8467594a63?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwxfHxzdG9yeWJvYXJkJTIwc2tldGNoZXN8ZW58MHx8fHwxNzg1NzYyMTQ2fDA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1561123760-0b8467594a63?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwxfHxzdG9yeWJvYXJkJTIwc2tldGNoZXN8ZW58MHx8fHwxNzg1NzYyMTQ2fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Hand-drawn storyboard sketches"
+    },
+    "empty_projects_clapperboard": {
+      "url": "https://images.unsplash.com/photo-1682130301125-5b63bbf93241?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwxfHxmaWxtJTIwY2xhcHBlcmJvYXJkJTIwZGFya3xlbnwwfHx8fDE3ODU3NjIxNDZ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Black and white film clapperboard on dark background"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the color palette. This is a premium cinematic app. BANNED: all blues, indigos, purples, and navies. Use the defined charcoal/slate neutral base with the muted cinematic gold (Antique Gold) accent.",
+    "Implement the '6 Glass / Luxe DARK' personality. Use Cormorant Garamond for large, dramatic elegant headers and wizard titles to feel like a high-end film tool. Use Geist for all UI text, labels, and the dense shot list for maximum readability.",
+    "For the Project Editor, build a segmented control in the header to toggle between 'Storyboard' (image-first cards) and 'Shot List' (dense list rows).",
+    "In the Shot List table view, ensure rows are card-based vertical lists with thumbnail, shot ID, description, and status visible at a glance. Make rows collapsible to reveal deeper metadata (lens, angle, movement, audio) without cluttering the view.",
+    "In the New Project wizard, ensure the 'Continue' CTA is housed in a sticky frosted glass container at the bottom of the screen, floating above the scrolling form fields so users don't have to scroll to the end to proceed.",
+    "Background images MUST have a vertical gradient scrim (transparent to >=75% surface/surfaceInverse) applied before rendering text on top to ensure WCAG readability.",
+    "Only use weight 400 or 500 for fonts. Do not use bold/heavy cuts, even for the serif display font. Hierarchy is achieved through size, not weight."
+  ]
+}
