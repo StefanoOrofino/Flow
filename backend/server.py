@@ -642,56 +642,91 @@ def _find_scene(doc: dict, sid: str) -> dict:
     return scene
 
 
-async def _save_scene(pid: str, user: dict, doc: dict, sid: str, updated_scene: dict):
+async def _save_scene(pid: str, user: dict, doc: dict, sid: str, updated_scene: dict, inc_gen: bool = False):
     scenes = [updated_scene if s.get("id") == sid else s for s in doc["scenes"]]
-    await db.projects.update_one({"id": pid, "user_id": user["user_id"]},
-                                 {"$set": {"scenes": scenes, "updated_at": now_iso()}})
+    upd: dict = {"$set": {"scenes": scenes, "updated_at": now_iso()}}
+    if inc_gen:
+        upd["$inc"] = {"image_gen_count": 1}
+    await db.projects.update_one({"id": pid, "user_id": user["user_id"]}, upd)
     return await _get_owned(pid, user)
+
+
+# Cost + safety controls for REAL image generation
+DEV_IMAGE_LIMIT = int(os.environ.get("IMAGE_DEV_LIMIT", "3"))
+_active_generations: set = set()
+
+
+def _build_frame_prompt(project: dict, scene: dict, base_desc: str, aspect: str) -> str:
+    t = project.get("treatment") or {}
+    tech = {
+        "Shot type": scene.get("shot_size"), "Camera angle": scene.get("camera_angle"),
+        "Lens": scene.get("focal_length"), "Camera movement": scene.get("camera_movement"),
+        "Lighting": scene.get("lighting"), "Color palette": scene.get("color_palette") or t.get("color_palette"),
+        "Time of day": scene.get("time_of_day"), "Location": scene.get("location"),
+        "Characters": scene.get("characters"),
+    }
+    directive = ", ".join(f"{k}: {v}" for k, v in tech.items() if str(v or "").strip())
+    style = ", ".join(str(x) for x in [t.get("visual_style"), t.get("narrative_style"), t.get("lighting_style")] if str(x or "").strip())
+    prompt = f"Cinematic storyboard frame. {base_desc}".strip().rstrip(".") + "."
+    if directive:
+        prompt += f" Technical direction — {directive}."
+    if style:
+        prompt += f" Visual style — {style}."
+    prompt += f" Aspect ratio {aspect}. A single storyboard still, no text, captions, borders or watermarks."
+    return prompt
+
+
+async def _run_generation(pid: str, sid: str, user: dict, base_desc: str, aspect: str, style_preset: str):
+    doc = await _get_owned(pid, user)
+    scene = _find_scene(doc, sid)
+    provider = image_service.get_provider().name
+
+    # 1 active generation per project at a time (prevents duplicate/concurrent spend)
+    if pid in _active_generations:
+        raise HTTPException(status_code=409, detail="A generation is already in progress for this project.")
+    # Development cap on REAL generations
+    if provider == "gemini" and doc.get("image_gen_count", 0) >= DEV_IMAGE_LIMIT:
+        raise HTTPException(status_code=429, detail=f"Development limit reached: {DEV_IMAGE_LIMIT} real image generations per project.")
+
+    prompt = _build_frame_prompt(doc, scene, base_desc, aspect)
+    opts = {"style_preset": style_preset or "", "aspect_ratio": aspect, "label": f"SCENE {scene.get('scene_number')}"}
+
+    _active_generations.add(pid)
+    try:
+        result = await image_service.generate_image(prompt, opts)
+    finally:
+        _active_generations.discard(pid)
+
+    # Never persist a broken version — surface the error and keep the prompt.
+    if result.get("status") != image_service.STATUS_COMPLETED:
+        raise HTTPException(status_code=502, detail=result.get("error_message") or "Image generation failed.")
+
+    frames = list(scene.get("frames") or [])
+    version = (max([f.get("version", 0) for f in frames], default=0)) + 1
+    frame = image_service.make_frame(scene, pid, result, version, base_desc, opts)
+    frames.append(frame)
+    updated = {**scene, "frames": frames, "image_prompt": base_desc or scene.get("image_prompt", ""),
+               "active_frame_id": frame["id"], "image_url": frame["image_url"]}
+    return await _save_scene(pid, user, doc, sid, updated, inc_gen=(provider == "gemini"))
 
 
 @api_router.post("/projects/{pid}/scenes/{sid}/frames/generate")
 async def generate_frame(pid: str, sid: str, body: FrameIn, user=Depends(get_current_user)):
     doc = await _get_owned(pid, user)
     scene = _find_scene(doc, sid)
-    prompt = (body.prompt or scene.get("image_prompt") or "").strip()
-    opts = {"style_preset": body.style_preset or "", "aspect_ratio": body.aspect_ratio or "16:9",
-            "negative_prompt": body.negative_prompt or "",
-            "label": f"SCENE {scene.get('scene_number')}"}
-    result = await image_service.generate_image(prompt, opts)
-    frames = list(scene.get("frames") or [])
-    version = (max([f.get("version", 0) for f in frames], default=0)) + 1
-    frame = image_service.make_frame(scene, pid, result, version, prompt, opts)
-    frames.append(frame)
-    updated = {**scene, "frames": frames, "image_prompt": prompt or scene.get("image_prompt", "")}
-    # Auto-select the newly generated frame if it succeeded
-    if frame["generation_status"] == image_service.STATUS_COMPLETED:
-        updated["active_frame_id"] = frame["id"]
-        updated["image_url"] = frame["image_url"]
-    return await _save_scene(pid, user, doc, sid, updated)
+    base_desc = (body.prompt or scene.get("image_prompt") or scene.get("visual_description") or "").strip()
+    return await _run_generation(pid, sid, user, base_desc, body.aspect_ratio or "16:9", body.style_preset or "")
 
 
 @api_router.post("/projects/{pid}/scenes/{sid}/frames/{fid}/regenerate")
 async def regenerate_frame(pid: str, sid: str, fid: str, body: FrameIn, user=Depends(get_current_user)):
     doc = await _get_owned(pid, user)
     scene = _find_scene(doc, sid)
-    frames = list(scene.get("frames") or [])
-    old = next((f for f in frames if f.get("id") == fid), None)
+    old = next((f for f in (scene.get("frames") or []) if f.get("id") == fid), None)
     if not old:
         raise HTTPException(status_code=404, detail="Frame not found")
-    prompt = (body.prompt or old.get("prompt") or scene.get("image_prompt") or "").strip()
-    opts = {"style_preset": body.style_preset or old.get("style_preset", ""),
-            "aspect_ratio": body.aspect_ratio or old.get("aspect_ratio", "16:9"),
-            "negative_prompt": body.negative_prompt or old.get("negative_prompt", ""),
-            "label": f"SCENE {scene.get('scene_number')}"}
-    result = await image_service.regenerate_image(prompt, opts)
-    version = (max([f.get("version", 0) for f in frames], default=0)) + 1
-    frame = image_service.make_frame(scene, pid, result, version, prompt, opts)
-    frames.append(frame)
-    updated = {**scene, "frames": frames, "image_prompt": prompt or scene.get("image_prompt", "")}
-    if frame["generation_status"] == image_service.STATUS_COMPLETED:
-        updated["active_frame_id"] = frame["id"]
-        updated["image_url"] = frame["image_url"]
-    return await _save_scene(pid, user, doc, sid, updated)
+    base_desc = (body.prompt or old.get("prompt") or scene.get("image_prompt") or scene.get("visual_description") or "").strip()
+    return await _run_generation(pid, sid, user, base_desc, body.aspect_ratio or old.get("aspect_ratio", "16:9"), body.style_preset or old.get("style_preset", ""))
 
 
 @api_router.post("/projects/{pid}/scenes/{sid}/frames/{fid}/active")
@@ -734,7 +769,8 @@ async def frame_status(pid: str, sid: str, fid: str, user=Depends(get_current_us
 @api_router.get("/image-provider")
 async def image_provider(user=Depends(get_current_user)):
     return {"provider": image_service.get_provider().name,
-            "configured": image_service.provider_configured()}
+            "configured": image_service.provider_configured(),
+            "dev_limit": DEV_IMAGE_LIMIT}
 
 
 TEMPLATES = [

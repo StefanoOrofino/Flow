@@ -118,12 +118,30 @@ export default function Editor() {
   const regenLighting = regenWrap("-l", api.regenLighting);
   const regenerateAll = async () => { setRegenAll(true); try { store.applyServer(await api.generate(id)); setTab("Overview"); } catch {} finally { setRegenAll(false); } };
 
-  // Storyboard image frames (mock/none provider until a real one is wired)
-  const frameGenerate = async (s: any, body: any) => { setFrameBusy(s.id); try { store.applyServer(await api.generateFrame(id, s.id, body)); } catch {} finally { setFrameBusy(null); } };
-  const frameRegenerate = async (s: any, fid: string, body: any) => { setFrameBusy(s.id); try { store.applyServer(await api.regenerateFrame(id, s.id, fid, body)); } catch {} finally { setFrameBusy(null); } };
+  // Storyboard image frames — real Gemini Nano Banana with cost + safety controls
+  const [imgInfo, setImgInfo] = useState<any>({ provider: "mock", dev_limit: 3, configured: true });
+  const [frameErrors, setFrameErrors] = useState<Record<string, string>>({});
+  const [confirmGen, setConfirmGen] = useState<null | (() => void)>(null);
+  useEffect(() => { api.imageProvider().then(setImgInfo).catch(() => {}); }, []);
+
+  const runFrame = async (sceneId: string, fn: () => Promise<any>) => {
+    if (frameBusy) return; // only 1 active generation at a time
+    setFrameBusy(sceneId);
+    setFrameErrors((e) => ({ ...e, [sceneId]: "" }));
+    try { store.applyServer(await fn()); }
+    catch (e: any) { setFrameErrors((er) => ({ ...er, [sceneId]: e?.message || "Generation failed. Please retry." })); }
+    finally { setFrameBusy(null); }
+  };
+  const askConfirm = (fn: () => void) => setConfirmGen(() => fn);
+  const frameGenerate = (s: any, body: any) => askConfirm(() => runFrame(s.id, () => api.generateFrame(id, s.id, body)));
+  const frameRegenerate = (s: any, fid: string, body: any) => askConfirm(() => runFrame(s.id, () => api.regenerateFrame(id, s.id, fid, body)));
   const frameSetActive = async (s: any, fid: string) => { try { store.applyServer(await api.setActiveFrame(id, s.id, fid)); } catch {} };
-  const frameDelete = async (s: any, fid: string) => { setFrameBusy(s.id); try { store.applyServer(await api.deleteFrame(id, s.id, fid)); } catch {} finally { setFrameBusy(null); } };
-  const frameActions = { generate: frameGenerate, regenerate: frameRegenerate, setActive: frameSetActive, del: frameDelete, view: setViewer };
+  const frameDelete = (s: any, fid: string) => runFrame(s.id, () => api.deleteFrame(id, s.id, fid));
+  const remaining = Math.max(0, (imgInfo.dev_limit || 3) - (project?.image_gen_count || 0));
+  const frameActions = {
+    generate: frameGenerate, regenerate: frameRegenerate, setActive: frameSetActive, del: frameDelete, view: setViewer,
+    busy: !!frameBusy, remaining, provider: imgInfo.provider, errorFor: (sid: string) => frameErrors[sid],
+  };
   const doExport = async (fn: () => Promise<void>) => { try { await fn(); api.markExported(id).catch(() => {}); } catch (e) { console.log(e); } };
 
   useEffect(() => { if (!loading && !project) router.back(); }, [loading, project]);
@@ -241,6 +259,22 @@ export default function Editor() {
 
       {/* Inline editing (Sprint 2) replaces the scene edit modal */}
 
+      {/* Confirm real AI generation (uses credits) */}
+      <Modal visible={!!confirmGen} transparent animationType="fade" onRequestClose={() => setConfirmGen(null)}>
+        <View style={styles.confirmBg}>
+          <View style={styles.confirmCard}>
+            <View style={styles.confirmIcon}><Ionicons name="sparkles" size={22} color={C.brand} /></View>
+            <Text style={styles.confirmTitle}>Generate storyboard frame?</Text>
+            <Text style={styles.confirmBody}>Generate this storyboard frame? This action uses AI credits.</Text>
+            <Text style={styles.confirmMeta}>{remaining} of {imgInfo.dev_limit || 3} generations left in this project</Text>
+            <View style={styles.confirmRow}>
+              <Pressable style={styles.confirmCancel} onPress={() => setConfirmGen(null)} testID="gen-cancel"><Text style={styles.confirmCancelText}>Cancel</Text></Pressable>
+              <Pressable style={styles.confirmOk} onPress={() => { const fn = confirmGen; setConfirmGen(null); fn && fn(); }} testID="gen-confirm"><Ionicons name="sparkles" size={15} color={C.onBrand} /><Text style={styles.confirmOkText}>Generate</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Fullscreen storyboard frame viewer */}
       <Modal visible={!!viewer} transparent animationType="fade" onRequestClose={() => setViewer(null)}>
         <Pressable style={styles.viewerBg} onPress={() => setViewer(null)} testID="frame-viewer">
@@ -282,9 +316,9 @@ function KVCard({ label, data, order, icon }: any) {
 }
 const DefCard = KVCard;
 
-function RegenChip({ icon, label, busy, onPress, testID }: any) {
+function RegenChip({ icon, label, busy, onPress, testID, disabled }: any) {
   return (
-    <Pressable style={styles.regenChip} onPress={onPress} testID={testID}>
+    <Pressable style={[styles.regenChip, disabled && { opacity: 0.4 }]} onPress={disabled ? undefined : onPress} testID={testID}>
       {busy ? <ActivityIndicator size="small" color={C.brand} /> : <><Ionicons name={icon} size={13} color={C.brand} /><Text style={styles.regenChipText}>{label}</Text></>}
     </Pressable>
   );
@@ -349,6 +383,9 @@ function StoryboardFrame({ scene, promptValue, aspect, busy, frameActions, onEdi
   const [editing, setEditing] = useState(false);
   const ar = active?.aspect_ratio || aspect || "16:9";
   const opts = () => ({ prompt: promptValue, aspect_ratio: aspect || "16:9" });
+  const errMsg = frameActions.errorFor ? frameActions.errorFor(scene.id) : "";
+  const realProvider = frameActions.provider === "gemini";
+  const genDisabled = frameActions.busy || (realProvider && frameActions.remaining <= 0);
   return (
     <View style={styles.frameWrap}>
       <View style={styles.frameBig}>
@@ -390,12 +427,20 @@ function StoryboardFrame({ scene, promptValue, aspect, busy, frameActions, onEdi
         <Text style={styles.framePrompt} numberOfLines={2}>{promptValue || "No image prompt yet — regenerate it in the AI section."}</Text>
       )}
 
+      {errMsg ? (
+        <View style={styles.frameError}><Ionicons name="alert-circle" size={14} color={C.error} /><Text style={styles.frameErrorText}>{errMsg}</Text></View>
+      ) : null}
+
+      <View style={styles.rowBetween}>
+        <Text style={styles.frameQuota}>{realProvider ? `${frameActions.remaining} AI generation${frameActions.remaining === 1 ? "" : "s"} left` : "Simulated (mock) mode"}</Text>
+      </View>
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingTop: 6 }}>
-        <RegenChip icon="sparkles-outline" label={frames.length ? "New Version" : "Generate Frame"} busy={busy} onPress={() => frameActions.generate(scene, opts())} testID={`frame-generate-${scene.scene_number}`} />
-        <RegenChip icon="refresh" label="Regenerate" onPress={() => active ? frameActions.regenerate(scene, active.id, opts()) : frameActions.generate(scene, opts())} testID={`frame-regenerate-${scene.scene_number}`} />
-        <RegenChip icon="swap-horizontal-outline" label="Replace" onPress={() => frameActions.generate(scene, opts())} testID={`frame-replace-${scene.scene_number}`} />
+        <RegenChip icon="sparkles-outline" label={frames.length ? "New Version" : "Generate Frame"} busy={busy} disabled={genDisabled} onPress={() => frameActions.generate(scene, opts())} testID={`frame-generate-${scene.scene_number}`} />
+        <RegenChip icon="refresh" label="Regenerate" disabled={genDisabled} onPress={() => active ? frameActions.regenerate(scene, active.id, opts()) : frameActions.generate(scene, opts())} testID={`frame-regenerate-${scene.scene_number}`} />
+        <RegenChip icon="swap-horizontal-outline" label="Replace" disabled={genDisabled} onPress={() => frameActions.generate(scene, opts())} testID={`frame-replace-${scene.scene_number}`} />
         <RegenChip icon="create-outline" label="Edit Prompt" onPress={() => setEditing((e) => !e)} testID={`frame-edit-${scene.scene_number}`} />
-        {active ? <RegenChip icon="trash-outline" label="Remove" onPress={() => frameActions.del(scene, active.id)} testID={`frame-remove-${scene.scene_number}`} /> : null}
+        {active ? <RegenChip icon="trash-outline" label="Remove" disabled={frameActions.busy} onPress={() => frameActions.del(scene, active.id)} testID={`frame-remove-${scene.scene_number}`} /> : null}
         {url ? <RegenChip icon="expand-outline" label="Full Screen" onPress={() => frameActions.view(url)} testID={`frame-full-${scene.scene_number}`} /> : null}
       </ScrollView>
     </View>
@@ -618,6 +663,11 @@ function StoryboardTab({ project, busyScene, frameBusy, expanded, setExpanded, o
           <ToolBtn icon="contract-outline" label="Collapse All" onPress={collapseAll} testID="collapse-all" />
           <ToolBtn icon="download-outline" label="Export" onPress={onExport} testID="tb-export" />
           <ToolBtn icon="document-text-outline" label="Generate PDF" onPress={onPdf} testID="tb-pdf" />
+          <View style={[styles.toolBtn, { opacity: 0.4 }]} testID="tb-generate-all">
+            <Ionicons name="images-outline" size={16} color={C.onSurface2} />
+            <Text style={[styles.toolBtnText, { color: C.onSurface2 }]}>Generate All Frames</Text>
+            <View style={styles.soonPill}><Text style={styles.soonText}>SOON</Text></View>
+          </View>
         </ScrollView>
       </View>
       <View style={{ flex: 1, flexDirection: wide ? "row" : "column" }}>
@@ -849,4 +899,24 @@ const styles = StyleSheet.create({
   viewerBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.92)", alignItems: "center", justifyContent: "center" },
   viewerImg: { width: "100%", height: "80%" },
   viewerClose: { position: "absolute", right: S.lg, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
+
+  // Confirm generation modal
+  confirmBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", alignItems: "center", justifyContent: "center", padding: S.xl },
+  confirmCard: { width: "100%", maxWidth: 380, backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.borderStrong, padding: S.xl, alignItems: "center" },
+  confirmIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginBottom: S.md },
+  confirmTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 19, marginBottom: 6, textAlign: "center" },
+  confirmBody: { color: C.onSurface2, fontFamily: F.text, fontSize: 13.5, textAlign: "center", lineHeight: 20 },
+  confirmMeta: { color: C.brand, fontFamily: F.text, fontSize: 12, marginTop: 10, marginBottom: S.lg },
+  confirmRow: { flexDirection: "row", gap: S.sm, width: "100%" },
+  confirmCancel: { flex: 1, borderWidth: 1, borderColor: C.border, borderRadius: R.md, paddingVertical: 12, alignItems: "center" },
+  confirmCancelText: { color: C.onSurface, fontFamily: F.text, fontSize: 14, fontWeight: "500" },
+  confirmOk: { flex: 1, flexDirection: "row", gap: 6, backgroundColor: C.brand, borderRadius: R.md, paddingVertical: 12, alignItems: "center", justifyContent: "center" },
+  confirmOkText: { color: C.onBrand, fontFamily: F.text, fontSize: 14, fontWeight: "600" },
+
+  // Frame error + quota
+  frameError: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(139,43,43,0.12)", borderWidth: 1, borderColor: C.error, borderRadius: R.sm, padding: 8, marginTop: 8 },
+  frameErrorText: { color: C.error, fontFamily: F.text, fontSize: 12, flex: 1 },
+  frameQuota: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, marginTop: 8 },
+  soonPill: { backgroundColor: C.surface3, borderRadius: R.pill, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 },
+  soonText: { color: C.onSurface2, fontFamily: F.text, fontSize: 8.5, letterSpacing: 0.5 },
 });

@@ -34,7 +34,14 @@ Auth + protected routes; Dashboard (stats, quick actions, continue working, rece
 2. Real drag-and-drop scene reordering.
 3. Billing/subscription tiers (Stripe) when monetization begins.
 
-## Sprint 3.5 (2026-06 / iteration 6) — Production-grade reliability & data architecture
+## Sprint 4 (2026-06 / iteration 7) — Real Gemini Nano Banana image generation (LIVE)
+- **Provider**: `GeminiProvider` in image_service.py (`gemini-3.1-flash-image-preview`) via Emergent Universal Key, server-side only. Abstraction intact; `mock` + `none` kept for dev/fallback. `IMAGE_PROVIDER=gemini` in backend/.env. get_provider() reads env lazily (load_dotenv runs after import).
+- **Cost/safety controls**: DEV_IMAGE_LIMIT=3 real gens per project (`project.image_gen_count`, 429 when exceeded); 1 active generation per project (in-memory `_active_generations` lock → 409); frontend single-active lock (frameBusy) + disabled buttons; confirmation modal "Generate this storyboard frame? This action uses AI credits." before every generate/regenerate/new-version.
+- **Manual only**: no auto-generation on project create. "Generate All Frames" is a DISABLED 'SOON' toolbar action.
+- **Error handling**: failures never persist a broken version (raise 502, keep prompt, surface error in frame panel, allow retry).
+- **Prompt construction**: `_build_frame_prompt()` combines base description/edited prompt + scene technical fields (shot/angle/lens/movement/lighting/palette/time/location/characters) + project treatment visual style + aspect ratio. Respects real settings, no forced generic style.
+- **Versions**: each success = new version (chips to compare/set-primary/delete; regenerate from edited prompt). SIMULATED label only for mock; gemini frames show "gemini".
+- Verified E2E on scene 1: confirm → real JPEG generated (Completed) → version 1 → active → reload persists; 429 dev-limit; concurrency; cleanup. Seed project restored (0 frames, count 0). Keys never exposed/logged in frontend.
 - **Single source of truth**: Storyboard & Shot List are two views of the same `scene` data. Primary shot shares fields with the scene (two-way sync verified both directions); secondary shots store overrides in `shot.data` and stay isolated.
 - **useProjectStore.ts** (new): centralizes persistence. `mutate()` = local edit → history push + debounced autosave; `applyServer()` = AI/frame responses (already persisted) + history snapshot; `normalizeProject()` auto-repairs on every transition (sequential scene_number, unique scene/shot ids, single primary shot, arrays present → no dup numbers / no orphans).
 - **Autosave state machine**: idle/unsaved/saving/saved/offline/recovering with exponential-backoff retry on failure + `online`/`offline` listeners (never loses work). Header shows all states.

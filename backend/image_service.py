@@ -85,11 +85,41 @@ class MockProvider(ImageProvider):
         }
 
 
-PROVIDERS = {"none": NoneProvider(), "mock": MockProvider()}
+class GeminiProvider(ImageProvider):
+    """Real Gemini Nano Banana image generation via the Emergent Universal Key (server-side only)."""
+    name = "gemini"
+    model = os.environ.get("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image-preview")
+
+    async def generate(self, prompt: str, opts: dict) -> dict:
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            return {"status": STATUS_FAILED, "error_message": "EMERGENT_LLM_KEY not configured on the server.",
+                    "image_url": "", "thumbnail_url": "", "provider": "gemini", "provider_job_id": ""}
+        try:
+            from emergentintegrations.llm.chat import LlmChat, UserMessage
+            chat = LlmChat(
+                api_key=api_key, session_id="img_" + uuid.uuid4().hex[:10],
+                system_message="You are a professional cinematic storyboard concept artist. Render a single frame that matches the exact production specifications provided.",
+            ).with_model("gemini", self.model).with_params(modalities=["image", "text"])
+            _text, images = await chat.send_message_multimodal_response(UserMessage(text=prompt))
+            if not images:
+                return {"status": STATUS_FAILED, "error_message": "The model did not return an image. Please adjust the prompt and retry.",
+                        "image_url": "", "thumbnail_url": "", "provider": "gemini", "provider_job_id": ""}
+            img = images[0]
+            data_uri = f"data:{img.get('mime_type', 'image/png')};base64,{img['data']}"
+            return {"status": STATUS_COMPLETED, "error_message": "", "image_url": data_uri, "thumbnail_url": data_uri,
+                    "provider": "gemini", "provider_job_id": "gem_" + uuid.uuid4().hex[:8]}
+        except Exception as e:  # never create a broken version — surface the error, keep the prompt
+            return {"status": STATUS_FAILED, "error_message": f"Image generation failed: {str(e)[:180]}",
+                    "image_url": "", "thumbnail_url": "", "provider": "gemini", "provider_job_id": ""}
+
+
+PROVIDERS = {"none": NoneProvider(), "mock": MockProvider(), "gemini": GeminiProvider()}
 
 
 def get_provider() -> ImageProvider:
-    return PROVIDERS.get(IMAGE_PROVIDER, PROVIDERS["mock"])
+    name = os.environ.get("IMAGE_PROVIDER", "mock").lower()
+    return PROVIDERS.get(name, PROVIDERS["mock"])
 
 
 def provider_configured() -> bool:
