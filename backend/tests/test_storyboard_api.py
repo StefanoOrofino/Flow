@@ -158,10 +158,10 @@ class TestProjectsCRUD:
 # ==== Generation (real AI) ====
 class TestGeneration:
     def test_generate_returns_full_package(self, api, auth_headers_a):
-        # Create fresh project for generation - use new schema fields
+        # Create fresh project for generation - num_scenes intentionally below 8 to verify clamp
         r = requests.post(f"{api}/projects", headers=auth_headers_a,
                           json={"title": "TEST_Gen", "goal": "A dramatic short about a lighthouse keeper.",
-                                "num_scenes": 6, "visual_style": "Cinematic", "mood": "Dramatic"}, timeout=15)
+                                "num_scenes": 3, "visual_style": "Cinematic", "mood": "Dramatic"}, timeout=15)
         assert r.status_code == 200
         pid = r.json()["id"]
         pytest.gen_pid = pid
@@ -171,17 +171,17 @@ class TestGeneration:
         p = r2.json()
         assert p["status"] == "generated"
 
-        # concept is now a structured object
+        # concept is a structured object with new keys
         concept = p.get("concept")
         assert isinstance(concept, dict) and concept, "concept must be non-empty dict"
-        for k in ("elevator_pitch", "campaign_goal", "audience", "emotional_tone", "core_message", "call_to_action"):
+        for k in ("title", "elevator_pitch", "main_message", "emotional_goal", "audience", "communication_objective"):
             assert k in concept, f"concept missing key {k}"
 
-        # treatment is now a structured object
+        # treatment is a structured object with new keys
         treatment = p.get("treatment")
         assert isinstance(treatment, dict) and treatment, "treatment must be non-empty dict"
-        for k in ("visual_language", "narrative_style", "camera_philosophy", "lighting_philosophy",
-                  "color_palette", "editing_rhythm", "sound_design"):
+        for k in ("visual_style", "narrative_style", "camera_language", "editing_style",
+                  "lighting_style", "color_palette", "sound_design", "overall_mood"):
             assert k in treatment, f"treatment missing key {k}"
 
         # equipment / crew / schedule / budget objects
@@ -192,8 +192,9 @@ class TestGeneration:
         for k in ("low", "medium", "commercial", "premium"):
             assert k in p["budget"], f"budget missing {k}"
 
+        # Scenes clamped 8-12 even when num_scenes=3
         scenes = p.get("scenes", [])
-        assert 6 <= len(scenes) <= 12, f"expected 6-12 scenes got {len(scenes)}"
+        assert 8 <= len(scenes) <= 12, f"expected 8-12 scenes (clamped) got {len(scenes)}"
         for s in scenes:
             for f in ("id", "scene_number", "title", "shot_size", "camera_angle",
                       "camera_movement", "focal_length", "image_prompt", "visual_description",

@@ -80,8 +80,8 @@ export function buildHtml(p: any): string {
       <li>Storyboard</li><li>Shot List</li><li>Equipment</li><li>Crew</li><li>Shooting Schedule</li><li>Budget Estimation</li>
     </ol></div>
     <h2>Project Information</h2>${defRows({ client: p.client, campaign: p.campaign, brand: p.brand, goal: p.goal, audience: p.target_audience, language: p.language, crew_size: p.crew_size, location: p.location_type, actors: p.num_actors, deliverables: p.deliverables })}
-    <h2>Creative Concept</h2>${defRows(p.concept, ["elevator_pitch", "campaign_goal", "audience", "emotional_tone", "core_message", "call_to_action"])}
-    <h2>Director's Treatment</h2>${defRows(p.treatment, ["visual_language", "narrative_style", "camera_philosophy", "lighting_philosophy", "color_palette", "editing_rhythm", "sound_design"])}
+    <h2>Creative Concept</h2>${defRows(p.concept, ["title", "elevator_pitch", "main_message", "emotional_goal", "audience", "communication_objective"])}
+    <h2>Director's Treatment</h2>${defRows(p.treatment, ["visual_style", "narrative_style", "camera_language", "editing_style", "lighting_style", "color_palette", "sound_design", "overall_mood"])}
     <h2>Script</h2>${scriptBlocks || (p.script ? `<p>${br(p.script)}</p>` : "")}
     <h2>Storyboard</h2>${sceneCards}
     <h2>Technical Shot List</h2>

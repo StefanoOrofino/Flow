@@ -1,0 +1,41 @@
+{
+  "summary": "Both backend and frontend verified against the new Storyboard Generation Engine sprint. Backend: 27/27 pytest PASSED. Updated test_storyboard_api.py::test_generate_returns_full_package to assert the NEW concept schema {title, elevator_pitch, main_message, emotional_goal, audience, communication_objective} and NEW treatment schema {visual_style, narrative_style, camera_language, editing_style, lighting_style, color_palette, sound_design, overall_mood}, and to send num_scenes=3 while asserting the resulting scenes are clamped to 8-12 (real AI returned 8) — clamp verified. Existing coverage for regenerate-dialogue (dialogue/voice_over/on_screen_text updated, shot_size/camera_angle UNCHANGED) and regenerate-camera (camera fields updated, dialogue/voice_over UNCHANGED), regenerate-scene, regenerate-image-prompt, auth (register/login/me/reset), 12 categorized templates, projects CRUD, ownership isolation, duplicate, delete→404, all pass. Real AI mode confirmed (mock_mode:false at GET /api/). Frontend E2E (390x844) on the seeded project c73286507b42 (Solstice Perfume, 8 scenes): logged in as sb_1785767871@studio.com → project loaded → Storyboard tab renders progress header (Total Duration 30s · Total Scenes 8 · Est. Shooting Time 6.8 hrs) → each scene is a collapsed card (number, title, duration, shot type, location) → toggle-{i} expands it and reveals ALL fields plus a labelled AI IMAGE PROMPT block → RegenChips (regen-dialogue-{i}, regen-camera-{i}, regen-prompt-{i}) and IconBtns (edit-{i}, regen-{i}, dup-{i}, up-{i}, down-{i}, del-{i}) all render inside the expanded card and are tappable → Move Down (down-0) reorders First Light from position 1 to 2 → header immediately shows 'All changes saved' → reload persists the new order → Move Up (up-1) restores original order → Add Scene increments 8→9 (autosaves) and Delete brings it back to 8 → Overview tab renders ALL new concept keys (ELEVATOR PITCH, MAIN MESSAGE, EMOTIONAL GOAL, AUDIENCE, COMMUNICATION OBJECTIVE) AND ALL 8 treatment keys (VISUAL STYLE, NARRATIVE STYLE, CAMERA LANGUAGE, EDITING STYLE, LIGHTING STYLE, COLOR PALETTE, SOUND DESIGN, OVERALL MOOD) as labeled key/value rows — no raw paragraphs. Long-press drag handle (drag-{i}) is present; on web the DraggableFlatList long-press gesture is impractical to automate, but reorder was verified authoritatively through Move Up/Down + reload persistence. No React Native red screens, no deprecated Expo packages (no expo-av / expo-barcode-scanner / expo-background-fetch), no blocking bugs. All 8 features from the review request pass.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_storyboard_api.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "None blocking. Optional non-blocking web-only console warnings observed: 'shadow*' style props deprecated in react-native-web (use boxShadow) and 'props.pointerEvents is deprecated' (use style.pointerEvents). These are RN-Web deprecation notices, not runtime failures — safe to address in a cleanup pass."
+  ],
+  "critical_code_review_comments": [
+    "server.py build_prompt: concept and treatment JSON schemas now match the new object keys requested by the sprint (title/elevator_pitch/main_message/emotional_goal/audience/communication_objective and visual_style/narrative_style/camera_language/editing_style/lighting_style/color_palette/sound_design/overall_mood). Confirmed by real-AI pytest run.",
+    "server.py generate: scene count is clamped with n = min(12, max(8, int(num_scenes or 8))) — verified at runtime: sending num_scenes=3 still yielded 8 scenes.",
+    "server.py mock fallback (mock_output) mirrors the same new concept/treatment keys — schema is consistent whether AI succeeds or falls back.",
+    "server.py _regen_partial cleanly restricts writes to the requested field-set — pytest asserts unrelated fields (shot_size/camera_angle vs dialogue/voice_over) are not touched.",
+    "frontend project/[id].tsx: Storyboard tab rebuilt with DraggableFlatList, progress header (ProgStat: Total Duration / Total Scenes / Est. Shooting Time), collapsible scene cards (open state map by scene id, toggle testID=toggle-{i}), and full action set gated inside {open && …}.",
+    "frontend project/[id].tsx: All required testIDs present — toggle-{i}, drag-{i}, scene-card-{i}, edit-{i}, regen-{i}, dup-{i}, up-{i}, down-{i}, del-{i}, regen-dialogue-{i}, regen-camera-{i}, regen-prompt-{i}, add-scene, tab-<Name>.",
+    "frontend Overview KVCard renders concept/treatment via `data && typeof data === 'object'` guard — labels come from Object.entries so schema changes are picked up automatically without hard-coding.",
+    "frontend save banner logic (line 98) transitions saveState: idle → saving → saved (~1.5s) → idle; 'All changes saved' visible during the saved window (confirmed in E2E), which is intentional UX."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_storyboard_api.py (test_generate_returns_full_package: rewrote concept assertions to new keys {title, elevator_pitch, main_message, emotional_goal, audience, communication_objective}; treatment to {visual_style, narrative_style, camera_language, editing_style, lighting_style, color_palette, sound_design, overall_mood}; num_scenes=3 with clamp assertion 8<=len(scenes)<=12)",
+    "/app/test_reports/pytest/pytest_results.xml (regenerated: 27 passed)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Used pre-seeded account sb_1785767871@studio.com / secret123 and project c73286507b42 for the frontend E2E. All temporary state changes (add scene, reorder) were reverted at the end of the run so the seed project is unchanged. Pytest continues to create ephemeral test_a_/test_b_ users per session and cleans up TEST_* projects at the end.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend base: https://frameflow-studio-15.preview.emergentagent.com/api. Real AI is ENABLED (mock_mode:false). AI generation takes ~30-60s. NEW concept keys: title, elevator_pitch, main_message, emotional_goal, audience, communication_objective. NEW treatment keys: visual_style, narrative_style, camera_language, editing_style, lighting_style, color_palette, sound_design, overall_mood. Scenes are ALWAYS clamped to 8-12 regardless of num_scenes. Storyboard tab uses DraggableFlatList; per-scene action buttons and RegenChips are gated inside the expanded state so query the DOM for testIDs AFTER clicking toggle-{i}. Tab testIDs use title-case: tab-Overview, tab-Storyboard, tab-Script, tab-Shot List, tab-Equipment, tab-Crew, tab-Schedule, tab-Budget, tab-Exports, tab-Settings. Save banner 'All changes saved' is visible only for ~1.5s after each autosave, then reverts to '{n} scenes · {duration}'. For automated reorder verification prefer up-{i}/down-{i} buttons over drag gesture (web long-press on DraggableFlatList is impractical). pytest.ini forces xdist -n 2 --dist loadscope; add -n 0 for serial debugging.",
+  "rca_of_issue": "N/A — no regressions found. The previous iteration's pytest asserted the pre-sprint concept/treatment keys and a min-6 scene floor; both were updated to the new schema this iteration and pass against real AI."
+}

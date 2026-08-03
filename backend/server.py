@@ -251,7 +251,7 @@ SCENE_FIELDS = ["title", "duration", "location", "time_of_day", "characters", "v
 
 
 def build_prompt(p: dict) -> str:
-    n = min(12, max(6, int(p.get('num_scenes') or 6)))
+    n = min(12, max(8, int(p.get('num_scenes') or 8)))
     return f"""You are an award-winning film director and line producer building a complete professional pre-production package for a real production. Think like software used by production companies — precise, structured, production-ready.
 
 CREATIVE BRIEF:
@@ -266,11 +266,11 @@ CREATIVE BRIEF:
 Respond with ONLY valid JSON (no markdown) matching EXACTLY this schema:
 {{
  "concept": {{
-   "elevator_pitch": "", "campaign_goal": "", "audience": "", "emotional_tone": "", "core_message": "", "call_to_action": ""
+   "title": "a punchy creative title", "elevator_pitch": "", "main_message": "", "emotional_goal": "", "audience": "", "communication_objective": ""
  }},
  "treatment": {{
-   "visual_language": "", "narrative_style": "", "camera_philosophy": "", "lighting_philosophy": "",
-   "color_palette": "", "editing_rhythm": "", "sound_design": ""
+   "visual_style": "", "narrative_style": "", "camera_language": "", "editing_style": "",
+   "lighting_style": "", "color_palette": "", "sound_design": "", "overall_mood": ""
  }},
  "scenes": [{{
    "scene_number": 1, "title": "", "duration": "5s", "location": "", "time_of_day": "", "characters": "",
@@ -280,7 +280,7 @@ Respond with ONLY valid JSON (no markdown) matching EXACTLY this schema:
    "camera_position": "physical camera placement", "focal_length": "e.g. 35mm", "lighting": "lighting setup",
    "color_palette": "color mood", "sound_notes": "audio notes", "transition": "e.g. Cut/Fade",
    "frame_rate": "e.g. 24fps", "resolution": "e.g. 4K", "equipment": "camera + support + key gear for this shot",
-   "estimated_time": "setup+shoot estimate e.g. 45 min", "crew_notes": "", "director_notes": "creative intent",
+   "estimated_time": "setup+shoot estimate in minutes e.g. 45 min", "crew_notes": "", "director_notes": "creative intent",
    "production_notes": "logistics/risks", "image_prompt": "rich AI image prompt with style, lens, lighting, mood, composition"
  }}],
  "equipment": {{ "camera": "", "lens": "", "drone": "", "gimbal": "", "tripod": "", "lighting": "", "audio": "", "accessories": "" }},
@@ -289,11 +289,11 @@ Respond with ONLY valid JSON (no markdown) matching EXACTLY this schema:
  "budget": {{ "low": "$X - $Y range", "medium": "$X - $Y range", "commercial": "$X - $Y range", "premium": "$X - $Y range", "notes": "what drives the cost" }}
 }}
 
-Create EXACTLY {n} scenes (between 6 and 12). Tailor equipment/crew/schedule/budget to the '{p.get('crew_size')}' production level and '{p.get('duration')}' duration. Fill every field with concrete, professional content. No placeholders."""
+Create EXACTLY {n} scenes (between 8 and 12). Tailor equipment/crew/schedule/budget to the '{p.get('crew_size')}' production level and '{p.get('duration')}' duration. Fill every field with concrete, professional, realistic filmmaking content. Absolutely NO placeholder text or lorem ipsum."""
 
 
 def mock_output(p: dict) -> dict:
-    n = min(12, max(6, int(p.get("num_scenes") or 6)))
+    n = min(12, max(8, int(p.get("num_scenes") or 8)))
     scenes = []
     for i in range(1, n + 1):
         scenes.append({
@@ -313,14 +313,13 @@ def mock_output(p: dict) -> dict:
             "image_prompt": f"[MOCK] Cinematic {p.get('visual_style')} frame, {p.get('mood')} mood, scene {i}.",
         })
     return {
-        "concept": {"elevator_pitch": f"[MOCK] Elevator pitch for {p.get('title')}.",
-                    "campaign_goal": p.get("goal", ""), "audience": p.get("target_audience", ""),
-                    "emotional_tone": p.get("mood", ""), "core_message": "[MOCK] Core message.",
-                    "call_to_action": "[MOCK] Call to action."},
-        "treatment": {"visual_language": "[MOCK] Visual language.", "narrative_style": "[MOCK] Narrative style.",
-                      "camera_philosophy": "[MOCK] Camera philosophy.", "lighting_philosophy": "[MOCK] Lighting philosophy.",
-                      "color_palette": "[MOCK] Color palette.", "editing_rhythm": "[MOCK] Editing rhythm.",
-                      "sound_design": "[MOCK] Sound design direction."},
+        "concept": {"title": f"[MOCK] {p.get('title')}", "elevator_pitch": f"[MOCK] Elevator pitch for {p.get('title')}.",
+                    "main_message": "[MOCK] Main message.", "emotional_goal": p.get("mood", ""),
+                    "audience": p.get("target_audience", ""), "communication_objective": p.get("goal", "")},
+        "treatment": {"visual_style": "[MOCK] Visual style.", "narrative_style": "[MOCK] Narrative style.",
+                      "camera_language": "[MOCK] Camera language.", "editing_style": "[MOCK] Editing style.",
+                      "lighting_style": "[MOCK] Lighting style.", "color_palette": "[MOCK] Color palette.",
+                      "sound_design": "[MOCK] Sound design.", "overall_mood": p.get("mood", "")},
         "scenes": scenes,
         "equipment": {"camera": "Sony FX6", "lens": "24-70mm f/2.8, 85mm prime", "drone": "DJI Mavic 3 Cine",
                       "gimbal": "DJI RS 3 Pro", "tripod": "Sachtler fluid head", "lighting": "2x Aputure 600d, softboxes",

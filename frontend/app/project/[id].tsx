@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Modal,
-  KeyboardAvoidingView, Platform, useWindowDimensions,
+  KeyboardAvoidingView, Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn } from "react-native-reanimated";
+import DraggableFlatList, { ScaleDecorator } from "react-native-draggable-flatlist";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
 import { C, S, R, F, MAX_W } from "@/src/theme";
@@ -28,7 +29,6 @@ export default function Editor() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("Overview");
@@ -86,8 +86,6 @@ export default function Editor() {
 
   if (loading || !project) return <View style={styles.center}><ActivityIndicator color={C.brand} size="large" /></View>;
 
-  const cols = width > 760 ? 2 : 1;
-  const cardW = cols === 2 ? "48.5%" : "100%";
   const notGenerated = project.status !== "generated";
 
   return (
@@ -113,6 +111,14 @@ export default function Editor() {
         </ScrollView>
       </View>
 
+      {tab === "Storyboard" && !notGenerated ? (
+        <StoryboardTab
+          project={project} busyScene={busyScene} expanded={expanded} setExpanded={setExpanded}
+          onReorder={persistScenes} addScene={addScene}
+          actions={{ edit: (s: any) => setEditing({ ...s }), dup: dupScene, del: delScene, move,
+            regenScene, regenDialogue, regenCamera, regenPrompt }}
+        />
+      ) : (
       <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: 120, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
         {project.mock_mode ? <View style={{ marginBottom: S.md }}><MockBadge /></View> : null}
         <Animated.View key={tab} entering={FadeIn.duration(240)}>
@@ -126,46 +132,7 @@ export default function Editor() {
           ) : (
             <>
               {tab === "Overview" && <Overview p={project} />}
-              {tab === "Storyboard" && (
-                <View style={styles.grid}>
-                  {project.scenes.map((s: any, i: number) => (
-                    <View key={s.id} style={[styles.sceneCard, { width: cardW }]} testID={`scene-card-${i}`}>
-                      <View style={styles.frame}>
-                        <LinearGradient colors={["#201c12", "#0e0e0e"]} style={StyleSheet.absoluteFill} />
-                        <Ionicons name="image-outline" size={24} color={C.onSurface2} />
-                        <Text style={styles.frameNum}>SCENE {s.scene_number}</Text>
-                        <Text style={styles.frameDur}>{s.duration}</Text>
-                      </View>
-                      <View style={{ padding: S.md }}>
-                        <Text style={styles.sceneTitle} numberOfLines={1}>{s.title}</Text>
-                        <Body muted style={{ marginTop: 4 }} numberOfLines={3}>{s.visual_description || "No description"}</Body>
-                        <View style={styles.chips}><Chip>{s.shot_size}</Chip><Chip>{s.camera_movement}</Chip></View>
-                        {(s.dialogue || s.voice_over) ? <Text style={styles.quote} numberOfLines={2}>“{s.dialogue || s.voice_over}”</Text> : null}
-                        <View style={styles.promptBox}>
-                          <Text style={styles.promptLabel}>AI IMAGE PROMPT</Text>
-                          <Text style={styles.promptText} numberOfLines={3}>{s.image_prompt || "—"}</Text>
-                          <Pressable style={styles.miniRow} onPress={() => regenPrompt(s)} testID={`regen-prompt-${i}`}>
-                            {busyScene === s.id + "-p" ? <ActivityIndicator size="small" color={C.brand} /> : <><Ionicons name="refresh" size={13} color={C.brand} /><Text style={styles.miniLink}>Regenerate prompt</Text></>}
-                          </Pressable>
-                        </View>
-                        <View style={styles.regenRow}>
-                          <RegenChip icon="chatbubbles-outline" label="Dialogue" busy={busyScene === s.id + "-d"} onPress={() => regenDialogue(s)} testID={`regen-dialogue-${i}`} />
-                          <RegenChip icon="videocam-outline" label="Camera" busy={busyScene === s.id + "-c"} onPress={() => regenCamera(s)} testID={`regen-camera-${i}`} />
-                        </View>
-                        <View style={styles.actions}>
-                          <IconBtn icon="create-outline" onPress={() => setEditing({ ...s })} testID={`edit-${i}`} />
-                          <IconBtn icon="sparkles-outline" loading={busyScene === s.id} onPress={() => regenScene(s)} testID={`regen-${i}`} />
-                          <IconBtn icon="copy-outline" onPress={() => dupScene(s)} testID={`dup-${i}`} />
-                          <IconBtn icon="arrow-up" onPress={() => move(s, -1)} />
-                          <IconBtn icon="arrow-down" onPress={() => move(s, 1)} />
-                          <IconBtn icon="trash-outline" color={C.error} onPress={() => delScene(s)} testID={`del-${i}`} />
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                  <Btn title="Add Scene" variant="ghost" icon="add" onPress={addScene} testID="add-scene" style={{ marginTop: S.sm, width: "100%" }} />
-                </View>
-              )}
+              {/* Storyboard tab is rendered separately below via DraggableFlatList */}
               {tab === "Shot List" && (
                 <View>
                   {project.scenes.map((s: any, i: number) => {
@@ -243,6 +210,7 @@ export default function Editor() {
           )}
         </Animated.View>
       </ScrollView>
+      )}
 
       {/* Scene editor modal */}
       <Modal visible={!!editing} animationType="slide" onRequestClose={() => setEditing(null)}>
@@ -292,9 +260,9 @@ function Overview({ p }: any) {
   return (
     <View>
       <AnimIn><KVCard label="CREATIVE CONCEPT" icon="bulb-outline" data={p.concept}
-        order={["elevator_pitch", "campaign_goal", "audience", "emotional_tone", "core_message", "call_to_action"]} /></AnimIn>
+        order={["title", "elevator_pitch", "main_message", "emotional_goal", "audience", "communication_objective"]} /></AnimIn>
       <AnimIn delay={80}><KVCard label="DIRECTOR'S TREATMENT" icon="color-wand-outline" data={p.treatment}
-        order={["visual_language", "narrative_style", "camera_philosophy", "lighting_philosophy", "color_palette", "editing_rhythm", "sound_design"]} /></AnimIn>
+        order={["visual_style", "narrative_style", "camera_language", "editing_style", "lighting_style", "color_palette", "sound_design", "overall_mood"]} /></AnimIn>
     </View>
   );
 }
@@ -323,6 +291,101 @@ function RegenChip({ icon, label, busy, onPress, testID }: any) {
     <Pressable style={styles.regenChip} onPress={onPress} testID={testID}>
       {busy ? <ActivityIndicator size="small" color={C.brand} /> : <><Ionicons name={icon} size={13} color={C.brand} /><Text style={styles.regenChipText}>{label}</Text></>}
     </Pressable>
+  );
+}
+
+function parseMin(s: any) { const m = String(s || "").match(/[\d.]+/); return m ? parseFloat(m[0]) : 0; }
+function estShootTime(scenes: any[]) {
+  const mins = scenes.reduce((n, s) => n + (parseMin(s.estimated_time) || 45), 0);
+  const h = mins / 60;
+  return h >= 1 ? `${(Math.round(h * 10) / 10)} hrs` : `${Math.round(mins)} min`;
+}
+function ProgStat({ label, value }: any) {
+  return <View style={styles.progStat}><Text style={styles.progVal}>{value}</Text><Text style={styles.progLabel}>{label}</Text></View>;
+}
+
+const SB_FIELDS: [string, string][] = [
+  ["time_of_day", "Time of Day"], ["characters", "Characters"], ["visual_description", "Visual Description"],
+  ["subject_action", "Action"], ["dialogue", "Dialogue"], ["voice_over", "Voice Over"],
+  ["on_screen_text", "On Screen Text"], ["camera_angle", "Camera Angle"], ["camera_movement", "Camera Movement"],
+  ["focal_length", "Lens"], ["lighting", "Lighting"], ["color_palette", "Color Palette"],
+  ["sound_notes", "Audio Notes"], ["transition", "Transition"], ["director_notes", "Director Notes"],
+  ["production_notes", "Production Notes"],
+];
+
+function StoryboardTab({ project, busyScene, expanded, setExpanded, onReorder, addScene, actions }: any) {
+  const scenes = project.scenes || [];
+  const renderItem = ({ item: s, drag, isActive, getIndex }: any) => {
+    const i = getIndex() ?? 0;
+    const open = expanded[s.id];
+    return (
+      <ScaleDecorator>
+        <View style={[styles.sbCard, isActive && styles.sbCardActive]} testID={`scene-card-${i}`}>
+          <View style={styles.sbHead}>
+            <Pressable onLongPress={drag} delayLongPress={140} style={styles.dragHandle} testID={`drag-${i}`}>
+              <Ionicons name="reorder-three-outline" size={22} color={C.onSurface2} />
+            </Pressable>
+            <View style={styles.sbNum}><Text style={styles.sbNumText}>{s.scene_number}</Text></View>
+            <Pressable style={{ flex: 1 }} onPress={() => setExpanded((e: any) => ({ ...e, [s.id]: !open }))} testID={`toggle-${i}`}>
+              <Text style={styles.sbTitle} numberOfLines={1}>{s.title}</Text>
+              <View style={styles.sbMetaRow}><Chip>{s.duration}</Chip><Chip>{s.shot_size}</Chip><Chip>{s.location || "—"}</Chip></View>
+            </Pressable>
+            <Pressable onPress={() => setExpanded((e: any) => ({ ...e, [s.id]: !open }))} hitSlop={8}>
+              <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={C.onSurface2} />
+            </Pressable>
+          </View>
+          {open && (
+            <View style={styles.sbBody}>
+              {SB_FIELDS.filter(([k]) => s[k]).map(([k, l]) => (
+                <View key={k} style={styles.kvRow}><Text style={styles.kvLabel}>{l}</Text><Text style={styles.kvVal}>{String(s[k])}</Text></View>
+              ))}
+              <View style={styles.promptBox}>
+                <Text style={styles.promptLabel}>AI IMAGE PROMPT</Text>
+                <Text style={styles.promptText}>{s.image_prompt || "—"}</Text>
+              </View>
+              <View style={styles.regenRow}>
+                <RegenChip icon="chatbubbles-outline" label="Dialogue" busy={busyScene === s.id + "-d"} onPress={() => actions.regenDialogue(s)} testID={`regen-dialogue-${i}`} />
+                <RegenChip icon="videocam-outline" label="Camera" busy={busyScene === s.id + "-c"} onPress={() => actions.regenCamera(s)} testID={`regen-camera-${i}`} />
+                <RegenChip icon="image-outline" label="Prompt" busy={busyScene === s.id + "-p"} onPress={() => actions.regenPrompt(s)} testID={`regen-prompt-${i}`} />
+              </View>
+              <View style={styles.actions}>
+                <IconBtn icon="create-outline" onPress={() => actions.edit(s)} testID={`edit-${i}`} />
+                <IconBtn icon="sparkles-outline" loading={busyScene === s.id} onPress={() => actions.regenScene(s)} testID={`regen-${i}`} />
+                <IconBtn icon="copy-outline" onPress={() => actions.dup(s)} testID={`dup-${i}`} />
+                <IconBtn icon="arrow-up" onPress={() => actions.move(s, -1)} testID={`up-${i}`} />
+                <IconBtn icon="arrow-down" onPress={() => actions.move(s, 1)} testID={`down-${i}`} />
+                <IconBtn icon="trash-outline" color={C.error} onPress={() => actions.del(s)} testID={`del-${i}`} />
+              </View>
+            </View>
+          )}
+        </View>
+      </ScaleDecorator>
+    );
+  };
+  return (
+    <DraggableFlatList
+      data={scenes}
+      keyExtractor={(s: any) => s.id}
+      onDragEnd={({ data }: any) => onReorder(data.map((x: any, idx: number) => ({ ...x, scene_number: idx + 1 })))}
+      renderItem={renderItem}
+      activationDistance={12}
+      containerStyle={{ flex: 1 }}
+      contentContainerStyle={{ padding: S.lg, paddingBottom: 140, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}
+      ListHeaderComponent={
+        <View>
+          {project.mock_mode ? <View style={{ marginBottom: S.md }}><MockBadge /></View> : null}
+          <View style={styles.progress}>
+            <ProgStat label="Total Duration" value={totalDuration(scenes)} />
+            <View style={styles.progDiv} />
+            <ProgStat label="Total Scenes" value={String(scenes.length)} />
+            <View style={styles.progDiv} />
+            <ProgStat label="Est. Shooting Time" value={estShootTime(scenes)} />
+          </View>
+          <Body muted style={{ fontSize: 11.5, marginBottom: S.md }}>Long-press the handle to drag & reorder scenes.</Body>
+        </View>
+      }
+      ListFooterComponent={<Btn title="Add Scene" variant="ghost" icon="add" onPress={addScene} testID="add-scene" style={{ marginTop: S.md }} />}
+    />
   );
 }
 function Chip({ children }: any) { return <View style={styles.chip}><Text style={styles.chipText}>{children}</Text></View>; }
@@ -391,6 +454,20 @@ const styles = StyleSheet.create({
   budgetRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.sm },
   budgetTier: { color: C.onSurface, fontFamily: F.display, fontSize: 20 },
   budgetVal: { color: C.brand, fontFamily: F.text, fontSize: 15, fontWeight: "600" },
+  progress: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md, marginBottom: S.md },
+  progStat: { flex: 1, alignItems: "center" },
+  progVal: { color: C.onSurface, fontFamily: F.display, fontSize: 22 },
+  progLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 10.5, marginTop: 2, textAlign: "center" },
+  progDiv: { width: 1, height: 34, backgroundColor: C.border },
+  sbCard: { backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, marginBottom: S.md, overflow: "hidden" },
+  sbCardActive: { borderColor: C.brand, shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
+  sbHead: { flexDirection: "row", alignItems: "center", padding: S.md, gap: S.sm },
+  dragHandle: { padding: 4 },
+  sbNum: { width: 34, height: 34, borderRadius: R.sm, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
+  sbNumText: { color: C.brand, fontFamily: F.display, fontSize: 17 },
+  sbTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 18 },
+  sbMetaRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 5 },
+  sbBody: { paddingHorizontal: S.md, paddingBottom: S.md, borderTopWidth: 1, borderTopColor: C.border },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: S.md },
   sceneCard: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, overflow: "hidden", marginBottom: S.md },
   frame: { height: 130, alignItems: "center", justifyContent: "center" },
