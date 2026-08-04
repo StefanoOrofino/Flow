@@ -76,3 +76,16 @@ Implemented in strict priority order per user request:
 - **Mobile**: 44px min touch targets across ShotList/Settings controls; ShotList already card-based (not a wide table); AuthShell single-column on narrow with cinematic Hero (fixed-dark, intentional) hidden.
 - Verified iteration_8: theme switch/persistence/density/a11y/editor both-theme correctness + no regressions on dashboard/projects/templates/wizard, desktop 1280 + mobile 390. Cosmetic web-only warnings only (shadow* deprecation, dep element.ref).
 - Remaining (next): storyboard "one scene card per screen" swipe nav on phones; ShotList filters in a true bottom sheet; skeleton loaders vs spinners polish.
+
+## Sprint 7 (2026-06 / iterations 9) — Internationalization (English + Italian)
+- Stack: i18next@26 + react-i18next@17 + expo-localization@17. Config in src/i18n/index.ts (namespaced resources, fallbackLng 'en', fallbackNS 'common', ns:key separator ':', missing-key dev logging).
+- LanguageProvider (src/LanguageProvider.tsx): exposes currentLanguage / setLanguage / availableLanguages. First launch detects device locale (it→Italian, else English); selected code persisted to AsyncStorage 'frameflow.language' (only 'en'|'it', validated). Instant switch (react-i18next) with no reload/logout. Gated first render to avoid flicker. Wrapped in _layout: ThemeProvider > LanguageProvider > AuthProvider.
+- Translation files: src/i18n/en.json + it.json, namespaces: common (incl. time.* relative), navigation, auth, validation, errors, settings, dashboard, projects, templates. Plurals via i18next (projects.scenesCount_one/_other → scena/scene). Relative time + date/number formatting use active locale (it-IT / en-US).
+- Project Language concept (separate from UI language) requested by user — NOT yet implemented (deferred; needs backend Project.language field + wizard + AI-gen wiring).
+- COMPLETED & verified (iteration 9 + screenshot): Phase 1 (infra + shared), Phase 2 (Login/Signup/Reset + AuthShell tagline), navigation tabs, Settings (full + 🌐 Language selector lang-en/lang-it), and Phase 3 core screens Dashboard + Projects + Templates. Confirmed instant switch, persistence across reload, no raw keys, EN+IT.
+- REMAINING (next i18n phases):
+  - New Project wizard (app/(tabs)/new.tsx) — dozens of picker/field labels (options.ts values are data taxonomy — decide translate vs keep).
+  - Editor app/project/[id].tsx tab bar + Overview/Script/Exports/Settings tab strings + confirm dialogs.
+  - Storyboard field group labels, ShotList column/group labels + toolbar, AIDirector panel strings.
+  - Project Language feature (backend + wizard + AI output language) per user's detailed spec.
+  - Backend error-code → translated message mapping.

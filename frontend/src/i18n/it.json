@@ -17,7 +17,13 @@
     "confirm": "Conferma",
     "or": "OPPURE",
     "comingSoon": "Prossimamente",
-    "generate": "Genera"
+    "generate": "Genera",
+    "time": {
+      "justNow": "proprio ora",
+      "minutesAgo": "{{n}} min fa",
+      "hoursAgo": "{{n}} h fa",
+      "daysAgo": "{{n}} g fa"
+    }
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -183,7 +189,8 @@
     "statusGenerated": "Generato",
     "statusDraft": "Bozza",
     "noClient": "Nessun cliente",
-    "scenesCount": "{{count}} scene"
+    "scenesCount_one": "{{count}} scena",
+    "scenesCount_other": "{{count}} scene"
   },
   "templates": {
     "title": "Modelli",

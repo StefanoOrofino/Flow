@@ -17,7 +17,13 @@
     "confirm": "Confirm",
     "or": "OR",
     "comingSoon": "Coming soon",
-    "generate": "Generate"
+    "generate": "Generate",
+    "time": {
+      "justNow": "just now",
+      "minutesAgo": "{{n}}m ago",
+      "hoursAgo": "{{n}}h ago",
+      "daysAgo": "{{n}}d ago"
+    }
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -183,7 +189,8 @@
     "statusGenerated": "Generated",
     "statusDraft": "Draft",
     "noClient": "No client",
-    "scenesCount": "{{count}} scenes"
+    "scenesCount_one": "{{count}} scene",
+    "scenesCount_other": "{{count}} scenes"
   },
   "templates": {
     "title": "Templates",

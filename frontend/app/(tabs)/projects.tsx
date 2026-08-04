@@ -7,20 +7,28 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/src/LanguageProvider";
 import { H1, Body, Btn, Badge, AnimIn, Skeleton, EmptyState } from "@/src/components";
 
-const FILTERS = ["All", "Favorites", "Drafts", "Generated", "Archived"];
-const SORTS = [{ k: "recent", l: "Recent" }, { k: "name", l: "Name" }, { k: "status", l: "Status" }];
+const FILTERS = [
+  { k: "All", tk: "filterAll" }, { k: "Favorites", tk: "filterFavorites" },
+  { k: "Drafts", tk: "filterDrafts" }, { k: "Generated", tk: "filterGenerated" }, { k: "Archived", tk: "filterArchived" },
+];
+const SORTS = [{ k: "recent", tk: "sortRecent" }, { k: "name", tk: "sortName" }, { k: "status", tk: "sortStatus" }];
 
-function rel(s?: string) {
+function rel(s: string | undefined, locale: string) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return new Date(s).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
 export default function Projects() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { C } = useTheme();
+  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
+  const locale = currentLanguage === "it" ? "it-IT" : "en-US";
   const styles = useMemo(() => createStyles(C), [C]);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,23 +71,23 @@ export default function Projects() {
   return (
     <View style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
-        <H1>My Projects</H1>
+        <H1>{t("projects:title")}</H1>
         <View style={styles.searchBox}>
           <Ionicons name="search" size={16} color={C.onSurface2} />
-          <TextInput value={q} onChangeText={setQ} placeholder="Search projects" placeholderTextColor={C.onSurface2} style={styles.searchInput} testID="search-input" />
+          <TextInput value={q} onChangeText={setQ} placeholder={t("projects:searchPlaceholder")} placeholderTextColor={C.onSurface2} style={styles.searchInput} testID="search-input" />
           {q ? <Pressable onPress={() => setQ("")}><Ionicons name="close-circle" size={16} color={C.onSurface2} /></Pressable> : null}
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.sm, paddingVertical: S.sm }}>
           {FILTERS.map((ff) => (
-            <Pressable key={ff} onPress={() => setFilter(ff)} style={[styles.chip, filter === ff && styles.chipActive]} testID={`filter-${ff}`}>
-              <Text style={[styles.chipText, filter === ff && { color: C.onBrand }]}>{ff}</Text>
+            <Pressable key={ff.k} onPress={() => setFilter(ff.k)} style={[styles.chip, filter === ff.k && styles.chipActive]} testID={`filter-${ff.k}`}>
+              <Text style={[styles.chipText, filter === ff.k && { color: C.onBrand }]}>{t(`projects:${ff.tk}`)}</Text>
             </Pressable>
           ))}
           <View style={styles.sortDivider} />
           {SORTS.map((so) => (
             <Pressable key={so.k} onPress={() => setSort(so.k)} style={[styles.chip, sort === so.k && styles.chipSort]} testID={`sort-${so.k}`}>
               <Ionicons name="swap-vertical" size={12} color={sort === so.k ? C.brand : C.onSurface2} />
-              <Text style={[styles.chipText, { marginLeft: 4 }, sort === so.k && { color: C.brand }]}>{so.l}</Text>
+              <Text style={[styles.chipText, { marginLeft: 4 }, sort === so.k && { color: C.brand }]}>{t(`projects:${so.tk}`)}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -90,9 +98,9 @@ export default function Projects() {
         {loading ? (
           <View style={{ gap: S.md }}>{[0, 1, 2, 3].map((i) => <Skeleton key={i} height={84} radius={16} />)}</View>
         ) : list.length === 0 ? (
-          <EmptyState icon="folder-open-outline" title={q || filter !== "All" ? "No matches" : "No projects yet"}
-            subtitle={q || filter !== "All" ? "Try a different search or filter." : "Create your first production to see it here."}
-            actionLabel={q || filter !== "All" ? undefined : "Create Project"} onAction={() => router.push("/new")} testID="projects-empty" />
+          <EmptyState icon="folder-open-outline" title={q || filter !== "All" ? t("projects:noMatches") : t("projects:noProjects")}
+            subtitle={q || filter !== "All" ? t("projects:noMatchesSub") : t("projects:noProjectsSub")}
+            actionLabel={q || filter !== "All" ? undefined : t("projects:create")} onAction={() => router.push("/new")} testID="projects-empty" />
         ) : (
           list.map((p, i) => (
             <AnimIn key={p.id} delay={i * 40}>
@@ -106,10 +114,10 @@ export default function Projects() {
                     <Text style={styles.title} numberOfLines={1}>{p.title}</Text>
                     {p.favorite ? <Ionicons name="star" size={14} color={C.brand} /> : null}
                   </View>
-                  <Body muted numberOfLines={1} style={{ fontSize: 12.5, marginTop: 2 }}>{(p.client || "No client") + " · " + p.video_type + " · " + p.duration}</Body>
+                  <Body muted numberOfLines={1} style={{ fontSize: 12.5, marginTop: 2 }}>{(p.client || t("projects:noClient")) + " · " + p.video_type + " · " + p.duration}</Body>
                   <View style={styles.metaRow}>
-                    <Badge label={p.archived ? "Archived" : p.status === "generated" ? "Generated" : "Draft"} tone={p.status === "generated" && !p.archived ? "success" : "default"} />
-                    <Text style={styles.meta}>{rel(p.updated_at)} · {(p.scenes?.length || 0)} scenes</Text>
+                    <Badge label={p.archived ? t("projects:statusArchived") : p.status === "generated" ? t("projects:statusGenerated") : t("projects:statusDraft")} tone={p.status === "generated" && !p.archived ? "success" : "default"} />
+                    <Text style={styles.meta}>{rel(p.updated_at, locale)} · {t("projects:scenesCount", { count: p.scenes?.length || 0 })}</Text>
                   </View>
                 </Pressable>
                 <Pressable onPress={() => setMenuFor(p)} style={styles.menuBtn} testID={`menu-${p.id}`} hitSlop={8}><Ionicons name="ellipsis-vertical" size={18} color={C.onSurface2} /></Pressable>
@@ -124,12 +132,12 @@ export default function Projects() {
         <Pressable style={styles.modalBg} onPress={() => setMenuFor(null)}>
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle} numberOfLines={1}>{menuFor?.title}</Text>
-            <Act icon="create-outline" label="Open editor" onPress={() => { const p = menuFor; setMenuFor(null); router.push(`/project/${p.id}`); }} />
-            <Act icon={menuFor?.favorite ? "star" : "star-outline"} label={menuFor?.favorite ? "Unfavorite" : "Add to favorites"} onPress={() => { patch(menuFor, { favorite: !menuFor.favorite }); setMenuFor(null); }} testID="fav-action" />
-            <Act icon="pencil-outline" label="Rename" onPress={() => { const p = menuFor; setMenuFor(null); setRenameVal(p.title); setRenaming(p); }} testID="rename-action" />
-            <Act icon="copy-outline" label="Duplicate" onPress={() => duplicate(menuFor)} testID="dup-action" />
-            <Act icon={menuFor?.archived ? "arrow-undo-outline" : "archive-outline"} label={menuFor?.archived ? "Unarchive" : "Archive"} onPress={() => { patch(menuFor, { archived: !menuFor.archived }); setMenuFor(null); }} testID="archive-action" />
-            <Act icon="trash-outline" label="Delete" color={C.error} onPress={() => { const p = menuFor; setMenuFor(null); setConfirmDel(p); }} testID="del-action" />
+            <Act icon="create-outline" label={t("projects:openEditor")} onPress={() => { const p = menuFor; setMenuFor(null); router.push(`/project/${p.id}`); }} />
+            <Act icon={menuFor?.favorite ? "star" : "star-outline"} label={menuFor?.favorite ? t("projects:removeFavorite") : t("projects:addFavorite")} onPress={() => { patch(menuFor, { favorite: !menuFor.favorite }); setMenuFor(null); }} testID="fav-action" />
+            <Act icon="pencil-outline" label={t("projects:rename")} onPress={() => { const p = menuFor; setMenuFor(null); setRenameVal(p.title); setRenaming(p); }} testID="rename-action" />
+            <Act icon="copy-outline" label={t("common:duplicate")} onPress={() => duplicate(menuFor)} testID="dup-action" />
+            <Act icon={menuFor?.archived ? "arrow-undo-outline" : "archive-outline"} label={menuFor?.archived ? t("projects:unarchive") : t("projects:archive")} onPress={() => { patch(menuFor, { archived: !menuFor.archived }); setMenuFor(null); }} testID="archive-action" />
+            <Act icon="trash-outline" label={t("common:delete")} color={C.error} onPress={() => { const p = menuFor; setMenuFor(null); setConfirmDel(p); }} testID="del-action" />
           </View>
         </Pressable>
       </Modal>
@@ -138,10 +146,10 @@ export default function Projects() {
       <Modal visible={!!renaming} transparent animationType="fade" onRequestClose={() => setRenaming(null)}>
         <View style={styles.modalBg}>
           <View style={styles.centerSheet}>
-            <Text style={styles.sheetTitle}>Rename project</Text>
+            <Text style={styles.sheetTitle}>{t("projects:renameTitle")}</Text>
             <TextInput value={renameVal} onChangeText={setRenameVal} style={styles.renameInput} autoFocus testID="rename-input" />
-            <Btn title="Save" onPress={doRename} testID="rename-save" style={{ marginTop: S.md, marginBottom: S.sm }} />
-            <Btn title="Cancel" variant="ghost" onPress={() => setRenaming(null)} />
+            <Btn title={t("common:save")} onPress={doRename} testID="rename-save" style={{ marginTop: S.md, marginBottom: S.sm }} />
+            <Btn title={t("common:cancel")} variant="ghost" onPress={() => setRenaming(null)} />
           </View>
         </View>
       </Modal>
@@ -150,10 +158,10 @@ export default function Projects() {
       <Modal visible={!!confirmDel} transparent animationType="fade" onRequestClose={() => setConfirmDel(null)}>
         <View style={styles.modalBg}>
           <View style={styles.centerSheet}>
-            <Text style={styles.sheetTitle}>Delete project?</Text>
-            <Body muted style={{ marginBottom: S.lg }}>“{confirmDel?.title}” will be permanently removed.</Body>
-            <Btn title="Delete" onPress={del} testID="confirm-delete" style={{ backgroundColor: C.error, marginBottom: S.sm }} />
-            <Btn title="Cancel" variant="ghost" onPress={() => setConfirmDel(null)} />
+            <Text style={styles.sheetTitle}>{t("projects:deleteTitle")}</Text>
+            <Body muted style={{ marginBottom: S.lg }}>{t("projects:deleteBody", { title: confirmDel?.title })}</Body>
+            <Btn title={t("common:delete")} onPress={del} testID="confirm-delete" style={{ backgroundColor: C.error, marginBottom: S.sm }} />
+            <Btn title={t("common:cancel")} variant="ghost" onPress={() => setConfirmDel(null)} />
           </View>
         </View>
       </Modal>

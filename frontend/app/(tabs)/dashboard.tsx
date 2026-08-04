@@ -9,17 +9,19 @@ import { useAuth } from "@/src/auth";
 import { api } from "@/src/api";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
+import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/src/LanguageProvider";
 import { H1, H2, Body, StatCard, Skeleton, AnimIn, Badge } from "@/src/components";
 
 const HERO = "https://images.unsplash.com/photo-1608186336271-53313eeaf864?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBjYW1lcmElMjBsZW5zJTIwZGFya3xlbnwwfHx8fDE3ODU3NjIxNDZ8MA&ixlib=rb-4.1.0&q=85";
 
-function rel(s?: string) {
+function rel(s: string | undefined, t: any, locale: string) {
   if (!s) return "—";
   const d = new Date(s).getTime(); const diff = Date.now() - d;
-  const m = Math.floor(diff / 60000); if (m < 1) return "just now"; if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
-  const days = Math.floor(h / 24); if (days < 7) return `${days}d ago`;
-  return new Date(s).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const m = Math.floor(diff / 60000); if (m < 1) return t("common:time.justNow"); if (m < 60) return t("common:time.minutesAgo", { n: m });
+  const h = Math.floor(m / 60); if (h < 24) return t("common:time.hoursAgo", { n: h });
+  const days = Math.floor(h / 24); if (days < 7) return t("common:time.daysAgo", { n: days });
+  return new Date(s).toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 export default function Dashboard() {
@@ -27,6 +29,9 @@ export default function Dashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { C } = useTheme();
+  const { t } = useTranslation();
+  const { currentLanguage } = useLanguage();
+  const locale = currentLanguage === "it" ? "it-IT" : "en-US";
   const styles = useMemo(() => createStyles(C), [C]);
   const { width } = useWindowDimensions();
   const wide = width > 760;
@@ -61,9 +66,9 @@ export default function Dashboard() {
     visual_style: t.visual_style, mood: t.mood } });
 
   const quicks = [
-    { icon: "add", label: "New Project", sub: "Start a brief", to: "/new" },
-    { icon: "albums-outline", label: "Templates", sub: "Proven formats", to: "/templates" },
-    { icon: "folder-outline", label: "My Projects", sub: `${active.length} total`, to: "/projects" },
+    { icon: "add", label: t("dashboard:newProject"), sub: t("dashboard:newProjectSub"), to: "/new", id: "new" },
+    { icon: "albums-outline", label: t("dashboard:templates"), sub: t("dashboard:templatesSub"), to: "/templates", id: "templates" },
+    { icon: "folder-outline", label: t("dashboard:myProjects"), sub: t("dashboard:myProjectsSub", { count: active.length }), to: "/projects", id: "projects" },
   ];
 
   return (
@@ -75,27 +80,27 @@ export default function Dashboard() {
         <LinearGradient colors={["rgba(10,10,10,0.55)", "rgba(10,10,10,0.97)"]} style={StyleSheet.absoluteFill} />
         <View style={[styles.heroInner, { paddingTop: insets.top + S.xl }]}>
           <Text style={styles.kicker}>FRAMEFLOW STUDIO</Text>
-          <H1 style={{ marginTop: S.sm }}>Welcome back, {user?.name?.split(" ")[0] || "Director"}</H1>
-          <Body muted style={{ marginTop: 4 }}>Your creative operating system for video production.</Body>
+          <H1 style={{ marginTop: S.sm }}>{t("dashboard:welcome", { name: user?.name?.split(" ")[0] || t("settings:director") })}</H1>
+          <Body muted style={{ marginTop: 4 }}>{t("dashboard:subtitle")}</Body>
         </View>
       </View>
 
       <View style={styles.container}>
         {/* Stats */}
         <View style={[styles.statsRow, wide && { flexWrap: "nowrap" }]}>
-          <StatCard icon="film-outline" value={active.length} label="Projects" delay={0} />
-          <StatCard icon="sparkles-outline" value={generated} label="Generated" delay={50} />
-          <StatCard icon="images-outline" value={scenesTotal} label="Scenes" delay={100} />
-          <StatCard icon="download-outline" value={exports} label="Exports" delay={150} />
+          <StatCard icon="film-outline" value={active.length} label={t("dashboard:stats.projects")} delay={0} />
+          <StatCard icon="sparkles-outline" value={generated} label={t("dashboard:stats.generated")} delay={50} />
+          <StatCard icon="images-outline" value={scenesTotal} label={t("dashboard:stats.scenes")} delay={100} />
+          <StatCard icon="download-outline" value={exports} label={t("dashboard:stats.exports")} delay={150} />
         </View>
-        <AnimIn delay={180}><Body muted style={{ marginTop: S.sm, fontSize: 12.5 }}>Last activity {rel(lastActivity)}</Body></AnimIn>
+        <AnimIn delay={180}><Body muted style={{ marginTop: S.sm, fontSize: 12.5 }}>{t("dashboard:lastActivity", { time: rel(lastActivity, t, locale) })}</Body></AnimIn>
 
         {/* Quick actions */}
-        <H2 style={styles.secTitle}>Quick Actions</H2>
+        <H2 style={styles.secTitle}>{t("dashboard:quickActions")}</H2>
         <View style={styles.quickRow}>
           {quicks.map((q, i) => (
-            <AnimIn key={q.label} delay={i * 60} style={{ flex: 1 }}>
-              <Pressable style={styles.quick} onPress={() => router.push(q.to as any)} testID={`quick-${q.label}`}>
+            <AnimIn key={q.id} delay={i * 60} style={{ flex: 1 }}>
+              <Pressable style={styles.quick} onPress={() => router.push(q.to as any)} testID={`quick-${q.id}`}>
                 <View style={styles.quickIcon}><Ionicons name={q.icon as any} size={18} color={C.brand} /></View>
                 <Text style={styles.quickLabel}>{q.label}</Text>
                 <Text style={styles.quickSub}>{q.sub}</Text>
@@ -107,13 +112,13 @@ export default function Dashboard() {
         {/* Continue working */}
         {drafts.length > 0 && (
           <>
-            <H2 style={styles.secTitle}>Continue Working</H2>
+            <H2 style={styles.secTitle}>{t("dashboard:continueWorking")}</H2>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.md, paddingRight: S.lg }}>
               {drafts.map((p) => (
                 <Pressable key={p.id} style={styles.contCard} onPress={() => router.push(`/project/${p.id}`)} testID={`continue-${p.id}`}>
                   <Ionicons name="document-text-outline" size={20} color={C.onSurface2} />
                   <Text style={styles.contTitle} numberOfLines={2}>{p.title}</Text>
-                  <Badge label="Draft" />
+                  <Badge label={t("dashboard:draft")} />
                 </Pressable>
               ))}
             </ScrollView>
@@ -122,8 +127,8 @@ export default function Dashboard() {
 
         {/* Recent projects */}
         <View style={styles.secHead}>
-          <H2>Recent Projects</H2>
-          {active.length > 0 && <Pressable onPress={() => router.push("/projects")}><Text style={styles.viewAll}>View all</Text></Pressable>}
+          <H2>{t("dashboard:recentProjects")}</H2>
+          {active.length > 0 && <Pressable onPress={() => router.push("/projects")}><Text style={styles.viewAll}>{t("dashboard:viewAll")}</Text></Pressable>}
         </View>
 
         {loading ? (
@@ -131,10 +136,10 @@ export default function Dashboard() {
         ) : active.length === 0 ? (
           <AnimIn style={styles.empty}>
             <View style={styles.emptyIcon}><Ionicons name="videocam-outline" size={28} color={C.brand} /></View>
-            <H2 style={{ marginTop: S.md }}>No productions yet</H2>
-            <Body muted style={{ textAlign: "center", marginTop: 4, marginBottom: S.lg }}>Turn a creative brief into a full storyboard, script and shot list.</Body>
+            <H2 style={{ marginTop: S.md }}>{t("dashboard:noProjectsTitle")}</H2>
+            <Body muted style={{ textAlign: "center", marginTop: 4, marginBottom: S.lg }}>{t("dashboard:noProjectsSubtitle")}</Body>
             <Pressable style={styles.cta} onPress={() => router.push("/new")} testID="create-storyboard-btn">
-              <Ionicons name="add" size={18} color={C.onBrand} /><Text style={styles.ctaText}>Create your first project</Text>
+              <Ionicons name="add" size={18} color={C.onBrand} /><Text style={styles.ctaText}>{t("dashboard:createFirst")}</Text>
             </Pressable>
           </AnimIn>
         ) : (
@@ -147,8 +152,8 @@ export default function Dashboard() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.projTitle} numberOfLines={1}>{p.title}</Text>
-                  <Body muted numberOfLines={1} style={{ fontSize: 12.5, marginTop: 2 }}>{(p.client || "No client") + " · " + p.video_type}</Body>
-                  <Text style={styles.meta}>{rel(p.updated_at)} · {(p.scenes?.length || 0)} scenes</Text>
+                  <Body muted numberOfLines={1} style={{ fontSize: 12.5, marginTop: 2 }}>{(p.client || t("projects:noClient")) + " · " + p.video_type}</Body>
+                  <Text style={styles.meta}>{rel(p.updated_at, t, locale)} · {t("projects:scenesCount", { count: p.scenes?.length || 0 })}</Text>
                 </View>
                 <Pressable onPress={() => toggleFav(p)} hitSlop={10} style={{ padding: 6 }} testID={`fav-${p.id}`}>
                   <Ionicons name={p.favorite ? "star" : "star-outline"} size={18} color={p.favorite ? C.brand : C.onSurface2} />
@@ -161,13 +166,13 @@ export default function Dashboard() {
         {/* Templates strip */}
         {templates.length > 0 && (
           <>
-            <View style={styles.secHead}><H2>Templates</H2><Pressable onPress={() => router.push("/templates")}><Text style={styles.viewAll}>Browse</Text></Pressable></View>
+            <View style={styles.secHead}><H2>{t("dashboard:templates")}</H2><Pressable onPress={() => router.push("/templates")}><Text style={styles.viewAll}>{t("dashboard:browse")}</Text></Pressable></View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.md, paddingRight: S.lg }}>
-              {templates.slice(0, 8).map((t) => (
-                <Pressable key={t.id} style={styles.tplCard} onPress={() => applyTemplate(t)} testID={`tpl-${t.id}`}>
+              {templates.slice(0, 8).map((t2) => (
+                <Pressable key={t2.id} style={styles.tplCard} onPress={() => applyTemplate(t2)} testID={`tpl-${t2.id}`}>
                   <View style={styles.tplIcon}><Ionicons name="albums-outline" size={18} color={C.brand} /></View>
-                  <Text style={styles.tplTitle} numberOfLines={2}>{t.name}</Text>
-                  <Text style={styles.tplMeta}>{t.duration} · {t.num_scenes} scenes</Text>
+                  <Text style={styles.tplTitle} numberOfLines={2}>{t2.name}</Text>
+                  <Text style={styles.tplMeta}>{t2.duration} · {t("projects:scenesCount", { count: t2.num_scenes })}</Text>
                 </Pressable>
               ))}
             </ScrollView>

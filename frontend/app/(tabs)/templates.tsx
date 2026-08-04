@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
+import { useTranslation } from "react-i18next";
 import { H1, Body, AnimIn, Skeleton } from "@/src/components";
 import { TEMPLATE_CATEGORIES } from "@/src/options";
 
@@ -21,6 +22,7 @@ export default function Templates() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { C } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(C), [C]);
   const { width } = useWindowDimensions();
   const cols = width > 720 ? 2 : 1;
@@ -32,22 +34,22 @@ export default function Templates() {
     (async () => { try { setTemplates(await api.templates()); } catch {} finally { setLoading(false); } })();
   }, []));
 
-  const list = useMemo(() => cat === "All" ? templates : templates.filter((t) => t.category === cat), [templates, cat]);
+  const list = useMemo(() => cat === "All" ? templates : templates.filter((x) => x.category === cat), [templates, cat]);
 
-  const use = (t: any) => router.push({ pathname: "/new", params: {
-    title: t.name, video_type: t.video_type, platform: t.platform, duration: t.duration,
-    aspect_ratio: t.aspect_ratio, num_scenes: String(t.num_scenes), crew_size: t.crew_size,
-    visual_style: t.visual_style, mood: t.mood } });
+  const applyTemplate = (tpl: any) => router.push({ pathname: "/new", params: {
+    title: tpl.name, video_type: tpl.video_type, platform: tpl.platform, duration: tpl.duration,
+    aspect_ratio: tpl.aspect_ratio, num_scenes: String(tpl.num_scenes), crew_size: tpl.crew_size,
+    visual_style: tpl.visual_style, mood: tpl.mood } });
 
   return (
     <View style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
-        <H1>Templates</H1>
-        <Body muted style={{ marginTop: 4 }}>Start faster with a proven production format.</Body>
+        <H1>{t("templates:title")}</H1>
+        <Body muted style={{ marginTop: 4 }}>{t("templates:subtitle")}</Body>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.sm, paddingVertical: S.md }}>
           {TEMPLATE_CATEGORIES.map((cc) => (
             <Pressable key={cc} onPress={() => setCat(cc)} style={[styles.chip, cat === cc && styles.chipActive]} testID={`cat-${cc}`}>
-              <Text style={[styles.chipText, cat === cc && { color: C.onBrand }]}>{cc}</Text>
+              <Text style={[styles.chipText, cat === cc && { color: C.onBrand }]}>{cc === "All" ? t("projects:filterAll") : cc}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -58,21 +60,21 @@ export default function Templates() {
           <View style={{ gap: S.md }}>{[0, 1, 2].map((i) => <Skeleton key={i} height={150} radius={20} />)}</View>
         ) : (
           <View style={[styles.grid, cols === 1 && { flexDirection: "column" }]}>
-            {list.map((t, i) => (
-              <AnimIn key={t.id} delay={i * 40} style={{ width: cols === 2 ? "48.5%" : "100%" }}>
-                <Pressable style={styles.card} onPress={() => use(t)} testID={`template-${t.id}`}>
+            {list.map((tpl, i) => (
+              <AnimIn key={tpl.id} delay={i * 40} style={{ width: cols === 2 ? "48.5%" : "100%" }}>
+                <Pressable style={styles.card} onPress={() => applyTemplate(tpl)} testID={`template-${tpl.id}`}>
                   <View style={styles.cardTop}>
                     <LinearGradient colors={["#2a2416", "#0e0e0e"]} style={StyleSheet.absoluteFill} />
-                    <View style={styles.iconBox}><Ionicons name={(ICONS[t.category] || "albums-outline") as any} size={22} color={C.brand} /></View>
-                    <Text style={styles.catTag}>{t.category}</Text>
+                    <View style={styles.iconBox}><Ionicons name={(ICONS[tpl.category] || "albums-outline") as any} size={22} color={C.brand} /></View>
+                    <Text style={styles.catTag}>{tpl.category}</Text>
                   </View>
                   <View style={{ padding: S.lg }}>
-                    <Text style={styles.title}>{t.name}</Text>
-                    <Body muted style={{ marginTop: 4, fontSize: 13 }} numberOfLines={2}>{t.description}</Body>
+                    <Text style={styles.title}>{tpl.name}</Text>
+                    <Body muted style={{ marginTop: 4, fontSize: 13 }} numberOfLines={2}>{tpl.description}</Body>
                     <View style={styles.tags}>
-                      <Tag>{t.platform}</Tag><Tag>{t.duration}</Tag><Tag>{t.aspect_ratio}</Tag><Tag>{t.num_scenes} scenes</Tag>
+                      <Tag>{tpl.platform}</Tag><Tag>{tpl.duration}</Tag><Tag>{tpl.aspect_ratio}</Tag><Tag>{t("projects:scenesCount", { count: tpl.num_scenes })}</Tag>
                     </View>
-                    <View style={styles.useRow}><Text style={styles.useText}>Use template</Text><Ionicons name="arrow-forward" size={15} color={C.brand} /></View>
+                    <View style={styles.useRow}><Text style={styles.useText}>{t("templates:useTemplate")}</Text><Ionicons name="arrow-forward" size={15} color={C.brand} /></View>
                   </View>
                 </Pressable>
               </AnimIn>
