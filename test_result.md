@@ -156,3 +156,19 @@ test_plan:
 agent_communication:
     - agent: "main"
       message: "Frontend-only regression for the Design System sprint. Login with seeded account (see /app/memory/test_credentials.md: sb_1785767871@studio.com / secret123). Verify: (1) Settings > Appearance > Theme tiles switch the WHOLE app instantly between Dark and Light with no reload/flash and persist across navigation; System follows device. (2) Workspace density radios change readability (Large bigger); Compact is disabled on phone width. (3) Accessibility Reduce motion + High contrast toggles work. (4) Open seeded project c73286507b42 editor and confirm Overview, Storyboard scene cards, Shot List cards, Script and the AI Director panel all render correctly in BOTH light and dark (no dark residual in light, no white flashes in dark). (5) No regressions to existing flows (dashboard, projects, templates, new project wizard). Do NOT trigger real AI image generation (uses credits) — just confirm the confirm-modal + panels theme correctly. Test at mobile width (390) and desktop width."
+
+  - task: "i18n Phase 1+2: framework, LanguageProvider, device detect, persistence, Settings language switcher, translated navigation + auth + settings"
+    implemented: true
+    working: "NA"
+    file: "src/i18n/index.ts, src/i18n/en.json, src/i18n/it.json, src/LanguageProvider.tsx, app/_layout.tsx, app/(tabs)/_layout.tsx, app/(tabs)/settings.tsx, app/login.tsx, app/signup.tsx, app/reset.tsx, src/AuthShell.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "i18next + react-i18next + expo-localization. LanguageProvider exposes currentLanguage/setLanguage/availableLanguages; persists frameflow.language in AsyncStorage; first launch detects device locale (it->Italian else English); default fallback en. Settings > Language selector (lang-en / lang-it) switches whole UI instantly. Namespaced en.json/it.json (common/auth/navigation/settings/errors/validation/dashboard/projects/templates + stubs). Phase 3/4 (dashboard/projects/templates/wizard/editor body strings) still English - to be wired next."
+
+agent_communication:
+    - agent: "main"
+      message: "i18n Phase 1+2 regression (frontend only). Seeded login: sb_1785767871@studio.com / secret123. Verify: (1) App loads in English by default with NO raw i18n keys (no 'auth:...' or 'settings:...' visible). (2) Login/Signup/Reset screens fully translated. (3) Bottom tab labels translated. (4) Settings > 🌐 Language shows English + Italiano (testIDs lang-en, lang-it). Tapping Italiano instantly switches Settings + tab labels to Italian with NO reload/logout/navigation reset (e.g. title becomes 'Impostazioni', tabs 'Progetti/Modelli/Nuovo', logout 'Esci'). Tapping English switches back. (5) Selection persists after full page reload (AsyncStorage frameflow.language). (6) Theme/density/accessibility from previous sprint still work. NOTE: Dashboard/Projects/Templates/New-wizard/Editor body content is intentionally still English in this phase (Phase 3/4 pending) - do NOT fail the run for those; only confirm the translated surfaces above and that no raw keys appear on translated screens. Test at desktop 1280 and mobile 390 (Compact density disabled on mobile)."

@@ -5,10 +5,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/src/auth";
 import { F } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
+import { useTranslation } from "react-i18next";
 
 export default function TabsLayout() {
   const { user, loading } = useAuth();
   const { C } = useTheme();
+  const { t } = useTranslation("navigation");
   const router = useRouter();
 
   useEffect(() => {
@@ -39,11 +41,11 @@ export default function TabsLayout() {
         tabBarLabelStyle: { fontFamily: F.text, fontSize: 11 },
       }}
     >
-      <Tabs.Screen name="dashboard" options={{ title: "Dashboard", tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} /> }} />
-      <Tabs.Screen name="projects" options={{ title: "Projects", tabBarIcon: ({ color, size }) => <Ionicons name="folder-outline" size={size} color={color} /> }} />
-      <Tabs.Screen name="new" options={{ title: "New", tabBarIcon: ({ color, size }) => <Ionicons name="add-circle" size={size + 6} color={color} /> }} />
-      <Tabs.Screen name="templates" options={{ title: "Templates", tabBarIcon: ({ color, size }) => <Ionicons name="albums-outline" size={size} color={color} /> }} />
-      <Tabs.Screen name="settings" options={{ title: "Account", tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
+      <Tabs.Screen name="dashboard" options={{ title: t("dashboard"), tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} /> }} />
+      <Tabs.Screen name="projects" options={{ title: t("projects"), tabBarIcon: ({ color, size }) => <Ionicons name="folder-outline" size={size} color={color} /> }} />
+      <Tabs.Screen name="new" options={{ title: t("new"), tabBarIcon: ({ color, size }) => <Ionicons name="add-circle" size={size + 6} color={color} /> }} />
+      <Tabs.Screen name="templates" options={{ title: t("templates"), tabBarIcon: ({ color, size }) => <Ionicons name="albums-outline" size={size} color={color} /> }} />
+      <Tabs.Screen name="settings" options={{ title: t("account"), tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} /> }} />
     </Tabs>
   );
 }

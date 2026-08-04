@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { S, R, F, Palette, darkPalette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
+import { useTranslation } from "react-i18next";
 
 // The marketing Hero is an intentional, always-cinematic dark panel (like
 // Linear/Arc auth). It uses the fixed dark palette regardless of app theme.
@@ -106,6 +107,7 @@ function Hero() {
 
 export default function AuthShell({ title, subtitle, children }: any) {
   const { C } = useTheme();
+  const { t } = useTranslation();
   const r = useMemo(() => createRightStyles(C), [C]);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -129,7 +131,7 @@ export default function AuthShell({ title, subtitle, children }: any) {
               {subtitle ? <Text style={r.subtitle}>{subtitle}</Text> : null}
               <View style={{ marginTop: S.lg }}>{children}</View>
             </Animated.View>
-            {!wide && <Text style={r.mobileTag}>The AI Operating System for Video Production</Text>}
+            {!wide && <Text style={r.mobileTag}>{t("auth:tagline")}</Text>}
           </ScrollView>
         </View>
       </View>

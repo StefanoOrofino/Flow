@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { api } from "@/src/api";
 import { S, F, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
@@ -10,6 +11,7 @@ import AuthShell from "@/src/AuthShell";
 export default function Reset() {
   const router = useRouter();
   const { C } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(C), [C]);
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
@@ -21,11 +23,11 @@ export default function Reset() {
 
   const request = async () => {
     setErr(""); setMsg("");
-    if (!email) return setErr("Enter your email.");
+    if (!email) return setErr(t("validation:emailRequired"));
     setLoading(true);
     try {
       const res = await api.resetRequest(email.trim());
-      setMsg("If that email exists, a reset token was created. Enter it below.");
+      setMsg(t("auth:resetSent"));
       if (res?.dev_token) setToken(res.dev_token);
       setStep(2);
     } catch (e: any) { setErr(e.message); } finally { setLoading(false); }
@@ -33,40 +35,40 @@ export default function Reset() {
 
   const confirm = async () => {
     setErr(""); setMsg("");
-    if (!token || !pw) return setErr("Enter the token and a new password.");
+    if (!token || !pw) return setErr(t("validation:tokenPasswordRequired"));
     setLoading(true);
     try {
       await api.resetConfirm(token.trim(), pw);
-      setMsg("Password updated. You can sign in now.");
+      setMsg(t("auth:resetDone"));
       setStep(3);
     } catch (e: any) { setErr(e.message); } finally { setLoading(false); }
   };
 
   return (
-    <AuthShell title="Reset password" subtitle="Recover access to your account.">
+    <AuthShell title={t("auth:resetTitle")} subtitle={t("auth:resetSubtitle")}>
       {err ? <View style={styles.errBox}><Text style={styles.errText}>{err}</Text></View> : null}
       {msg ? <View style={styles.okBox}><Text style={styles.okText}>{msg}</Text></View> : null}
 
       {step === 1 && (
         <>
-          <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@studio.com"
+          <Field label={t("auth:email")} value={email} onChangeText={setEmail} placeholder={t("auth:emailPlaceholder")}
             keyboardType="email-address" testID="reset-email" />
-          <Btn title="Send reset token" onPress={request} loading={loading} testID="reset-request" style={{ marginTop: S.md }} />
+          <Btn title={t("auth:sendResetToken")} onPress={request} loading={loading} testID="reset-request" style={{ marginTop: S.md }} />
         </>
       )}
       {step === 2 && (
         <>
-          <Field label="Reset token" value={token} onChangeText={setToken} placeholder="Paste token" testID="reset-token" />
-          <Field label="New password" value={pw} onChangeText={setPw} placeholder="New password" secureTextEntry testID="reset-newpw" />
-          <Btn title="Update password" onPress={confirm} loading={loading} testID="reset-confirm" style={{ marginTop: S.md }} />
+          <Field label={t("auth:resetTokenLabel")} value={token} onChangeText={setToken} placeholder={t("auth:resetTokenPlaceholder")} testID="reset-token" />
+          <Field label={t("auth:newPassword")} value={pw} onChangeText={setPw} placeholder={t("auth:newPassword")} secureTextEntry testID="reset-newpw" />
+          <Btn title={t("auth:updatePassword")} onPress={confirm} loading={loading} testID="reset-confirm" style={{ marginTop: S.md }} />
         </>
       )}
       {step === 3 && (
-        <Btn title="Back to sign in" onPress={() => router.replace("/login")} testID="reset-done" />
+        <Btn title={t("auth:backToSignIn")} onPress={() => router.replace("/login")} testID="reset-done" />
       )}
 
       <Pressable onPress={() => router.replace("/login")} style={{ marginTop: S.xl, alignItems: "center" }}>
-        <Text style={styles.link}>Back to sign in</Text>
+        <Text style={styles.link}>{t("auth:backToSignIn")}</Text>
       </Pressable>
     </AuthShell>
   );

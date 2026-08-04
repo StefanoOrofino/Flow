@@ -2,42 +2,46 @@ import React, { useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/src/auth";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme, ThemeMode, Density } from "@/src/ThemeProvider";
+import { useLanguage } from "@/src/LanguageProvider";
 import { H1, H2, Body, Btn, Card } from "@/src/components";
 
-const THEME_OPTIONS: { key: ThemeMode; label: string; icon: any }[] = [
-  { key: "system", label: "System", icon: "phone-portrait-outline" },
-  { key: "light", label: "Light", icon: "sunny-outline" },
-  { key: "dark", label: "Dark", icon: "moon-outline" },
+const THEME_OPTIONS: { key: ThemeMode; labelKey: string; icon: any }[] = [
+  { key: "system", labelKey: "themeSystem", icon: "phone-portrait-outline" },
+  { key: "light", labelKey: "themeLight", icon: "sunny-outline" },
+  { key: "dark", labelKey: "themeDark", icon: "moon-outline" },
 ];
 
-const DENSITY_OPTIONS: { key: Density; label: string; sub: string }[] = [
-  { key: "compact", label: "Compact", sub: "Desktop only" },
-  { key: "comfortable", label: "Comfortable", sub: "Default" },
-  { key: "large", label: "Large", sub: "Most readable" },
-];
-
-const SHORTCUTS: [string, string][] = [
-  ["Undo", "⌘ / Ctrl + Z"],
-  ["Redo", "⌘ / Ctrl + Shift + Z"],
-  ["Save", "Autosaves continuously"],
+const DENSITY_OPTIONS: { key: Density; labelKey: string; subKey: string }[] = [
+  { key: "compact", labelKey: "densityCompact", subKey: "densityDesktopOnly" },
+  { key: "comfortable", labelKey: "densityComfortable", subKey: "densityDefault" },
+  { key: "large", labelKey: "densityLarge", subKey: "densityMostReadable" },
 ];
 
 export default function Settings() {
   const { user, logout } = useAuth();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation("settings");
+  const { currentLanguage, setLanguage, availableLanguages } = useLanguage();
   const {
     C, mode, setMode, density, setDensity, reduceMotion, setReduceMotion,
     highContrast, setHighContrast, isPhone,
   } = useTheme();
   const styles = useMemo(() => createStyles(C), [C]);
 
+  const SHORTCUTS: [string, string][] = [
+    [t("shortcutUndo"), "⌘ / Ctrl + Z"],
+    [t("shortcutRedo"), "⌘ / Ctrl + Shift + Z"],
+    [t("shortcutSave"), t("shortcutSaveValue")],
+  ];
+
   return (
     <View style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={[styles.header, { paddingTop: insets.top + S.lg }]}>
-        <H1>Settings</H1>
+        <H1>{t("title")}</H1>
       </View>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Profile */}
@@ -45,23 +49,23 @@ export default function Settings() {
           <View style={styles.avatarRow}>
             <View style={styles.avatar}><Ionicons name="person" size={26} color={C.brand} /></View>
             <View style={{ flex: 1 }}>
-              <H2>{user?.name || "Director"}</H2>
+              <H2>{user?.name || t("director")}</H2>
               <Body muted>{user?.email}</Body>
             </View>
           </View>
         </Card>
 
         {/* Appearance */}
-        <Text style={styles.sectionLabel}>APPEARANCE</Text>
+        <Text style={styles.sectionLabel}>{t("appearance")}</Text>
         <Card style={{ marginBottom: S.lg }}>
-          <Text style={styles.fieldLabel}>Theme</Text>
+          <Text style={styles.fieldLabel}>{t("theme")}</Text>
           <View style={styles.tileRow}>
             {THEME_OPTIONS.map((o) => {
               const active = mode === o.key;
               return (
                 <Pressable key={o.key} testID={`theme-${o.key}`} onPress={() => setMode(o.key)} style={[styles.tile, active && styles.tileActive]}>
                   <Ionicons name={o.icon} size={20} color={active ? C.brand : C.onSurface2} />
-                  <Text style={[styles.tileLabel, active && { color: C.onSurface }]}>{o.label}</Text>
+                  <Text style={[styles.tileLabel, active && { color: C.onSurface }]}>{t(o.labelKey)}</Text>
                 </Pressable>
               );
             })}
@@ -69,7 +73,7 @@ export default function Settings() {
 
           <View style={styles.divider} />
 
-          <Text style={styles.fieldLabel}>Workspace density</Text>
+          <Text style={styles.fieldLabel}>{t("workspaceDensity")}</Text>
           <View style={styles.densityCol}>
             {DENSITY_OPTIONS.map((o) => {
               const disabled = isPhone && o.key === "compact";
@@ -83,8 +87,8 @@ export default function Settings() {
                   style={[styles.densityRow, active && styles.densityRowActive, disabled && { opacity: 0.4 }]}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.densityLabel, active && { color: C.onSurface }]}>{o.label}</Text>
-                    <Text style={styles.densitySub}>{disabled ? "Not available on mobile" : o.sub}</Text>
+                    <Text style={[styles.densityLabel, active && { color: C.onSurface }]}>{t(o.labelKey)}</Text>
+                    <Text style={styles.densitySub}>{disabled ? t("densityUnavailableMobile") : t(o.subKey)}</Text>
                   </View>
                   <Ionicons
                     name={active ? "radio-button-on" : "radio-button-off"}
@@ -98,59 +102,75 @@ export default function Settings() {
 
           <View style={styles.divider} />
 
-          <Text style={styles.fieldLabel}>Accent color</Text>
+          <Text style={styles.fieldLabel}>{t("accentColor")}</Text>
           <View style={styles.accentRow}>
             <View style={styles.swatch} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.rowLabel}>Signature Gold</Text>
-              <Text style={styles.rowValue}>#C5A059 · Brand identity</Text>
+              <Text style={styles.rowLabel}>{t("accentName")}</Text>
+              <Text style={styles.rowValue}>{t("accentDesc")}</Text>
             </View>
             <Ionicons name="lock-closed-outline" size={16} color={C.onSurface2} />
           </View>
         </Card>
 
+        {/* Language */}
+        <Text style={styles.sectionLabel}>🌐 {t("language")}</Text>
+        <Card style={{ marginBottom: S.lg }}>
+          <View style={styles.tileRow}>
+            {availableLanguages.map((l) => {
+              const active = currentLanguage === l.code;
+              return (
+                <Pressable key={l.code} testID={`lang-${l.code}`} onPress={() => setLanguage(l.code)} style={[styles.tile, active && styles.tileActive]}>
+                  <Text style={[styles.tileLabel, { fontSize: 14 }, active && { color: C.onSurface }]}>{l.label}</Text>
+                  {active && <Ionicons name="checkmark-circle" size={16} color={C.brand} />}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Card>
+
         {/* Accessibility */}
-        <Text style={styles.sectionLabel}>ACCESSIBILITY</Text>
+        <Text style={styles.sectionLabel}>{t("accessibility")}</Text>
         <Card style={{ marginBottom: S.lg }}>
           <ToggleRow
             C={C} styles={styles} icon="pulse-outline"
-            label="Reduce motion" desc="Minimize animations and transitions"
+            label={t("reduceMotion")} desc={t("reduceMotionDesc")}
             value={reduceMotion} onValueChange={setReduceMotion} testID="toggle-reduce-motion"
           />
           <View style={styles.divider} />
           <ToggleRow
             C={C} styles={styles} icon="contrast-outline"
-            label="High contrast" desc="Stronger borders and text for clarity"
+            label={t("highContrast")} desc={t("highContrastDesc")}
             value={highContrast} onValueChange={setHighContrast} testID="toggle-high-contrast"
           />
         </Card>
 
         {/* Notifications */}
-        <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
+        <Text style={styles.sectionLabel}>{t("notifications")}</Text>
         <Card style={{ marginBottom: S.lg }}>
-          <Row C={C} styles={styles} icon="mail-outline" label="Email updates" value="Project & render summaries" />
+          <Row C={C} styles={styles} icon="mail-outline" label={t("emailUpdates")} value={t("emailUpdatesDesc")} />
         </Card>
 
         {/* AI */}
-        <Text style={styles.sectionLabel}>AI</Text>
+        <Text style={styles.sectionLabel}>{t("ai")}</Text>
         <Card style={{ marginBottom: S.lg }}>
-          <Row C={C} styles={styles} icon="sparkles-outline" label="AI engine" value="Modular provider" />
+          <Row C={C} styles={styles} icon="sparkles-outline" label={t("aiEngine")} value={t("aiEngineValue")} />
           <View style={styles.divider} />
-          <Row C={C} styles={styles} icon="image-outline" label="Image generation" value="Gemini · cost-controlled" />
+          <Row C={C} styles={styles} icon="image-outline" label={t("imageGeneration")} value={t("imageGenerationValue")} />
         </Card>
 
         {/* Export */}
-        <Text style={styles.sectionLabel}>EXPORT</Text>
+        <Text style={styles.sectionLabel}>{t("export")}</Text>
         <Card style={{ marginBottom: S.lg }}>
-          <Row C={C} styles={styles} icon="document-text-outline" label="Default format" value="Storyboard PDF" />
+          <Row C={C} styles={styles} icon="document-text-outline" label={t("defaultFormat")} value={t("defaultFormatValue")} />
           <View style={styles.divider} />
-          <Row C={C} styles={styles} icon="film-outline" label="Default aspect ratio" value="16:9" />
+          <Row C={C} styles={styles} icon="film-outline" label={t("defaultAspectRatio")} value="16:9" />
         </Card>
 
         {/* Keyboard shortcuts (web/desktop) */}
         {Platform.OS === "web" && (
           <>
-            <Text style={styles.sectionLabel}>KEYBOARD SHORTCUTS</Text>
+            <Text style={styles.sectionLabel}>{t("keyboardShortcuts")}</Text>
             <Card style={{ marginBottom: S.lg }}>
               {SHORTCUTS.map(([k, v], i) => (
                 <View key={k}>
@@ -166,14 +186,14 @@ export default function Settings() {
         )}
 
         {/* About */}
-        <Text style={styles.sectionLabel}>ABOUT</Text>
+        <Text style={styles.sectionLabel}>{t("about")}</Text>
         <Card style={{ marginBottom: S.lg }}>
-          <Row C={C} styles={styles} icon="shield-checkmark-outline" label="Data" value="Private to your account" />
+          <Row C={C} styles={styles} icon="shield-checkmark-outline" label={t("data")} value={t("dataValue")} />
           <View style={styles.divider} />
-          <Row C={C} styles={styles} icon="information-circle-outline" label="Version" value="FrameFlow Studio 1.0" />
+          <Row C={C} styles={styles} icon="information-circle-outline" label={t("version")} value="FrameFlow Studio 1.0" />
         </Card>
 
-        <Btn title="Log out" variant="ghost" icon="log-out-outline" onPress={logout} testID="logout-btn" />
+        <Btn title={t("logout")} variant="ghost" icon="log-out-outline" onPress={logout} testID="logout-btn" />
       </ScrollView>
     </View>
   );

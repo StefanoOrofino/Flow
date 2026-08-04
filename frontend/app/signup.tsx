@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/src/auth";
 import { S, F, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
@@ -10,6 +11,7 @@ import AuthShell from "@/src/AuthShell";
 export default function Signup() {
   const { register, loginWithGoogle } = useAuth();
   const { C } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(C), [C]);
   const router = useRouter();
   const [name, setName] = useState("");
@@ -20,38 +22,38 @@ export default function Signup() {
 
   const submit = async () => {
     setErr("");
-    if (!email || !password) return setErr("Email and password are required.");
-    if (password.length < 6) return setErr("Password must be at least 6 characters.");
+    if (!email || !password) return setErr(t("validation:emailPasswordRequiredSignup"));
+    if (password.length < 6) return setErr(t("validation:passwordTooShort"));
     setLoading(true);
     try {
       await register(email.trim(), password, name.trim());
       router.replace("/dashboard");
     } catch (e: any) {
-      setErr(e.message || "Sign up failed");
+      setErr(e.message || t("errors:signupFailed"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthShell title="Create account" subtitle="Start building cinematic productions with AI.">
+    <AuthShell title={t("auth:createAccount")} subtitle={t("auth:createAccountSubtitle")}>
       {err ? <View style={styles.errBox}><Text style={styles.errText}>{err}</Text></View> : null}
 
-      <Field label="Name" value={name} onChangeText={setName} placeholder="Your name" testID="signup-name" />
-      <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@studio.com"
+      <Field label={t("auth:name")} value={name} onChangeText={setName} placeholder={t("auth:namePlaceholder")} testID="signup-name" />
+      <Field label={t("auth:email")} value={email} onChangeText={setEmail} placeholder={t("auth:emailPlaceholder")}
         keyboardType="email-address" testID="signup-email" />
-      <Field label="Password" value={password} onChangeText={setPassword} placeholder="At least 6 characters"
+      <Field label={t("auth:password")} value={password} onChangeText={setPassword} placeholder={t("auth:passwordHint")}
         secureTextEntry testID="signup-password" />
 
-      <Btn title="Create Account" onPress={submit} loading={loading} testID="signup-submit" style={{ marginTop: S.md }} />
+      <Btn title={t("auth:createAccountButton")} onPress={submit} loading={loading} testID="signup-submit" style={{ marginTop: S.md }} />
 
-      <View style={styles.divider}><View style={styles.line} /><Text style={styles.dividerText}>OR</Text><View style={styles.line} /></View>
-      <Btn title="Sign in with Google" variant="ghost" icon="logo-google" onPress={loginWithGoogle} testID="google-signup" />
+      <View style={styles.divider}><View style={styles.line} /><Text style={styles.dividerText}>{t("common:or")}</Text><View style={styles.line} /></View>
+      <Btn title={t("auth:signInWithGoogle")} variant="ghost" icon="logo-google" onPress={loginWithGoogle} testID="google-signup" />
 
       <View style={styles.footer}>
-        <Text style={styles.muted}>Already have an account? </Text>
+        <Text style={styles.muted}>{t("auth:haveAccount")}</Text>
         <Pressable onPress={() => router.replace("/login")} testID="goto-login">
-          <Text style={styles.link}>Sign in</Text>
+          <Text style={styles.link}>{t("auth:signIn")}</Text>
         </Pressable>
       </View>
     </AuthShell>

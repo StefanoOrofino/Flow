@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/src/auth";
 import { S, F, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
@@ -10,6 +11,7 @@ import AuthShell from "@/src/AuthShell";
 export default function Login() {
   const { login, loginWithGoogle } = useAuth();
   const { C } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(C), [C]);
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -20,44 +22,44 @@ export default function Login() {
 
   const submit = async () => {
     setErr("");
-    if (!email || !password) return setErr("Enter your email and password.");
+    if (!email || !password) return setErr(t("validation:emailPasswordRequired"));
     setLoading(true);
     try {
       await login(email.trim(), password);
       router.replace("/dashboard");
     } catch (e: any) {
-      setErr(e.message || "Login failed");
+      setErr(e.message || t("errors:loginFailed"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthShell title="Welcome back" subtitle="Sign in to your production suite.">
+    <AuthShell title={t("auth:welcomeBack")} subtitle={t("auth:signInSubtitle")}>
       {err ? <View style={styles.errBox}><Text style={styles.errText}>{err}</Text></View> : null}
       {notice ? <View style={styles.noticeBox}><Text style={styles.noticeText}>{notice}</Text></View> : null}
 
-      <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@studio.com"
+      <Field label={t("auth:email")} value={email} onChangeText={setEmail} placeholder={t("auth:emailPlaceholder")}
         keyboardType="email-address" testID="login-email" />
-      <Field label="Password" value={password} onChangeText={setPassword} placeholder="••••••••"
+      <Field label={t("auth:password")} value={password} onChangeText={setPassword} placeholder={t("auth:passwordPlaceholder")}
         secureTextEntry testID="login-password" />
 
       <Pressable onPress={() => router.push("/reset")} testID="forgot-link" style={{ alignSelf: "flex-end" }}>
-        <Text style={styles.link}>Forgot password?</Text>
+        <Text style={styles.link}>{t("auth:forgotPassword")}</Text>
       </Pressable>
 
-      <Btn title="Continue" onPress={submit} loading={loading} testID="login-submit" style={{ marginTop: S.md }} />
+      <Btn title={t("auth:signInButton")} onPress={submit} loading={loading} testID="login-submit" style={{ marginTop: S.md }} />
 
-      <View style={styles.divider}><View style={styles.line} /><Text style={styles.dividerText}>OR</Text><View style={styles.line} /></View>
+      <View style={styles.divider}><View style={styles.line} /><Text style={styles.dividerText}>{t("common:or")}</Text><View style={styles.line} /></View>
 
-      <Btn title="Sign in with Google" variant="ghost" icon="logo-google" onPress={loginWithGoogle} testID="google-login" style={{ marginBottom: S.sm }} />
-      <Btn title="Sign in with Apple" variant="ghost" icon="logo-apple"
-        onPress={() => setNotice("Apple Sign-In is coming soon — please continue with email or Google.")} testID="apple-login" />
+      <Btn title={t("auth:signInWithGoogle")} variant="ghost" icon="logo-google" onPress={loginWithGoogle} testID="google-login" style={{ marginBottom: S.sm }} />
+      <Btn title={t("auth:signInWithApple")} variant="ghost" icon="logo-apple"
+        onPress={() => setNotice(t("auth:appleComingSoon"))} testID="apple-login" />
 
       <View style={styles.footer}>
-        <Text style={styles.muted}>New here? </Text>
+        <Text style={styles.muted}>{t("auth:newHere")}</Text>
         <Pressable onPress={() => router.push("/signup")} testID="goto-signup">
-          <Text style={styles.link}>Create account</Text>
+          <Text style={styles.link}>{t("auth:createAccountLink")}</Text>
         </Pressable>
       </View>
     </AuthShell>
