@@ -94,10 +94,18 @@ class ProjectIn(BaseModel):
     visual_style: str = "Cinematic"
     camera_style: str = "Steady & composed"
     lighting_style: str = "Natural"
+    camera_styles: list[str] = []
+    custom_camera_style: str = ""
+    lighting_styles: list[str] = []
+    custom_lighting_style: str = ""
     editing_style: str = "Rhythmic"
     music_style: str = "Ambient score"
     director_references: str = ""
     film_references: str = ""
+    key_message: str = ""
+    call_to_action: str = ""
+    references: str = ""
+    notes: str = ""
     # Step 4 — Advanced
     deliverables: str = ""
     special_requests: str = ""
