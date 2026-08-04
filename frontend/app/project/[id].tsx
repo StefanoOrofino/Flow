@@ -319,10 +319,11 @@ function Overview({ p, persist }: any) {
   const { t } = useTranslation();
   // One-time safe migration from legacy single-select camera/lighting style.
   useEffect(() => {
-    const patch: any = {};
+    if (p.styles_migrated) return;
+    const patch: any = { styles_migrated: true };
     if (!(p.camera_styles?.length) && !p.custom_camera_style && p.camera_style) patch.custom_camera_style = p.camera_style;
     if (!(p.lighting_styles?.length) && !p.custom_lighting_style && p.lighting_style) patch.custom_lighting_style = p.lighting_style;
-    if (Object.keys(patch).length) persist(patch);
+    persist(patch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

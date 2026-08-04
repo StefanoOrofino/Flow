@@ -89,3 +89,13 @@ Implemented in strict priority order per user request:
   - Storyboard field group labels, ShotList column/group labels + toolbar, AIDirector panel strings.
   - Project Language feature (backend + wizard + AI output language) per user's detailed spec.
   - Backend error-code → translated message mapping.
+
+## Sprint 8 (2026-06 / iteration 12) — Editable Overview + Camera/Lighting Multi-Select (Run 1 of "Fully Editable Workspace")
+- OVERVIEW tab now fully editable (was read-only). Inline EditableField brief fields (title/client/campaign/goal/target_audience/key_message/call_to_action/references/extra_notes) with debounced autosave via useProjectStore.mutate + undo/redo. Single-selects via Picker (duration/platform/aspect_ratio/language/crew_size/visual_style/mood/editing_style/music_style). AI concept/treatment kept as read-only reference cards below.
+- NEW reusable `MultiSelect` component (src/components.tsx): removable chips, in-sheet search, Custom free-text, up-arrow reorder, bottom-sheet on phone / centered sheet on wide. Used for Camera Styles + Lighting Styles in Overview.
+- options.ts: CAMERA_STYLES_MULTI, LIGHTING_STYLES_MULTI, LANGUAGES added.
+- Data model: ProjectIn extended (camera_styles[], custom_camera_style, lighting_styles[], custom_lighting_style, key_message, call_to_action, references, notes). Overview edits go through PUT /projects/{id} (schema-free merge), so no strict-model blocking. Legacy single camera_style/lighting_style migrated ONCE into custom_* on first open (guarded by styles_migrated flag).
+- AI: build_prompt uses _style_list() (arrays + custom, fallback legacy) and, when >1 style, adds a palette-distribution instruction (do not force every style into every scene).
+- i18n: overview namespace + common.multiselect (EN + IT).
+- Verified iteration_12: 9/9 acceptance (autosave+persist, focus retention while autosaving, pickers, both multiselects incl. search/custom/reorder/persist, undo/redo, no regressions in Storyboard/ShotList/AIDirector, EN+IT no raw keys, Light/Dark, mobile bottom-sheet no overflow). Applied post-test fix: migration guarded with styles_migrated flag.
+- NEXT EPIC (approved for next run): "Create Project from Client Brief" — entry point, multi-file upload, PDF/DOCX/PPTX/TXT/RTF extraction, structured AI analysis w/ High/Med/Low confidence, editable Analysis Summary review (no project generation yet in that run).
