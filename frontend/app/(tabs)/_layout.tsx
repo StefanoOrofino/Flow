@@ -32,7 +32,8 @@ export default function TabsLayout() {
   // Respect the home-indicator / gesture inset; keep a comfortable minimum on
   // devices that report 0 (older iPhones with a home button, Android, web).
   const bottomInset = Math.max(insets.bottom, Platform.OS === "android" ? 12 : 10);
-  const contentHeight = 56; // icon + label, keeps every touch target >= 44pt
+  const paddingTop = 8;
+  const contentHeight = 60; // icon + label; keeps every touch target >= 44pt
 
   return (
     <Tabs
@@ -44,9 +45,11 @@ export default function TabsLayout() {
           backgroundColor: C.surface2,
           borderTopColor: C.border,
           borderTopWidth: 1,
-          height: contentHeight + bottomInset,
+          // Reserve top padding + bottom inset ON TOP of the content height so
+          // the label is never clipped (web uses border-box sizing).
+          height: contentHeight + paddingTop + bottomInset,
           paddingBottom: bottomInset,
-          paddingTop: 8,
+          paddingTop,
         },
         tabBarItemStyle: { minHeight: 44, paddingVertical: 2 },
         tabBarIconStyle: { marginTop: 1 },
