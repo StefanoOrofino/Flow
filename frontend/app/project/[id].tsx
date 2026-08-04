@@ -21,6 +21,8 @@ import { Btn, H2, Body, Badge, MockBadge, AnimIn, Picker, MultiSelect } from "@/
 import * as O from "@/src/options";
 import { exportPdf, exportCsv, printProject } from "@/src/exporter";
 import ShotList from "@/src/ShotList";
+import { Icon } from "@/src/ui/Icon";
+import { Tabs as DSTabs } from "@/src/ui/DS";
 
 // Active palette + styles for this screen. Updated at the top of the Editor
 // render from useTheme(); the root view is keyed by theme so the whole subtree
@@ -39,6 +41,10 @@ const frameStatusMeta = (status: string): { c: string; i: string } => ({
 } as Record<string, { c: string; i: string }>)[status] || { c: C.onSurface2, i: "ellipse-outline" };
 
 const TABS = ["Overview", "Storyboard", "Script", "Shot List", "Equipment", "Crew", "Schedule", "Budget", "Exports", "Settings"];
+const TAB_ICONS: Record<string, string> = {
+  Overview: "dashboard", Storyboard: "clapperboard", Script: "file-text", "Shot List": "list-checks",
+  Equipment: "camera", Crew: "users", Schedule: "calendar", Budget: "wallet", Exports: "download", Settings: "settings",
+};
 
 const cap = (k: string) => k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -176,35 +182,41 @@ export default function Editor() {
 
   return (
     <View key={theme.resolvedTheme} style={{ flex: 1, backgroundColor: C.surface }}>
-      {/* Header */}
+      {/* Header — calm, editorial, content-first */}
       <View style={[styles.header, { paddingTop: insets.top + S.md }]}>
-        <Pressable onPress={() => router.back()} testID="editor-back" hitSlop={8}><Ionicons name="arrow-back" size={22} color={C.onSurface} /></Pressable>
-        <View style={{ flex: 1, marginHorizontal: S.md }}>
-          <Text style={styles.hTitle} numberOfLines={1}>{project.title}</Text>
+        <View style={styles.hTopRow}>
+          <Pressable onPress={() => router.back()} testID="editor-back" hitSlop={8} style={styles.hIconBtn}>
+            <Icon name="arrow-left" size={19} color={C.onSurface} />
+          </Pressable>
+          <Text style={styles.hKicker} numberOfLines={1}>FRAMEFLOW STUDIO</Text>
+          <View style={{ flex: 1 }} />
+          <Pressable onPress={store.undo} disabled={!store.canUndo} testID="undo-btn" hitSlop={8} style={[styles.hIconBtn, { opacity: store.canUndo ? 1 : 0.3 }]}><Icon name="undo" size={18} color={C.onSurface} /></Pressable>
+          <Pressable onPress={store.redo} disabled={!store.canRedo} testID="redo-btn" hitSlop={8} style={[styles.hIconBtn, { opacity: store.canRedo ? 1 : 0.3 }]}><Icon name="redo" size={18} color={C.onSurface} /></Pressable>
+          <Pressable onPress={() => setTab("Exports")} testID="export-btn" hitSlop={8} style={styles.hIconBtn}><Icon name="share" size={18} color={C.onSurface} /></Pressable>
+          <Pressable onPress={() => setDirectorOpen(true)} testID="director-open" hitSlop={8} style={styles.hDirector}><Icon name="wand" size={16} color={C.onBrand} strokeWidth={2} /></Pressable>
+        </View>
+        <Text style={styles.hTitle} numberOfLines={2}>{project.title}</Text>
+        <View style={styles.hMetaRow}>
+          <Text style={styles.hMeta} numberOfLines={1}>
+            {[project.client, project.video_type].filter(Boolean).join("  ·  ") || "Untitled production"}
+            {"   ·   "}{project.scenes.length} scenes · {totalDuration(project.scenes)}
+          </Text>
+          <View style={{ flex: 1 }} />
           <View style={styles.saveRow}>
             {saveState === "saving" && <><ActivityIndicator size="small" color={C.onSurface2} /><Text style={styles.hSub}>Saving…</Text></>}
             {saveState === "recovering" && <><ActivityIndicator size="small" color={C.warning} /><Text style={[styles.hSub, { color: C.warning }]}>Recovering…</Text></>}
-            {saveState === "saved" && <><Ionicons name="checkmark-circle" size={13} color={C.success} /><Text style={[styles.hSub, { color: C.success }]}>Saved</Text></>}
-            {saveState === "unsaved" && <><View style={styles.unsavedDot} /><Text style={styles.hSub}>Unsaved changes</Text></>}
-            {saveState === "offline" && <><Ionicons name="cloud-offline-outline" size={13} color={C.warning} /><Text style={[styles.hSub, { color: C.warning }]}>Offline · changes kept</Text></>}
-            {(saveState === "idle" || saveState === "error") && <Text style={styles.hSub}>{project.scenes.length} scenes · {totalDuration(project.scenes)}</Text>}
+            {saveState === "saved" && <><View style={[styles.saveDot, { backgroundColor: C.success }]} /><Text style={[styles.hSub, { color: C.success }]}>Saved</Text></>}
+            {saveState === "unsaved" && <><View style={styles.saveDot} /><Text style={styles.hSub}>Unsaved</Text></>}
+            {saveState === "offline" && <><View style={[styles.saveDot, { backgroundColor: C.warning }]} /><Text style={[styles.hSub, { color: C.warning }]}>Offline · kept</Text></>}
           </View>
         </View>
-        <Pressable onPress={store.undo} disabled={!store.canUndo} testID="undo-btn" hitSlop={8} style={{ opacity: store.canUndo ? 1 : 0.35, marginRight: 14 }}><Ionicons name="arrow-undo-outline" size={20} color={C.onSurface} /></Pressable>
-        <Pressable onPress={store.redo} disabled={!store.canRedo} testID="redo-btn" hitSlop={8} style={{ opacity: store.canRedo ? 1 : 0.35, marginRight: 14 }}><Ionicons name="arrow-redo-outline" size={20} color={C.onSurface} /></Pressable>
-        <Pressable onPress={() => setDirectorOpen(true)} testID="director-open" hitSlop={8} style={{ marginRight: 14 }}><Ionicons name="sparkles" size={21} color={C.brand} /></Pressable>
-        <Pressable onPress={() => setTab("Exports")} testID="export-btn" hitSlop={8}><Ionicons name="share-outline" size={22} color={C.brand} /></Pressable>
       </View>
 
-      {/* Tabs */}
+      {/* Tabs — DS underline */}
       <View style={styles.tabsWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.sm, paddingHorizontal: S.lg }}>
-          {TABS.map((t) => (
-            <Pressable key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.tabActive]} testID={`tab-${t}`}>
-              <Text style={[styles.tabText, tab === t && { color: C.onSurface }]}>{t}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+        <View style={styles.tabsInner}>
+          <DSTabs tabs={TABS.map((t) => ({ key: t, label: t, icon: TAB_ICONS[t] as any }))} value={tab} onChange={setTab} />
+        </View>
       </View>
 
       {tab === "Storyboard" && !notGenerated ? (
@@ -219,14 +231,14 @@ export default function Editor() {
             regenScene, regenDialogue, regenCamera, regenPrompt, regenDescription, regenVoiceOver, regenLighting }}
         />
       ) : (
-      <ScrollView contentContainerStyle={{ padding: S.lg, paddingBottom: 120, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
-        {project.mock_mode ? <View style={{ marginBottom: S.md }}><MockBadge /></View> : null}
+      <ScrollView contentContainerStyle={{ padding: S.xl, paddingTop: S.xxl, paddingBottom: 140, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
+        {project.mock_mode ? <View style={{ marginBottom: S.lg }}><MockBadge /></View> : null}
         <Animated.View key={tab} entering={FadeIn.duration(240)}>
           {notGenerated && tab !== "Settings" ? (
             <View style={styles.emptyGen}>
-              <View style={styles.emptyIcon}><Ionicons name="sparkles-outline" size={28} color={C.brand} /></View>
-              <H2 style={{ marginTop: S.md }}>Storyboard not generated yet</H2>
-              <Body muted style={{ textAlign: "center", marginTop: 4, marginBottom: S.lg }}>Generate the AI production package from your brief.</Body>
+              <View style={styles.emptyIcon}><Icon name="clapperboard" size={30} color={C.brand} strokeWidth={1.75} /></View>
+              <Text style={styles.emptyTitle}>Bring this brief to life</Text>
+              <Body muted style={{ textAlign: "center", marginTop: 8, marginBottom: S.xl, maxWidth: 340, lineHeight: 22 }}>Generate a complete AI production package — concept, treatment, script, storyboard and shot list — from your brief.</Body>
               <Btn title="Generate Storyboard" icon="sparkles" loading={regenAll} onPress={regenerateAll} testID="generate-now" />
             </View>
           ) : (
@@ -238,9 +250,12 @@ export default function Editor() {
                 <View>
                   {project.scenes.map((s: any, i: number) => (
                     <AnimIn key={s.id} delay={i * 40}>
-                      <View style={styles.card}>
-                        <Text style={styles.secLabel}>SCENE {s.scene_number} · {(s.title || "").toUpperCase()}</Text>
-                        {s.narrative ? <Body style={{ marginTop: S.sm, lineHeight: 22 }}>{s.narrative}</Body> : null}
+                      <View style={styles.scriptScene}>
+                        <View style={styles.scriptHead}>
+                          <Text style={styles.scriptNum}>{String(s.scene_number).padStart(2, "0")}</Text>
+                          <Text style={styles.scriptTitle} numberOfLines={1}>{(s.title || "Untitled scene").toUpperCase()}</Text>
+                        </View>
+                        {s.narrative ? <Body style={{ marginTop: S.sm, lineHeight: 23 }}>{s.narrative}</Body> : null}
                         {s.dialogue ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>DIALOGUE</Text><Body style={{ flex: 1 }}>{s.dialogue}</Body></View> : null}
                         {s.voice_over ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>V.O.</Text><Body style={{ flex: 1 }}>{s.voice_over}</Body></View> : null}
                         {s.on_screen_text ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>ON SCREEN</Text><Body style={{ flex: 1 }}>{s.on_screen_text}</Body></View> : null}
@@ -250,31 +265,32 @@ export default function Editor() {
                 </View>
               )}
               {tab === "Equipment" && <DefCard label="RECOMMENDED EQUIPMENT" data={project.equipment}
-                order={["camera", "lens", "drone", "gimbal", "tripod", "lighting", "audio", "accessories"]} icon="camera-outline" />}
+                order={["camera", "lens", "drone", "gimbal", "tripod", "lighting", "audio", "accessories"]} icon="camera" />}
               {tab === "Crew" && <DefCard label="SUGGESTED CREW" data={project.crew}
-                order={["crew_size", "director", "producer", "dp", "camera_operator", "focus_puller", "gaffer", "sound", "drone_pilot", "production_assistant"]} icon="people-outline" />}
+                order={["crew_size", "director", "producer", "dp", "camera_operator", "focus_puller", "gaffer", "sound", "drone_pilot", "production_assistant"]} icon="users" />}
               {tab === "Schedule" && <DefCard label="SHOOTING SCHEDULE" data={project.schedule}
-                order={["recommendation", "estimated_hours", "breakdown"]} icon="calendar-outline" />}
+                order={["recommendation", "estimated_hours", "breakdown"]} icon="calendar" />}
               {tab === "Budget" && (
-                <View>
-                  <Body muted style={{ marginBottom: S.md }}>Estimated production budget ranges.</Body>
+                <Section label="ESTIMATED BUDGET" icon="dollar" hint="Ranges">
                   {[["low", "Low Budget"], ["medium", "Medium Budget"], ["commercial", "Commercial"], ["premium", "Premium"]].map(([k, l], i) => (
                     <AnimIn key={k} delay={i * 50}>
-                      <View style={styles.budgetRow}>
-                        <View><Text style={styles.budgetTier}>{l}</Text></View>
+                      <View style={[styles.budgetRow, i === 0 && { borderTopWidth: 0, marginTop: 0, paddingTop: 0 }]}>
+                        <Text style={styles.budgetTier}>{l}</Text>
                         <Text style={styles.budgetVal}>{project.budget?.[k] || "—"}</Text>
                       </View>
                     </AnimIn>
                   ))}
                   {project.budget?.notes ? <Body muted style={{ marginTop: S.md, fontSize: 12.5 }}>{project.budget.notes}</Body> : null}
-                </View>
+                </Section>
               )}
-              {tab === "Exports" && (<>
-                <Body muted style={{ marginBottom: S.md }}>Export a beautiful, production-ready package. {project.export_count ? `Exported ${project.export_count}×.` : ""}</Body>
-                <ExportCard icon="document-text-outline" title="Export as PDF" sub="Cover, concept, script, storyboard & shot list" onPress={() => doExport(() => exportPdf(project))} testID="export-pdf" />
-                <ExportCard icon="grid-outline" title="Export shot list (CSV)" sub="Spreadsheet with all technical columns" onPress={() => doExport(() => exportCsv(project))} testID="export-csv" />
-                <ExportCard icon="print-outline" title="Print project" sub="Open the print dialog" onPress={() => doExport(() => printProject(project))} testID="export-print" />
-              </>)}
+              {tab === "Exports" && (
+                <Section label="EXPORT PACKAGE" icon="download" hint={project.export_count ? `${project.export_count}× exported` : undefined}>
+                  <Body muted style={{ marginBottom: S.lg, lineHeight: 21 }}>Export a beautiful, production-ready package to share with clients and crew.</Body>
+                  <ExportCard icon="file-text" title="Export as PDF" sub="Cover, concept, script, storyboard & shot list" onPress={() => doExport(() => exportPdf(project))} testID="export-pdf" />
+                  <ExportCard icon="grid" title="Export shot list (CSV)" sub="Spreadsheet with all technical columns" onPress={() => doExport(() => exportCsv(project))} testID="export-csv" />
+                  <ExportCard icon="printer" title="Print project" sub="Open the print dialog" onPress={() => doExport(() => printProject(project))} testID="export-print" />
+                </Section>
+              )}
               {tab === "Settings" && <SettingsTab p={project} persist={persist} onRegen={regenerateAll} regenBusy={regenAll} router={router} id={id} />}
             </>
           )}
@@ -338,8 +354,7 @@ function Overview({ p, persist }: any) {
   return (
     <View>
       <AnimIn>
-        <View style={styles.card}>
-          <View style={styles.kvHead}><Ionicons name="document-text-outline" size={16} color={C.brand} /><Text style={styles.secLabel}>{t("overview:briefSection")}</Text></View>
+        <Section label={t("overview:briefSection")} icon="file-text">
           {fld("title", "projectTitle")}
           {fld("client", "client")}
           {fld("campaign", "campaign")}
@@ -349,12 +364,11 @@ function Overview({ p, persist }: any) {
           {fld("call_to_action", "callToAction")}
           {fld("references", "references", true)}
           {fld("extra_notes", "notes", true)}
-        </View>
+        </Section>
       </AnimIn>
 
       <AnimIn delay={60}>
-        <View style={styles.card}>
-          <View style={styles.kvHead}><Ionicons name="color-wand-outline" size={16} color={C.brand} /><Text style={styles.secLabel}>{t("overview:creativeSection")}</Text></View>
+        <Section label={t("overview:creativeSection")} icon="wand">
           <MultiSelect label={t("overview:cameraStyles")} values={p.camera_styles || []} options={O.CAMERA_STYLES_MULTI}
             onChange={set("camera_styles")} custom={p.custom_camera_style || ""} onCustomChange={set("custom_camera_style")} testID="ov-camera" />
           <MultiSelect label={t("overview:lightingStyles")} values={p.lighting_styles || []} options={O.LIGHTING_STYLES_MULTI}
@@ -368,16 +382,29 @@ function Overview({ p, persist }: any) {
           {pick("mood", "mood", O.MOODS)}
           {pick("editing_style", "editingStyle", O.EDITING_STYLES)}
           {pick("music_style", "musicStyle", O.MUSIC_STYLES)}
-        </View>
+        </Section>
       </AnimIn>
 
       <AnimIn delay={120}>
-        <Text style={[styles.secLabel, { marginBottom: 6, marginLeft: 2 }]}>{t("overview:referenceSection")}</Text>
-        <KVCard label="CREATIVE CONCEPT" icon="bulb-outline" data={p.concept}
+        <Text style={styles.refHeading}>{t("overview:referenceSection")}</Text>
+        <KVCard label="CREATIVE CONCEPT" icon="bulb" data={p.concept}
           order={["title", "elevator_pitch", "main_message", "emotional_goal", "audience", "communication_objective"]} />
-        <KVCard label="DIRECTOR'S TREATMENT" icon="color-wand-outline" data={p.treatment}
+        <KVCard label="DIRECTOR'S TREATMENT" icon="wand" data={p.treatment}
           order={["visual_style", "narrative_style", "camera_language", "editing_style", "lighting_style", "color_palette", "sound_design", "overall_mood"]} />
       </AnimIn>
+    </View>
+  );
+}
+
+function Section({ label, icon, children, style, hint }: any) {
+  return (
+    <View style={[styles.section, style]}>
+      <View style={styles.sectionHead}>
+        {icon ? <Icon name={icon} size={15} color={C.brand} strokeWidth={2} /> : null}
+        <Text style={styles.sectionLabel}>{label}</Text>
+        {hint ? <><View style={{ flex: 1 }} /><Text style={styles.sectionHint}>{hint}</Text></> : null}
+      </View>
+      {children}
     </View>
   );
 }
@@ -386,17 +413,19 @@ function KVCard({ label, data, order, icon }: any) {
   // Legacy string support
   if (typeof data === "string") {
     if (!data) return null;
-    return <View style={styles.card}><Text style={styles.secLabel}>{label}</Text><Body style={{ marginTop: S.sm, lineHeight: 23 }}>{data}</Body></View>;
+    return <Section label={label} icon={icon}><Body style={{ lineHeight: 23 }}>{data}</Body></Section>;
   }
   const keys = (order || Object.keys(data || {})).filter((k: string) => data && data[k]);
-  if (keys.length === 0) return <View style={styles.card}><Text style={styles.secLabel}>{label}</Text><Body muted style={{ marginTop: S.sm }}>Not generated yet.</Body></View>;
+  if (keys.length === 0) return <Section label={label} icon={icon}><Body muted>Not generated yet.</Body></Section>;
   return (
-    <View style={styles.card}>
-      <View style={styles.kvHead}>{icon ? <Ionicons name={icon} size={16} color={C.brand} /> : null}<Text style={styles.secLabel}>{label}</Text></View>
-      {keys.map((k: string) => (
-        <View key={k} style={styles.kvRow}><Text style={styles.kvLabel}>{cap(k)}</Text><Text style={styles.kvVal}>{String(data[k])}</Text></View>
+    <Section label={label} icon={icon}>
+      {keys.map((k: string, i: number) => (
+        <View key={k} style={[styles.kvRow, i === 0 && { borderTopWidth: 0, marginTop: 0, paddingTop: 0 }]}>
+          <Text style={styles.kvLabel}>{cap(k)}</Text>
+          <Text style={styles.kvVal}>{String(data[k])}</Text>
+        </View>
       ))}
-    </View>
+    </Section>
   );
 }
 const DefCard = KVCard;
@@ -789,10 +818,10 @@ function IconBtn({ icon, onPress, color, loading, testID }: any) {
 }
 function ExportCard({ icon, title, sub, onPress, testID }: any) {
   return (
-    <Pressable style={styles.exportCard} onPress={onPress} testID={testID}>
-      <View style={styles.exportIcon}><Ionicons name={icon} size={20} color={C.brand} /></View>
+    <Pressable style={({ pressed }) => [styles.exportCard, pressed && { backgroundColor: C.surface3 }]} onPress={onPress} testID={testID}>
+      <View style={styles.exportIcon}><Icon name={icon} size={19} color={C.brand} strokeWidth={1.9} /></View>
       <View style={{ flex: 1 }}><Text style={styles.exportTitle}>{title}</Text><Body muted style={{ fontSize: 12.5, marginTop: 2 }}>{sub}</Body></View>
-      <Ionicons name="download-outline" size={18} color={C.onSurface2} />
+      <Icon name="chevron-right" size={18} color={C.onSurface2} />
     </Pressable>
   );
 }
@@ -800,19 +829,19 @@ function SettingsTab({ p, persist, onRegen, regenBusy, router, id }: any) {
   const [del, setDel] = useState(false);
   return (
     <View>
-      <View style={styles.card}>
-        <Text style={styles.secLabel}>PROJECT</Text>
-        <SetRow label="Status" value={p.status === "generated" ? "Generated" : "Draft"} />
+      <Section label="PROJECT" icon="film">
+        <SetRow label="Status" value={p.status === "generated" ? "Generated" : "Draft"} first />
         <SetRow label="Scenes" value={String(p.scenes?.length || 0)} />
         <SetRow label="Exports" value={String(p.export_count || 0)} />
-      </View>
-      <View style={[styles.card, { marginTop: S.md, gap: S.sm }]}>
-        <Text style={styles.secLabel}>ACTIONS</Text>
-        <Btn title={p.favorite ? "Remove from favorites" : "Add to favorites"} variant="ghost" icon={p.favorite ? "star" : "star-outline"} onPress={() => persist({ favorite: !p.favorite })} testID="set-fav" />
-        <Btn title={p.archived ? "Unarchive" : "Archive project"} variant="ghost" icon={p.archived ? "arrow-undo-outline" : "archive-outline"} onPress={() => persist({ archived: !p.archived })} testID="set-archive" />
-        <Btn title="Regenerate entire storyboard" variant="ghost" icon="sparkles-outline" loading={regenBusy} onPress={onRegen} testID="set-regen" />
-        <Btn title="Delete project" icon="trash-outline" onPress={() => setDel(true)} testID="set-delete" style={{ backgroundColor: C.error }} />
-      </View>
+      </Section>
+      <Section label="ACTIONS" icon="settings">
+        <View style={{ gap: S.sm }}>
+          <Btn title={p.favorite ? "Remove from favorites" : "Add to favorites"} variant="ghost" icon={p.favorite ? "star" : "star-outline"} onPress={() => persist({ favorite: !p.favorite })} testID="set-fav" />
+          <Btn title={p.archived ? "Unarchive" : "Archive project"} variant="ghost" icon={p.archived ? "arrow-undo-outline" : "archive-outline"} onPress={() => persist({ archived: !p.archived })} testID="set-archive" />
+          <Btn title="Regenerate entire storyboard" variant="ghost" icon="sparkles-outline" loading={regenBusy} onPress={onRegen} testID="set-regen" />
+          <Btn title="Delete project" icon="trash-outline" onPress={() => setDel(true)} testID="set-delete" style={{ backgroundColor: C.error }} />
+        </View>
+      </Section>
       <Modal visible={del} transparent animationType="fade" onRequestClose={() => setDel(false)}>
         <View style={styles.modalBg}><View style={styles.centerSheet}>
           <Text style={styles.sheetTitle}>Delete project?</Text>
@@ -824,31 +853,54 @@ function SettingsTab({ p, persist, onRegen, regenBusy, router, id }: any) {
     </View>
   );
 }
-function SetRow({ label, value }: any) { return <View style={styles.dRow}><Text style={styles.dLabel}>{label}</Text><Text style={styles.dVal}>{value}</Text></View>; }
+function SetRow({ label, value, first }: any) { return <View style={[styles.dRow, first && { borderTopWidth: 0 }]}><Text style={styles.dLabel}>{label}</Text><Text style={styles.dVal}>{value}</Text></View>; }
 
 function createStyles(C: Palette) { return StyleSheet.create({
   center: { flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: S.lg, paddingBottom: S.md, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface2 },
-  hTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 20, flex: 1 },
+  header: { paddingHorizontal: S.xl, paddingBottom: S.lg, backgroundColor: C.surface },
+  hTopRow: { flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: S.lg },
+  hKicker: { color: C.onSurface3, fontFamily: F.text, fontSize: 10.5, letterSpacing: 2.5, fontWeight: "600", marginLeft: 2 },
+  hIconBtn: { width: 38, height: 38, borderRadius: R.md, alignItems: "center", justifyContent: "center" },
+  hDirector: { width: 38, height: 38, borderRadius: R.md, backgroundColor: C.brand, alignItems: "center", justifyContent: "center" },
+  hTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 34, lineHeight: 40, letterSpacing: -0.5, fontWeight: "500" },
+  hMetaRow: { flexDirection: "row", alignItems: "center", marginTop: S.sm },
+  hMeta: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, flexShrink: 1 },
   hSub: { color: C.onSurface2, fontFamily: F.text, fontSize: 12 },
-  saveRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  saveRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: S.md },
+  saveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.warning },
   unsavedDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.warning },
-  tabsWrap: { borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface2, paddingVertical: S.sm },
+  tabsWrap: { backgroundColor: C.surface },
+  tabsInner: { maxWidth: MAX_W, width: "100%", alignSelf: "center", paddingHorizontal: S.xl },
   tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: R.pill, flexShrink: 0 },
   tabActive: { backgroundColor: C.surface3 },
   tabText: { color: C.onSurface2, fontFamily: F.text, fontSize: 13.5, fontWeight: "500" },
-  card: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.md },
+
+  // Editorial sections — typography-led, minimal chrome
+  section: { marginBottom: S.xxl },
+  sectionHead: { flexDirection: "row", alignItems: "center", gap: 8, borderBottomWidth: 1, borderBottomColor: C.border, paddingBottom: 10, marginBottom: S.lg },
+  sectionLabel: { color: C.brand, fontFamily: F.text, fontSize: 11.5, letterSpacing: 1.6, fontWeight: "600", textTransform: "uppercase" },
+  sectionHint: { color: C.onSurface3, fontFamily: F.text, fontSize: 11.5 },
+  refHeading: { color: C.onSurface, fontFamily: F.display, fontSize: 22, letterSpacing: -0.2, marginBottom: S.lg, marginTop: S.sm },
+
+  card: { backgroundColor: C.surface2, borderRadius: R.lg, padding: S.lg, marginBottom: S.md },
   secLabel: { color: C.brand, fontFamily: F.text, fontSize: 11.5, letterSpacing: 1.4 },
   kvHead: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
-  kvRow: { paddingVertical: S.sm, borderTopWidth: 1, borderTopColor: C.border, marginTop: S.sm },
-  kvLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 3 },
-  kvVal: { color: C.onSurface, fontFamily: F.text, fontSize: 14, lineHeight: 21 },
+  kvRow: { paddingTop: S.md, borderTopWidth: 1, borderTopColor: C.border, marginTop: S.md },
+  kvLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 },
+  kvVal: { color: C.onSurface, fontFamily: F.text, fontSize: 14.5, lineHeight: 22 },
   regenRow: { flexDirection: "row", gap: 8, marginTop: S.sm },
   regenChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: C.surface3, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 6, minHeight: 30 },
   regenChipText: { color: C.brand, fontFamily: F.text, fontSize: 11.5 },
-  scriptLine: { flexDirection: "row", gap: S.md, marginTop: S.sm },
+
+  // Script — screenplay feel
+  scriptScene: { marginBottom: S.xl, paddingBottom: S.xl, borderBottomWidth: 1, borderBottomColor: C.border },
+  scriptHead: { flexDirection: "row", alignItems: "baseline", gap: 10 },
+  scriptNum: { color: C.brand, fontFamily: F.display, fontSize: 24, letterSpacing: 0 },
+  scriptTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 12.5, letterSpacing: 1.5, fontWeight: "600", flex: 1 },
+  scriptLine: { flexDirection: "row", gap: S.md, marginTop: S.md },
   scriptTag: { color: C.brand, fontFamily: F.text, fontSize: 10, letterSpacing: 1, width: 70, paddingTop: 3 },
-  budgetRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.sm },
+
+  budgetRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: C.border, paddingTop: S.md, marginTop: S.md },
   budgetTier: { color: C.onSurface, fontFamily: F.display, fontSize: 20 },
   budgetVal: { color: C.brand, fontFamily: F.text, fontSize: 15, fontWeight: "600" },
   progress: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md, marginBottom: S.md },
@@ -889,12 +941,13 @@ function createStyles(C: Palette) { return StyleSheet.create({
   shotTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 14, fontWeight: "500" },
   shotMeta: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, marginRight: 4 },
   shotDetail: { padding: S.md, borderTopWidth: 1, borderTopColor: C.border },
-  dRow: { flexDirection: "row", paddingVertical: 5, borderTopWidth: 1, borderTopColor: C.border },
-  dLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, width: 120 },
-  dVal: { color: C.onSurface, fontFamily: F.text, fontSize: 12.5, flex: 1 },
-  emptyGen: { alignItems: "center", backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.xxl },
-  emptyIcon: { width: 62, height: 62, borderRadius: R.lg, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
-  exportCard: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.md, gap: S.md },
+  dRow: { flexDirection: "row", paddingVertical: S.md, borderTopWidth: 1, borderTopColor: C.border },
+  dLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 13.5, width: 130 },
+  dVal: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5, flex: 1, fontWeight: "500" },
+  emptyGen: { alignItems: "center", paddingVertical: S.xxxl, paddingHorizontal: S.xl, marginTop: S.xxl },
+  emptyTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 27, letterSpacing: -0.3, marginTop: S.xl, textAlign: "center" },
+  emptyIcon: { width: 76, height: 76, borderRadius: 22, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
+  exportCard: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface2, borderRadius: R.md, padding: S.lg, marginBottom: S.sm, gap: S.md },
   exportIcon: { width: 44, height: 44, borderRadius: R.md, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
   exportTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 15, fontWeight: "500" },
   modalBg: { flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: S.xl },

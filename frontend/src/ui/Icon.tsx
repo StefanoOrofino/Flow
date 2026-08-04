@@ -10,6 +10,8 @@ import {
   X, Search, Trash2, Star, CircleAlert, Info, CreditCard, Palette, Lightbulb, Film, Clapperboard,
   Play, Clock, Users, Wallet, Camera, ListChecks, LayoutGrid, MoreVertical, Pencil, Copy, Archive,
   RefreshCw, Download, Eye, History, Wand2, Bell, LogOut, Globe, Moon, Sun, Monitor, TrendingUp,
+  Undo2, Redo2, Share2, Calendar, Printer, Maximize2, DollarSign, Video, Mic, MessageSquare,
+  GripVertical, ArrowUp, ArrowDown, ArrowUpToLine, ArrowDownToLine, Aperture, MapPin, Shield,
 } from "lucide-react-native";
 
 const MAP: Record<string, any> = {
@@ -22,6 +24,10 @@ const MAP: Record<string, any> = {
   more: MoreVertical, pencil: Pencil, copy: Copy, archive: Archive, refresh: RefreshCw, download: Download,
   eye: Eye, history: History, wand: Wand2, bell: Bell, logout: LogOut, globe: Globe, moon: Moon, sun: Sun,
   monitor: Monitor, trending: TrendingUp,
+  undo: Undo2, redo: Redo2, share: Share2, calendar: Calendar, printer: Printer, maximize: Maximize2,
+  dollar: DollarSign, video: Video, mic: Mic, message: MessageSquare, grip: GripVertical,
+  "arrow-up": ArrowUp, "arrow-down": ArrowDown, "insert-above": ArrowUpToLine, "insert-below": ArrowDownToLine,
+  aperture: Aperture, "map-pin": MapPin, shield: Shield,
 };
 
 export type IconName = keyof typeof MAP | string;
