@@ -1,0 +1,33 @@
+{
+  "summary": "Full E2E retest of FrameFlow 'New Project' choice + manual + upload paths + 502 regression. Backend: 7/7 pytest pass (86s). REGRESSION FIX CONFIRMED: POST /api/briefs/create-project?generate=true returns in <1s with status='generating' (not 502), background task completes with 8 scenes in ~60s. Frontend E2E (mobile 375x812): login -> /new renders CHOICE screen with both cards (choice-upload, choice-manual) + choice-back; does NOT auto-open uploader. choice-upload routes to /brief-upload with disabled analyze-btn. choice-manual routes to /manual-project; empty 'manual-continue' stays on page (validation OK); filling m-project_name + other fields then continue navigates to /brief-review with fields pre-populated and editable via input-<key>. 'confirm-generate' opens confirm modal, 'confirm-yes' shows generating overlay, then navigates to /project/{id} after ~60s. Project editor loads with 8 scenes and all user-entered fields (title 'TEST_ManualProj_Delete', client, campaign, objective, target_audience etc). All back buttons (choice-back, manual-back, review-back) present and correct. Test project cleaned up via DELETE (verified only seeded Solstice Perfume remains). ONE minor i18n bug: reviewAnalysis:userEntered translation key missing so the manual-field badge and 'Source:' label render the raw string 'userEntered' instead of 'User entered' (dozens of console warnings + visible in UI). One React Native warning on /brief-upload: 'Unexpected text node ... A text node cannot be a child of a <View>'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "brief-review.tsx FieldRow badge + Source label", "issue": "i18n key 'reviewAnalysis:userEntered' is missing. Badge renders raw key 'userEntered' instead of localized 'User entered'; Source line reads 'Source: userEntered'. Requirement explicitly says 'Manual fields show Source: User entered'. Fix: add 'userEntered': 'User entered' to reviewAnalysis translations (all languages).", "testID": "field-<key> / input-<key>", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "brief-upload.tsx", "issue": "Console error 'Unexpected text node:       . A text node cannot be a child of a <View>'. Raw whitespace/text is being rendered outside a <Text> component (likely JSX with a stray space between elements inside a <View>). Locate the offending JSX and remove the stray whitespace or wrap in <Text>."}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_briefs.py", "/app/test_reports/pytest/briefs_results.xml"],
+  "action_items": [
+    "Add missing i18n key 'userEntered' to reviewAnalysis namespace (all locales) so manual fields display 'User entered' badge and 'Source: User entered' instead of the raw key. This is called out by the acceptance criteria.",
+    "Fix 'Unexpected text node' console error on /brief-upload by removing stray whitespace between JSX children of a <View> (or wrap it in <Text>).",
+    "(Optional) The 'Continue to Review' CTA is currently labeled 'Continue' on the manual screen via t('continue') but the requirement/copy says 'Continue to Review' — verify translation matches spec.",
+    "(Optional) Address deprecation warnings: 'shadow*' style props (use boxShadow) and props.pointerEvents (use style.pointerEvents)."
+  ],
+  "critical_code_review_comments": [
+    "server.py::create_project_from_brief now correctly fires generation via asyncio.create_task and returns immediately with status='generating' — resolves the 502 ingress timeout. Good pattern; consider adding a status timestamp so stale 'generating' projects can be reaped.",
+    "brief-review.tsx doGenerate polls every 3s with a 150s deadline — fine, but on generation_failed it only sets err text and stops the overlay; leftover project row is left in Mongo. Consider auto-deleting on generation_failed or offering a retry button.",
+    "manual-project.tsx SECTIONS list is long (>20 fields); consider extracting the sections config to a separate module for testability."
+  ],
+  "updated_files": ["/app/backend/tests/test_briefs.py"],
+  "success_rate": {"backend": "100% (7/7 pytest)", "frontend": "95% (all critical flows pass; only i18n badge label + one text-node warning are minor)"},
+  "seed_data_creation": "None. One test project 'TEST_ManualProj_Delete' (id b2e4d0ae33f0) was created via the UI E2E flow and DELETED after verification. Only the seeded 'Solstice Perfume' project remains.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend 502 regression is fully fixed. Frontend choice/manual/upload routing all work. Two cosmetic issues remain: (a) i18n key 'reviewAnalysis:userEntered' missing so the 'User entered' badge shows the raw key; (b) an 'Unexpected text node' warning on /brief-upload. Neither blocks the flow but the first is UX-visible and part of the acceptance criteria.",
+  "rca_of_issue": "Original 502 root cause (from iteration 13): create_project_from_brief awaited full AI generation (~100-130s) inline, exceeding the ~100s Kubernetes ingress cutoff. Fix: /api/briefs/create-project now inserts a draft with status='generating' and schedules _generate_project_bg via asyncio.create_task; frontend polls GET /api/projects/{id} every 3s until status becomes 'generated' or 'generation_failed'. Verified end-to-end: HTTP response in <1s, generation completes in ~60s with 8 scenes, and the UI navigates to /project/{id} where the fully generated editor loads."
+}

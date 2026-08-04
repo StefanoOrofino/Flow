@@ -83,33 +83,54 @@ class TestAnalyzeBrief:
 
 
 class TestCreateProjectFromBrief:
-    def test_create_and_delete(self, auth_headers, analysis):
-        # Build simple fields dict (extract values from analysis)
+    """REGRESSION: /api/briefs/create-project used to time out at ingress (~100s -> 502).
+    Fix: endpoint returns IMMEDIATELY with status='generating' and a background task fills in scenes.
+    Client polls GET /api/projects/{id} until status becomes 'generated' or 'generation_failed'."""
+
+    def test_create_returns_immediately_and_generates_async(self, auth_headers, analysis):
+        import time
         fields_full = analysis["analysis"]["fields"]
         visual_full = analysis["analysis"]["visual"]
         fields = {k: {"value": v.get("value") or ""} for k, v in fields_full.items()}
         visual = {k: {"value": v.get("value") or ""} for k, v in visual_full.items()}
 
+        # 1. Create must return in a few seconds (way below ingress ~100s cutoff)
+        t0 = time.time()
         payload = {"fields": fields, "visual": visual, "generate": True}
-        r = requests.post(f"{API}/briefs/create-project", json=payload, headers=auth_headers, timeout=180)
+        r = requests.post(f"{API}/briefs/create-project", json=payload, headers=auth_headers, timeout=30)
+        elapsed = time.time() - t0
         assert r.status_code == 200, f"create failed: {r.status_code} {r.text[:400]}"
+        assert elapsed < 15, f"create-project took {elapsed:.1f}s (should return immediately as background task)"
+
         proj = r.json()
-
-        assert proj.get("id"), "project missing id"
+        pid = proj.get("id")
+        assert pid, "project missing id"
         assert proj.get("created_from") == "brief"
-        assert proj.get("status") == "generated"
-        assert isinstance(proj.get("scenes"), list) and len(proj["scenes"]) >= 8, f"scenes: {len(proj.get('scenes') or [])}"
-        pid = proj["id"]
+        assert proj.get("status") == "generating", f"expected 'generating' immediately, got {proj.get('status')}"
+        # Scenes start empty
+        assert proj.get("scenes") == [] or proj.get("scenes") is None
 
-        # Verify via GET
-        g = requests.get(f"{API}/projects/{pid}", headers=auth_headers, timeout=30)
-        assert g.status_code == 200
-        assert g.json()["id"] == pid
+        # 2. Poll until generation completes (~120s worst-case)
+        final = None
+        try:
+            deadline = time.time() + 130
+            while time.time() < deadline:
+                g = requests.get(f"{API}/projects/{pid}", headers=auth_headers, timeout=30)
+                assert g.status_code == 200
+                data = g.json()
+                status = data.get("status")
+                if status in ("generated", "generation_failed"):
+                    final = data
+                    break
+                time.sleep(3)
 
-        # Cleanup
-        d = requests.delete(f"{API}/projects/{pid}", headers=auth_headers, timeout=30)
-        assert d.status_code == 200
-
-        # Verify deleted
-        g2 = requests.get(f"{API}/projects/{pid}", headers=auth_headers, timeout=30)
-        assert g2.status_code == 404
+            assert final is not None, "Polling deadline exceeded (>130s) without status transition"
+            assert final["status"] == "generated", f"generation ended with status {final['status']}"
+            assert isinstance(final.get("scenes"), list) and len(final["scenes"]) >= 4, \
+                f"scenes populated: {len(final.get('scenes') or [])}"
+        finally:
+            # 3. Cleanup regardless of pass/fail
+            d = requests.delete(f"{API}/projects/{pid}", headers=auth_headers, timeout=30)
+            assert d.status_code == 200
+            g2 = requests.get(f"{API}/projects/{pid}", headers=auth_headers, timeout=30)
+            assert g2.status_code == 404

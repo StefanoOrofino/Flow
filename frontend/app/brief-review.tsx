@@ -15,9 +15,10 @@ const FILTERS = ["all", "review", "medium", "high", "missing", "edited"] as cons
 type Filter = typeof FILTERS[number];
 
 function statusMeta(f: any, C: Palette) {
-  if (f.isUserEdited) return { key: "userConfirmed", color: C.success, bg: C.successTint };
-  if (f.conflict?.hasConflict) return { key: "conflict", color: C.warning, bg: C.surface3 };
-  if (!f.value) return { key: "missing", color: C.onSurface3, bg: C.surface3 };
+  if (f.userEntered && !f.isUserEdited) return { key: "userEntered", color: C.onSurface2, bg: C.surface3, plain: true };
+  if (f.isUserEdited) return { key: "userConfirmed", color: C.success, bg: C.successTint, plain: true };
+  if (f.conflict?.hasConflict) return { key: "conflict", color: C.warning, bg: C.surface3, plain: true };
+  if (!f.value) return { key: "missing", color: C.onSurface3, bg: C.surface3, plain: true };
   if (f.confidence === "high") return { key: "high", color: C.success, bg: C.successTint };
   if (f.confidence === "medium") return { key: "medium", color: C.warning, bg: C.surface3 };
   return { key: "low", color: C.error, bg: C.errorTint };
@@ -25,14 +26,15 @@ function statusMeta(f: any, C: Palette) {
 
 function FieldRow({ f, onChange, C, styles, t }: any) {
   const meta = statusMeta(f, C);
-  const src = f.sourceImage ? `${t("sourceImage")}: ${f.sourceImage}` : f.sourceDocument || "";
+  const src = f.userEntered && !f.isUserEdited ? "" : (f.sourceImage ? `${t("sourceImage")}: ${f.sourceImage}` : f.sourceDocument || "");
+  const showScore = f.value && !meta.plain;
   return (
     <View style={styles.fieldRow} testID={`field-${f.key}`}>
       <View style={styles.fieldTop}>
         <Text style={styles.fieldLabel}>{f.label}</Text>
         <View style={[styles.badge, { backgroundColor: meta.bg }]}>
           <Text style={[styles.badgeTxt, { color: meta.color }]}>
-            {t(meta.key)}{f.value && !f.conflict?.hasConflict && !f.isUserEdited ? ` · ${f.confidenceScore}` : ""}
+            {t(meta.key)}{showScore ? ` · ${f.confidenceScore}` : ""}
           </Text>
         </View>
       </View>
@@ -71,7 +73,9 @@ function FieldRow({ f, onChange, C, styles, t }: any) {
         <Text style={styles.reason}>{t("whyLow")}: {f.lowConfidenceReason}</Text>
       )}
 
-      {!!src && <Text style={styles.source}>{t("source")}: {src}</Text>}
+      {f.userEntered && !f.isUserEdited
+        ? <Text style={styles.source}>{t("source")}: {t("userEntered")}</Text>
+        : (!!src && <Text style={styles.source}>{t("source")}: {src}</Text>)}
     </View>
   );
 }
@@ -126,10 +130,20 @@ export default function ReviewAnalysis() {
       const proj = await api.createProjectFromBrief({
         fields: Object.fromEntries(Object.entries(fields).map(([k, v]: any) => [k, { value: v.value }])),
         visual: Object.fromEntries(Object.entries(visual).map(([k, v]: any) => [k, { value: v.value }])),
+        title: fields?.project_name?.value || undefined,
         generate: true,
       });
+      // Generation runs in the background — poll until it finishes (avoids ingress timeout).
+      const pid = proj.id;
+      const deadline = Date.now() + 150000;
+      let status = proj.status;
+      while (status === "generating" && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 3000));
+        try { status = (await api.getProject(pid)).status; } catch { /* keep polling */ }
+      }
+      if (status === "generation_failed") { setErr(t("genFailed")); setGenerating(false); return; }
       briefSession.clear();
-      router.replace(`/project/${proj.id}`);
+      router.replace(`/project/${pid}`);
     } catch (e: any) {
       setErr(e.message || t("genFailed"));
       setGenerating(false);

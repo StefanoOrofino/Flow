@@ -3,6 +3,7 @@ import re
 import json
 import uuid
 import base64
+import asyncio
 import logging
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -1129,19 +1130,31 @@ async def create_project_from_brief(body: CreateFromBriefIn, user=Depends(get_cu
     valid = set(ProjectIn.model_fields)
     proj = ProjectIn(**{k: v for k, v in payload.items() if k in valid})
     doc = proj.dict()
-    doc.update({"id": uuid.uuid4().hex[:12], "user_id": user["user_id"], "status": "draft",
+    generating = bool(body.generate)
+    doc.update({"id": uuid.uuid4().hex[:12], "user_id": user["user_id"],
+                "status": "generating" if generating else "draft",
                 "concept": {}, "treatment": {}, "equipment": {}, "crew": {}, "schedule": {}, "budget": {},
                 "scenes": [], "favorite": False, "archived": False, "export_count": 0,
                 "created_from": "brief", "created_at": now_iso(), "updated_at": now_iso()})
     await db.projects.insert_one(dict(doc))
     doc.pop("_id", None)
+    # Generate in the BACKGROUND to stay under the ingress request timeout.
+    # The client polls GET /projects/{id} until status != 'generating'.
+    if generating:
+        asyncio.create_task(_generate_project_bg(doc["id"], user["user_id"]))
+    return doc
 
-    if body.generate:
+
+async def _generate_project_bg(pid: str, user_id: str):
+    try:
+        doc = await db.projects.find_one({"id": pid, "user_id": user_id}, {"_id": 0})
+        if not doc:
+            return
         used_mock = MOCK_MODE
         try:
             data = await ai_generate(doc)
         except Exception as e:
-            logger.warning(f"Brief generation failed, using mock fallback: {e}")
+            logger.warning(f"Brief bg generation failed, using mock fallback: {e}")
             data = mock_output(doc)
             used_mock = True
         scenes = [normalize_scene(s, i) for i, s in enumerate(data.get("scenes", []))]
@@ -1149,10 +1162,12 @@ async def create_project_from_brief(body: CreateFromBriefIn, user=Depends(get_cu
                   "equipment": data.get("equipment", {}), "crew": data.get("crew", {}),
                   "schedule": data.get("schedule", {}), "budget": data.get("budget", {}),
                   "scenes": scenes, "status": "generated", "mock_mode": used_mock, "updated_at": now_iso()}
-        await db.projects.update_one({"id": doc["id"], "user_id": user["user_id"]}, {"$set": update})
-        await bump_usage(user["user_id"], "ai_generations")
-        doc = await _get_owned(doc["id"], user)
-    return doc
+        await db.projects.update_one({"id": pid, "user_id": user_id}, {"$set": update})
+        await bump_usage(user_id, "ai_generations")
+    except Exception as e:
+        logger.error(f"bg generation fatal for {pid}: {e}")
+        await db.projects.update_one({"id": pid, "user_id": user_id},
+                                     {"$set": {"status": "generation_failed", "updated_at": now_iso()}})
 
 
 app.include_router(api_router)

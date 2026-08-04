@@ -427,6 +427,11 @@ def map_brief_to_project(fields: dict, visual: dict | None = None) -> dict:
     title = _pick(fields, "project_name") or _pick(fields, "campaign") or _pick(fields, "client") or _pick(fields, "objective")
     payload["title"] = (title[:80] if title else "Untitled Brief Project")
 
+    if not payload.get("goal"):
+        desc = _pick(fields, "description")
+        if desc:
+            payload["goal"] = desc
+
     # visual analysis -> creative direction
     mood = _pick(visual, "mood")
     if mood:
@@ -444,7 +449,10 @@ def map_brief_to_project(fields: dict, visual: dict | None = None) -> dict:
     for k, lbl in [("problem", "Problem"), ("success_metrics", "Success Metrics"),
                    ("competitors", "Competitors"), ("risks", "Risks"), ("deadline", "Deadline"),
                    ("products", "Products"), ("technical_requirements", "Tech"),
-                   ("assets_required", "Assets"), ("tone_of_voice", "Tone")]:
+                   ("assets_required", "Assets"), ("tone_of_voice", "Tone"),
+                   ("project_type", "Type"), ("creative_direction", "Creative Direction"),
+                   ("shoot_date", "Shoot Date"), ("assets_available", "Assets Available"),
+                   ("internal_notes", "Notes")]:
         v = _pick(fields, k)
         if v:
             extra_bits.append(f"{lbl}: {v}")
