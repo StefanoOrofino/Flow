@@ -15,13 +15,13 @@ const FILTERS = ["all", "found", "ambiguous", "conflict", "missing", "edited"] a
 type Filter = typeof FILTERS[number];
 
 function statusMeta(f: any, C: Palette) {
-  if (f.isUserEdited || f.confirmed) return { key: "confirmed", label: "Confirmed", color: C.success, bg: C.successTint };
+  if (f.isUserEdited || f.confirmed) return { key: "confirmed", labelKey: "statusConfirmed", color: C.success, bg: C.successTint };
   const st = f.status || (f.value ? "found" : "missing");
-  if (st === "suggestion") return { key: "suggestion", label: "AI suggestion", color: C.brand, bg: C.brandTint };
-  if (st === "conflict") return { key: "conflict", label: "Conflict", color: C.warning, bg: C.errorTint };
-  if (st === "ambiguous") return { key: "ambiguous", label: "Ambiguous", color: C.warning, bg: C.surface3 };
-  if (st === "missing") return { key: "missing", label: "Missing", color: C.onSurface3, bg: C.surface3 };
-  return { key: "found", label: "Extracted", color: C.success, bg: C.successTint };
+  if (st === "suggestion") return { key: "suggestion", labelKey: "statusSuggestion", color: C.brand, bg: C.brandTint };
+  if (st === "conflict") return { key: "conflict", labelKey: "statusConflict", color: C.warning, bg: C.errorTint };
+  if (st === "ambiguous") return { key: "ambiguous", labelKey: "statusAmbiguous", color: C.warning, bg: C.surface3 };
+  if (st === "missing") return { key: "missing", labelKey: "statusMissing", color: C.onSurface3, bg: C.surface3 };
+  return { key: "found", labelKey: "statusExtracted", color: C.success, bg: C.successTint };
 }
 
 function FieldRow({ f, onChange, C, styles, t }: any) {
@@ -36,7 +36,7 @@ function FieldRow({ f, onChange, C, styles, t }: any) {
         <Text style={styles.fieldLabel}>{f.label}</Text>
         <View style={[styles.badge, { backgroundColor: meta.bg }]}>
           <Text style={[styles.badgeTxt, { color: meta.color }]}>
-            {meta.label}{showScore ? ` · ${f.confidenceScore}` : ""}
+            {t(meta.labelKey)}{showScore ? ` · ${f.confidenceScore}` : ""}
           </Text>
         </View>
       </View>
