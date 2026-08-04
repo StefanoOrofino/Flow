@@ -299,8 +299,8 @@ export function toPalette(t: ThemeTokens): Palette {
 export const lightPalette = toPalette(lightTokens);
 export const darkPalette = toPalette(darkTokens);
 
-/* Static (theme-independent) design primitives */
-export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 28, xxl: 44, xxxl: 64 };
+/* Static (theme-independent) design primitives — strict 8pt system (4pt sub-steps) */
+export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 };
 export const R = { sm: 8, md: 12, lg: 18, pill: 999 };
 
 export const F = {

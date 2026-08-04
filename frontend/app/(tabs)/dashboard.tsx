@@ -3,7 +3,6 @@ import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl, useWindo
 import { useRouter, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/src/auth";
 import { api } from "@/src/api";
@@ -12,9 +11,8 @@ import { useTheme } from "@/src/ThemeProvider";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/LanguageProvider";
 import { LogoMark } from "@/src/brand/FrameFlowLogo";
-import { H1, H2, Body, StatCard, Skeleton, AnimIn, Badge } from "@/src/components";
-
-const HERO = "https://images.unsplash.com/photo-1608186336271-53313eeaf864?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBjYW1lcmElMjBsZW5zJTIwZGFya3xlbnwwfHx8fDE3ODU3NjIxNDZ8MA&ixlib=rb-4.1.0&q=85";
+import { H1, H2, Body, Skeleton, AnimIn } from "@/src/components";
+import { Icon } from "@/src/ui/Icon";
 
 function rel(s: string | undefined, t: any, locale: string) {
   if (!s) return "—";
@@ -44,7 +42,7 @@ export default function Dashboard() {
     try {
       const [ps, ts] = await Promise.all([api.listProjects(), api.templates()]);
       setProjects(ps); setTemplates(ts);
-    } catch {} finally { setLoading(false); }
+    } catch { /* ignore */ } finally { setLoading(false); }
   }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
@@ -58,71 +56,107 @@ export default function Dashboard() {
   const scenesTotal = active.reduce((n, p) => n + (p.scenes?.length || 0), 0);
   const exports = active.reduce((n, p) => n + (p.export_count || 0), 0);
   const drafts = active.filter((p) => p.status !== "generated");
-  const recent = active.slice(0, 5);
-  const lastActivity = active[0]?.updated_at;
+  const featured = active[0];
+  const rest = active.slice(1, 6);
 
-  const applyTemplate = (t: any) => router.push({ pathname: "/new", params: {
-    title: t.name, video_type: t.video_type, platform: t.platform, duration: t.duration,
-    aspect_ratio: t.aspect_ratio, num_scenes: String(t.num_scenes), crew_size: t.crew_size,
-    visual_style: t.visual_style, mood: t.mood } });
+  const applyTemplate = (tp: any) => router.push({ pathname: "/new", params: {
+    title: tp.name, video_type: tp.video_type, platform: tp.platform, duration: tp.duration,
+    aspect_ratio: tp.aspect_ratio, num_scenes: String(tp.num_scenes), crew_size: tp.crew_size,
+    visual_style: tp.visual_style, mood: tp.mood } });
 
-  const quicks = [
-    { icon: "add", label: t("dashboard:newProject"), sub: t("dashboard:newProjectSub"), to: "/new", id: "new" },
-    { icon: "albums-outline", label: t("dashboard:templates"), sub: t("dashboard:templatesSub"), to: "/templates", id: "templates" },
-    { icon: "folder-outline", label: t("dashboard:myProjects"), sub: t("dashboard:myProjectsSub", { count: active.length }), to: "/projects", id: "projects" },
+  const stats = [
+    { v: active.length, l: t("dashboard:stats.projects") },
+    { v: generated, l: t("dashboard:stats.generated") },
+    { v: scenesTotal, l: t("dashboard:stats.scenes") },
+    { v: exports, l: t("dashboard:stats.exports") },
   ];
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.surface }} contentContainerStyle={{ paddingBottom: S.xxxl }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={C.brand} />}>
-      {/* Hero */}
-      <View style={styles.hero}>
-        <Image source={{ uri: HERO }} style={StyleSheet.absoluteFill} contentFit="cover" />
-        <LinearGradient colors={["rgba(10,10,10,0.55)", "rgba(10,10,10,0.97)"]} style={StyleSheet.absoluteFill} />
-        <View style={[styles.heroInner, { paddingTop: insets.top + S.xl }]}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <LogoMark color={C.brand} size={22} />
+      <View style={[styles.wrap, { paddingTop: insets.top + S.lg }]}>
+        {/* Masthead */}
+        <View style={styles.masthead}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: S.sm }}>
+            <LogoMark color={C.brand} size={20} />
             <Text style={styles.kicker}>FRAMEFLOW STUDIO</Text>
           </View>
-          <H1 style={{ marginTop: S.sm }}>{t("dashboard:welcome", { name: user?.name?.split(" ")[0] || t("settings:director") })}</H1>
+          <H1>{t("dashboard:welcome", { name: user?.name?.split(" ")[0] || t("settings:director") })}</H1>
           <Body muted style={{ marginTop: 4 }}>{t("dashboard:subtitle")}</Body>
         </View>
-      </View>
 
-      <View style={styles.container}>
-        {/* Stats */}
-        <View style={[styles.statsRow, wide && { flexWrap: "nowrap" }]}>
-          <StatCard icon="film-outline" value={active.length} label={t("dashboard:stats.projects")} delay={0} />
-          <StatCard icon="sparkles-outline" value={generated} label={t("dashboard:stats.generated")} delay={50} />
-          <StatCard icon="images-outline" value={scenesTotal} label={t("dashboard:stats.scenes")} delay={100} />
-          <StatCard icon="download-outline" value={exports} label={t("dashboard:stats.exports")} delay={150} />
-        </View>
-        <AnimIn delay={180}><Body muted style={{ marginTop: S.sm, fontSize: 12.5 }}>{t("dashboard:lastActivity", { time: rel(lastActivity, t, locale) })}</Body></AnimIn>
+        {/* Large New Project CTA */}
+        <Pressable onPress={() => router.push("/new")} testID="quick-new" style={({ pressed }) => [styles.ctaCard, { transform: [{ scale: pressed ? 0.99 : 1 }] }]}>
+          <View style={styles.ctaIcon}><Icon name="plus" size={22} color={C.onBrand} strokeWidth={2.25} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.ctaTitle}>{t("dashboard:newProject")}</Text>
+            <Text style={styles.ctaSub}>{t("dashboard:newProjectSub")}</Text>
+          </View>
+          <Icon name="arrow-right" size={20} color={C.onBrand} />
+        </Pressable>
 
-        {/* Quick actions */}
-        <H2 style={styles.secTitle}>{t("dashboard:quickActions")}</H2>
-        <View style={styles.quickRow}>
-          {quicks.map((q, i) => (
-            <AnimIn key={q.id} delay={i * 60} style={{ flex: 1 }}>
-              <Pressable style={styles.quick} onPress={() => router.push(q.to as any)} testID={`quick-${q.id}`}>
-                <View style={styles.quickIcon}><Ionicons name={q.icon as any} size={18} color={C.brand} /></View>
-                <Text style={styles.quickLabel}>{q.label}</Text>
-                <Text style={styles.quickSub}>{q.sub}</Text>
-              </Pressable>
+        {/* Stats — borderless, quiet */}
+        <View style={styles.statsRow}>
+          {stats.map((s, i) => (
+            <AnimIn key={i} delay={i * 50} style={styles.statCell}>
+              <Text style={styles.statVal}>{s.v}</Text>
+              <Text style={styles.statLbl}>{s.l}</Text>
             </AnimIn>
           ))}
         </View>
 
-        {/* Continue working */}
-        {drafts.length > 0 && (
+        {/* Hero Recent Project */}
+        {loading ? (
+          <Skeleton height={260} radius={R.lg} style={{ marginTop: S.xl }} />
+        ) : !featured ? (
+          <AnimIn style={styles.empty}>
+            <View style={styles.emptyIcon}><Icon name="clapperboard" size={26} color={C.brand} /></View>
+            <H2 style={{ marginTop: S.lg, textAlign: "center" }}>{t("dashboard:noProjectsTitle")}</H2>
+            <Body muted style={{ textAlign: "center", marginTop: 8, marginBottom: S.xl, maxWidth: 300 }}>{t("dashboard:noProjectsSubtitle")}</Body>
+            <Pressable style={styles.cta} onPress={() => router.push("/new")} testID="create-storyboard-btn">
+              <Icon name="plus" size={18} color={C.onBrand} strokeWidth={2.25} /><Text style={styles.ctaText}>{t("dashboard:createFirst")}</Text>
+            </Pressable>
+          </AnimIn>
+        ) : (
           <>
-            <H2 style={styles.secTitle}>{t("dashboard:continueWorking")}</H2>
+            <Text style={styles.overline}>{t("dashboard:continueWorking")}</Text>
+            <AnimIn>
+              <Pressable style={styles.hero} onPress={() => router.push(`/project/${featured.id}`)} testID={`project-${featured.id}`}>
+                <View style={styles.heroBanner}>
+                  {featured.scenes?.[0]?.image_url
+                    ? <Image source={{ uri: featured.scenes[0].image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                    : <LinearGradient colors={["#2A2416", "#111113"]} style={StyleSheet.absoluteFill} />}
+                  <LinearGradient colors={["transparent", "rgba(8,8,10,0.85)"]} style={StyleSheet.absoluteFill} />
+                  <View style={styles.heroBadge}><Text style={styles.heroBadgeTxt}>{featured.status === "generated" ? t("dashboard:stats.generated") : t("dashboard:draft")}</Text></View>
+                  <Pressable onPress={() => toggleFav(featured)} hitSlop={10} style={styles.heroFav} testID={`fav-${featured.id}`}>
+                    <Icon name="star" size={18} color={featured.favorite ? C.brand : "#fff"} strokeWidth={2} />
+                  </Pressable>
+                </View>
+                <View style={styles.heroBody}>
+                  <Text style={styles.heroTitle} numberOfLines={1}>{featured.title}</Text>
+                  <Body muted numberOfLines={1} style={{ marginTop: 2, fontSize: 13 }}>{(featured.client || t("projects:noClient")) + " · " + featured.video_type}</Body>
+                  <View style={styles.heroMetaRow}>
+                    <View style={styles.metaPill}><Icon name="clock" size={13} color={C.onSurface2} /><Text style={styles.metaTxt}>{rel(featured.updated_at, t, locale)}</Text></View>
+                    <View style={styles.metaPill}><Icon name="image" size={13} color={C.onSurface2} /><Text style={styles.metaTxt}>{t("projects:scenesCount", { count: featured.scenes?.length || 0 })}</Text></View>
+                    <View style={{ flex: 1 }} />
+                    <View style={styles.openRow}><Text style={styles.openTxt}>{t("common:actions.open", { defaultValue: "Open" })}</Text><Icon name="arrow-right" size={15} color={C.brand} /></View>
+                  </View>
+                </View>
+              </Pressable>
+            </AnimIn>
+          </>
+        )}
+
+        {/* Drafts strip */}
+        {!loading && drafts.length > 1 && (
+          <>
+            <Text style={styles.overline}>{t("dashboard:draft")}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.md, paddingRight: S.lg }}>
-              {drafts.map((p) => (
-                <Pressable key={p.id} style={styles.contCard} onPress={() => router.push(`/project/${p.id}`)} testID={`continue-${p.id}`}>
-                  <Ionicons name="document-text-outline" size={20} color={C.onSurface2} />
-                  <Text style={styles.contTitle} numberOfLines={2}>{p.title}</Text>
-                  <Badge label={t("dashboard:draft")} />
+              {drafts.slice(0, 8).map((p) => (
+                <Pressable key={p.id} style={styles.draftCard} onPress={() => router.push(`/project/${p.id}`)} testID={`continue-${p.id}`}>
+                  <Icon name="file-text" size={18} color={C.onSurface2} />
+                  <Text style={styles.draftTitle} numberOfLines={2}>{p.title}</Text>
+                  <Text style={styles.draftMeta}>{rel(p.updated_at, t, locale)}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -130,53 +164,49 @@ export default function Dashboard() {
         )}
 
         {/* Recent projects */}
-        <View style={styles.secHead}>
-          <H2>{t("dashboard:recentProjects")}</H2>
-          {active.length > 0 && <Pressable onPress={() => router.push("/projects")}><Text style={styles.viewAll}>{t("dashboard:viewAll")}</Text></Pressable>}
-        </View>
-
-        {loading ? (
-          <View style={{ gap: S.md }}>{[0, 1, 2].map((i) => <Skeleton key={i} height={78} radius={16} />)}</View>
-        ) : active.length === 0 ? (
-          <AnimIn style={styles.empty}>
-            <View style={styles.emptyIcon}><Ionicons name="videocam-outline" size={28} color={C.brand} /></View>
-            <H2 style={{ marginTop: S.md }}>{t("dashboard:noProjectsTitle")}</H2>
-            <Body muted style={{ textAlign: "center", marginTop: 4, marginBottom: S.lg }}>{t("dashboard:noProjectsSubtitle")}</Body>
-            <Pressable style={styles.cta} onPress={() => router.push("/new")} testID="create-storyboard-btn">
-              <Ionicons name="add" size={18} color={C.onBrand} /><Text style={styles.ctaText}>{t("dashboard:createFirst")}</Text>
-            </Pressable>
-          </AnimIn>
-        ) : (
-          recent.map((p, i) => (
-            <AnimIn key={p.id} delay={i * 50}>
-              <Pressable style={styles.projCard} onPress={() => router.push(`/project/${p.id}`)} testID={`project-${p.id}`}>
-                <View style={styles.thumb}>
-                  <LinearGradient colors={["#242015", "#0e0e0e"]} style={StyleSheet.absoluteFill} />
-                  <Ionicons name="film-outline" size={20} color={C.brand} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.projTitle} numberOfLines={1}>{p.title}</Text>
-                  <Body muted numberOfLines={1} style={{ fontSize: 12.5, marginTop: 2 }}>{(p.client || t("projects:noClient")) + " · " + p.video_type}</Body>
-                  <Text style={styles.meta}>{rel(p.updated_at, t, locale)} · {t("projects:scenesCount", { count: p.scenes?.length || 0 })}</Text>
-                </View>
-                <Pressable onPress={() => toggleFav(p)} hitSlop={10} style={{ padding: 6 }} testID={`fav-${p.id}`}>
-                  <Ionicons name={p.favorite ? "star" : "star-outline"} size={18} color={p.favorite ? C.brand : C.onSurface2} />
-                </Pressable>
-              </Pressable>
-            </AnimIn>
-          ))
+        {!loading && rest.length > 0 && (
+          <>
+            <View style={styles.secHead}>
+              <Text style={styles.overline}>{t("dashboard:recentProjects")}</Text>
+              <Pressable onPress={() => router.push("/projects")}><Text style={styles.viewAll}>{t("dashboard:viewAll")}</Text></Pressable>
+            </View>
+            <View style={wide ? styles.gridWide : undefined}>
+              {rest.map((p, i) => (
+                <AnimIn key={p.id} delay={i * 40} style={wide ? { width: "48.5%" } : undefined}>
+                  <Pressable style={styles.row} onPress={() => router.push(`/project/${p.id}`)} testID={`project-${p.id}`}>
+                    <View style={styles.rowThumb}>
+                      {p.scenes?.[0]?.image_url
+                        ? <Image source={{ uri: p.scenes[0].image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                        : <LinearGradient colors={["#2A2416", "#111113"]} style={StyleSheet.absoluteFill} />}
+                      {!p.scenes?.[0]?.image_url && <Icon name="film" size={18} color={C.brand} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>{p.title}</Text>
+                      <Text style={styles.rowMeta} numberOfLines={1}>{rel(p.updated_at, t, locale)} · {t("projects:scenesCount", { count: p.scenes?.length || 0 })}</Text>
+                    </View>
+                    <Pressable onPress={() => toggleFav(p)} hitSlop={10} style={{ padding: 6 }} testID={`fav-${p.id}`}>
+                      <Icon name="star" size={17} color={p.favorite ? C.brand : C.onSurface3} strokeWidth={2} />
+                    </Pressable>
+                  </Pressable>
+                </AnimIn>
+              ))}
+            </View>
+          </>
         )}
 
-        {/* Templates strip */}
+        {/* Templates */}
         {templates.length > 0 && (
           <>
-            <View style={styles.secHead}><H2>{t("dashboard:templates")}</H2><Pressable onPress={() => router.push("/templates")}><Text style={styles.viewAll}>{t("dashboard:browse")}</Text></Pressable></View>
+            <View style={styles.secHead}>
+              <Text style={styles.overline}>{t("dashboard:templates")}</Text>
+              <Pressable onPress={() => router.push("/templates")}><Text style={styles.viewAll}>{t("dashboard:browse")}</Text></Pressable>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.md, paddingRight: S.lg }}>
-              {templates.slice(0, 8).map((t2) => (
-                <Pressable key={t2.id} style={styles.tplCard} onPress={() => applyTemplate(t2)} testID={`tpl-${t2.id}`}>
-                  <View style={styles.tplIcon}><Ionicons name="albums-outline" size={18} color={C.brand} /></View>
-                  <Text style={styles.tplTitle} numberOfLines={2}>{t2.name}</Text>
-                  <Text style={styles.tplMeta}>{t2.duration} · {t("projects:scenesCount", { count: t2.num_scenes })}</Text>
+              {templates.slice(0, 8).map((tp) => (
+                <Pressable key={tp.id} style={styles.tpl} onPress={() => applyTemplate(tp)} testID={`tpl-${tp.id}`}>
+                  <View style={styles.tplIcon}><Icon name="grid" size={17} color={C.brand} /></View>
+                  <Text style={styles.tplTitle} numberOfLines={2}>{tp.name}</Text>
+                  <Text style={styles.tplMeta}>{tp.duration} · {t("projects:scenesCount", { count: tp.num_scenes })}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -188,31 +218,53 @@ export default function Dashboard() {
 }
 
 const createStyles = (C: Palette) => StyleSheet.create({
-  hero: { minHeight: 210, overflow: "hidden" },
-  heroInner: { padding: S.xl, paddingBottom: S.xl },
-  kicker: { color: C.brand, fontFamily: F.text, fontSize: 11.5, letterSpacing: 3.5, fontWeight: "600" },
-  container: { padding: S.lg, maxWidth: MAX_W, alignSelf: "center", width: "100%" },
-  statsRow: { flexDirection: "row", flexWrap: "wrap", gap: S.md, marginTop: -40 },
-  secTitle: { marginTop: S.xl, marginBottom: S.md },
-  secHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: S.xl, marginBottom: S.md },
-  viewAll: { color: C.brand, fontFamily: F.text, fontSize: 14 },
-  quickRow: { flexDirection: "row", gap: S.md },
-  quick: { backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md },
-  quickIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginBottom: S.sm },
-  quickLabel: { color: C.onSurface, fontFamily: F.text, fontSize: 14, fontWeight: "500" },
-  quickSub: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, marginTop: 2 },
-  contCard: { width: 170, backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md, gap: S.sm, alignItems: "flex-start" },
-  contTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 18, minHeight: 46 },
-  empty: { alignItems: "center", backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.xxl },
+  wrap: { padding: S.xl, paddingTop: S.xl, maxWidth: MAX_W, alignSelf: "center", width: "100%" },
+  masthead: { marginBottom: S.xl },
+  kicker: { color: C.brand, fontFamily: F.text, fontSize: 11, letterSpacing: 3, fontWeight: "600" },
+  overline: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", marginTop: S.xl, marginBottom: S.md },
+
+  ctaCard: { flexDirection: "row", alignItems: "center", gap: S.md, backgroundColor: C.brand, borderRadius: R.lg, padding: S.lg },
+  ctaIcon: { width: 44, height: 44, borderRadius: R.md, backgroundColor: "rgba(0,0,0,0.16)", alignItems: "center", justifyContent: "center" },
+  ctaTitle: { color: C.onBrand, fontFamily: F.text, fontSize: 16, fontWeight: "700" },
+  ctaSub: { color: C.onBrand, opacity: 0.8, fontFamily: F.text, fontSize: 12.5, marginTop: 1 },
+
+  statsRow: { flexDirection: "row", marginTop: S.xl, backgroundColor: C.surface2, borderRadius: R.lg, paddingVertical: S.lg },
+  statCell: { flex: 1, alignItems: "center" },
+  statVal: { color: C.onSurface, fontFamily: F.display, fontSize: 26, letterSpacing: -0.3 },
+  statLbl: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, marginTop: 2, textAlign: "center" },
+
+  hero: { backgroundColor: C.surface2, borderRadius: R.lg, overflow: "hidden" },
+  heroBanner: { height: 176, justifyContent: "flex-start" },
+  heroBadge: { position: "absolute", top: 12, left: 12, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  heroBadgeTxt: { color: "#fff", fontFamily: F.text, fontSize: 11, fontWeight: "600", textTransform: "capitalize" },
+  heroFav: { position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(0,0,0,0.4)", alignItems: "center", justifyContent: "center" },
+  heroBody: { padding: S.lg },
+  heroTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 24, fontWeight: "500", letterSpacing: -0.3 },
+  heroMetaRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: S.md },
+  metaPill: { flexDirection: "row", alignItems: "center", gap: 5 },
+  metaTxt: { color: C.onSurface2, fontFamily: F.text, fontSize: 12 },
+  openRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  openTxt: { color: C.brand, fontFamily: F.text, fontSize: 13.5, fontWeight: "600" },
+
+  draftCard: { width: 168, backgroundColor: C.surface2, borderRadius: R.md, padding: S.md, gap: S.sm, alignItems: "flex-start" },
+  draftTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 17, minHeight: 44 },
+  draftMeta: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5 },
+
+  secHead: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
+  viewAll: { color: C.brand, fontFamily: F.text, fontSize: 13.5, marginTop: S.xl, marginBottom: S.md },
+  gridWide: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  row: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface2, borderRadius: R.md, padding: S.sm, paddingRight: S.md, marginBottom: S.md, gap: S.md },
+  rowThumb: { width: 52, height: 52, borderRadius: R.sm, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  rowTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 14.5, fontWeight: "600" },
+  rowMeta: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, marginTop: 3 },
+
+  empty: { alignItems: "center", marginTop: S.xl, padding: S.xl },
   emptyIcon: { width: 60, height: 60, borderRadius: R.lg, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
-  cta: { flexDirection: "row", alignItems: "center", backgroundColor: C.brand, borderRadius: R.md, paddingVertical: 13, paddingHorizontal: S.lg },
-  ctaText: { color: C.onBrand, fontFamily: F.text, fontSize: 15, fontWeight: "600", marginLeft: 6 },
-  projCard: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md, marginBottom: S.md, gap: S.md },
-  thumb: { width: 52, height: 52, borderRadius: R.sm, overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  projTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 19 },
-  meta: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, marginTop: 4 },
-  tplCard: { width: 150, backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md, gap: 6 },
-  tplIcon: { width: 34, height: 34, borderRadius: 9, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
+  cta: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.brand, borderRadius: R.md, paddingVertical: 13, paddingHorizontal: S.lg },
+  ctaText: { color: C.onBrand, fontFamily: F.text, fontSize: 15, fontWeight: "600" },
+
+  tpl: { width: 150, backgroundColor: C.surface2, borderRadius: R.md, padding: S.md, gap: 6 },
+  tplIcon: { width: 32, height: 32, borderRadius: 9, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
   tplTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5, fontWeight: "500", minHeight: 36 },
   tplMeta: { color: C.onSurface2, fontFamily: F.text, fontSize: 11 },
 });

@@ -9,6 +9,7 @@ import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { AuthProvider } from "@/src/auth";
 import { ThemeProvider, useTheme } from "@/src/ThemeProvider";
 import { LanguageProvider } from "@/src/LanguageProvider";
+import { ToastProvider } from "@/src/ui/DS";
 
 LogBox.ignoreAllLogs(true);
 SplashScreen.preventAutoHideAsync();
@@ -45,7 +46,9 @@ export default function RootLayout() {
         <ThemeProvider>
           <LanguageProvider>
             <AuthProvider>
-              <ThemedStack />
+              <ToastProvider>
+                <ThemedStack />
+              </ToastProvider>
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>
