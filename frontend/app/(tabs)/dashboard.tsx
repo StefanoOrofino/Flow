@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl, useWindowDimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { CoverArt } from "@/src/ui/CoverArt";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/src/auth";
 import { api } from "@/src/api";
@@ -64,43 +65,44 @@ export default function Dashboard() {
     visual_style: tp.visual_style, mood: tp.mood } });
 
   const stats = [
-    { v: active.length, l: t("dashboard:stats.projects") },
-    { v: generated, l: t("dashboard:stats.generated") },
-    { v: scenesTotal, l: t("dashboard:stats.scenes") },
-    { v: exports, l: t("dashboard:stats.exports") },
+    { v: active.length, l: t("dashboard:stats.projects"), icon: "film" },
+    { v: generated, l: t("dashboard:stats.generated"), icon: "sparkles" },
+    { v: scenesTotal, l: t("dashboard:stats.scenes"), icon: "image" },
+    { v: exports, l: t("dashboard:stats.exports"), icon: "download" },
   ];
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.surface }} contentContainerStyle={{ paddingBottom: S.xxxl }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={C.brand} />}>
       <View style={[styles.wrap, { paddingTop: insets.top + S.lg }]}>
-        {/* Masthead */}
-        <View style={styles.masthead}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: S.sm }}>
-            <LogoMark color={C.brand} size={20} />
-            <Text style={styles.kicker}>FRAMEFLOW STUDIO</Text>
+        {/* Cinematic hero band */}
+        <View style={styles.heroBand}>
+          <LinearGradient colors={["#221D12", "#17140E", "#100F0C"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          <View style={styles.heroBandGlow} />
+          <View style={styles.heroBandWatermark}><Icon name="clapperboard" size={140} color={C.brand} strokeWidth={0.75} /></View>
+          <View style={styles.heroBandInner}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: S.md }}>
+              <LogoMark color={C.brand} size={20} />
+              <Text style={styles.kicker}>FRAMEFLOW STUDIO</Text>
+            </View>
+            <H1 style={{ color: "#F5F1E8" }}>{t("dashboard:welcome", { name: user?.name?.split(" ")[0] || t("settings:director") })}</H1>
+            <Body style={{ marginTop: 6, color: "rgba(245,241,232,0.62)", maxWidth: 460 }}>{t("dashboard:subtitle")}</Body>
+            <Pressable onPress={() => router.push("/new")} testID="quick-new" style={({ pressed }) => [styles.heroCta, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
+              <Icon name="plus" size={18} color={C.onBrand} strokeWidth={2.5} />
+              <Text style={styles.heroCtaTxt}>{t("dashboard:newProject")}</Text>
+            </Pressable>
           </View>
-          <H1>{t("dashboard:welcome", { name: user?.name?.split(" ")[0] || t("settings:director") })}</H1>
-          <Body muted style={{ marginTop: 4 }}>{t("dashboard:subtitle")}</Body>
         </View>
 
-        {/* Large New Project CTA */}
-        <Pressable onPress={() => router.push("/new")} testID="quick-new" style={({ pressed }) => [styles.ctaCard, { transform: [{ scale: pressed ? 0.99 : 1 }] }]}>
-          <View style={styles.ctaIcon}><Icon name="plus" size={22} color={C.onBrand} strokeWidth={2.25} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.ctaTitle}>{t("dashboard:newProject")}</Text>
-            <Text style={styles.ctaSub}>{t("dashboard:newProjectSub")}</Text>
-          </View>
-          <Icon name="arrow-right" size={20} color={C.onBrand} />
-        </Pressable>
-
-        {/* Stats — borderless, quiet */}
-        <View style={styles.statsRow}>
+        {/* Metric cards */}
+        <View style={styles.metricRow}>
           {stats.map((s, i) => (
-            <AnimIn key={i} delay={i * 50} style={styles.statCell}>
-              {i > 0 && <View style={styles.statDivider} />}
-              <Text style={styles.statVal}>{s.v}</Text>
-              <Text style={styles.statLbl}>{s.l}</Text>
+            <AnimIn key={i} delay={i * 60} style={styles.metricCardWrap}>
+              <View style={styles.metricCard}>
+                <View style={styles.metricIcon}><Icon name={s.icon as any} size={15} color={C.brand} strokeWidth={2} /></View>
+                <Text style={styles.metricVal}>{s.v}</Text>
+                <Text style={styles.metricLbl}>{s.l}</Text>
+              </View>
             </AnimIn>
           ))}
         </View>
@@ -213,20 +215,22 @@ export default function Dashboard() {
 
 const createStyles = (C: Palette) => StyleSheet.create({
   wrap: { padding: S.xl, paddingTop: S.xl, maxWidth: MAX_W, alignSelf: "center", width: "100%" },
-  masthead: { marginBottom: S.xl },
   kicker: { color: C.brand, fontFamily: F.text, fontSize: 11, letterSpacing: 3, fontWeight: "600" },
   overline: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, letterSpacing: 1, textTransform: "uppercase", marginTop: S.xl, marginBottom: S.md },
 
-  ctaCard: { flexDirection: "row", alignItems: "center", gap: S.md, backgroundColor: C.brand, borderRadius: R.lg, padding: S.lg },
-  ctaIcon: { width: 44, height: 44, borderRadius: R.md, backgroundColor: "rgba(0,0,0,0.16)", alignItems: "center", justifyContent: "center" },
-  ctaTitle: { color: C.onBrand, fontFamily: F.text, fontSize: 16, fontWeight: "700" },
-  ctaSub: { color: C.onBrand, opacity: 0.8, fontFamily: F.text, fontSize: 12.5, marginTop: 1 },
+  heroBand: { borderRadius: R.lg, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(197,160,89,0.28)", marginBottom: S.xl },
+  heroBandGlow: { position: "absolute", top: -70, right: -40, width: 240, height: 240, borderRadius: 120, backgroundColor: "rgba(197,160,89,0.16)" },
+  heroBandWatermark: { position: "absolute", right: -16, bottom: -34, opacity: 0.06 },
+  heroBandInner: { padding: S.xxl },
+  heroCta: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", backgroundColor: C.brand, borderRadius: R.pill, paddingHorizontal: S.lg, paddingVertical: 12, marginTop: S.xl },
+  heroCtaTxt: { color: C.onBrand, fontFamily: F.text, fontSize: 14.5, fontWeight: "700" },
 
-  statsRow: { flexDirection: "row", marginTop: S.xl, backgroundColor: C.surface2, borderRadius: R.lg, paddingVertical: S.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border },
-  statCell: { flex: 1, alignItems: "center", justifyContent: "center" },
-  statDivider: { position: "absolute", left: 0, top: "18%", height: "64%", width: StyleSheet.hairlineWidth, backgroundColor: C.border },
-  statVal: { color: C.onSurface, fontFamily: F.display, fontSize: 26, letterSpacing: -0.3 },
-  statLbl: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, marginTop: 2, textAlign: "center", letterSpacing: 0.3 },
+  metricRow: { flexDirection: "row", flexWrap: "wrap", gap: S.md, marginBottom: S.sm },
+  metricCardWrap: { flexGrow: 1, flexBasis: "22%", minWidth: 150 },
+  metricCard: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, padding: S.lg },
+  metricIcon: { width: 32, height: 32, borderRadius: 9, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginBottom: S.md },
+  metricVal: { color: C.onSurface, fontFamily: F.display, fontSize: 30, letterSpacing: -0.4 },
+  metricLbl: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, marginTop: 2, letterSpacing: 0.3 },
 
   hero: { backgroundColor: C.surface2, borderRadius: R.lg, overflow: "hidden" },
   heroBanner: { height: 176, justifyContent: "flex-start" },
