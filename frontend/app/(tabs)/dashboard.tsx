@@ -1,8 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl, useWindowDimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
+import { CoverArt } from "@/src/ui/CoverArt";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/src/auth";
 import { api } from "@/src/api";
@@ -124,16 +123,7 @@ export default function Dashboard() {
             <AnimIn>
               <Pressable style={styles.hero} onPress={() => router.push(`/project/${featured.id}`)} testID={`project-${featured.id}`}>
                 <View style={styles.heroBanner}>
-                  {featured.scenes?.[0]?.image_url
-                    ? <Image source={{ uri: featured.scenes[0].image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                    : <>
-                        <LinearGradient colors={["#2A2416", "#141210", "#0D0D0F"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-                        <View style={styles.heroWatermark}><Icon name="clapperboard" size={92} color={C.brand} strokeWidth={1} /></View>
-                        <View style={styles.heroFilmStrip}>
-                          {Array.from({ length: 14 }).map((_, i) => <View key={i} style={styles.heroPerf} />)}
-                        </View>
-                      </>}
-                  <LinearGradient colors={["rgba(8,8,10,0.15)", "rgba(8,8,10,0.9)"]} style={StyleSheet.absoluteFill} />
+                  <CoverArt imageUrl={featured.scenes?.[0]?.image_url} iconSize={92} showStrip scrim />
                   <View style={styles.heroBadge}><Text style={styles.heroBadgeTxt}>{featured.status === "generated" ? t("dashboard:stats.generated") : t("dashboard:draft")}</Text></View>
                   <Pressable onPress={() => toggleFav(featured)} hitSlop={10} style={styles.heroFav} testID={`fav-${featured.id}`}>
                     <Icon name="star" size={18} color={featured.favorite ? C.brand : "#fff"} strokeWidth={2} />
@@ -182,10 +172,7 @@ export default function Dashboard() {
                 <AnimIn key={p.id} delay={i * 40} style={wide ? { width: "48.5%" } : undefined}>
                   <Pressable style={styles.row} onPress={() => router.push(`/project/${p.id}`)} testID={`project-${p.id}`}>
                     <View style={styles.rowThumb}>
-                      {p.scenes?.[0]?.image_url
-                        ? <Image source={{ uri: p.scenes[0].image_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                        : <LinearGradient colors={["#2A2416", "#111113"]} style={StyleSheet.absoluteFill} />}
-                      {!p.scenes?.[0]?.image_url && <Icon name="film" size={18} color={C.brand} />}
+                      <CoverArt imageUrl={p.scenes?.[0]?.image_url} iconSize={20} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.rowTitle} numberOfLines={1}>{p.title}</Text>
@@ -240,10 +227,6 @@ const createStyles = (C: Palette) => StyleSheet.create({
   statDivider: { position: "absolute", left: 0, top: "18%", height: "64%", width: StyleSheet.hairlineWidth, backgroundColor: C.border },
   statVal: { color: C.onSurface, fontFamily: F.display, fontSize: 26, letterSpacing: -0.3 },
   statLbl: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, marginTop: 2, textAlign: "center", letterSpacing: 0.3 },
-
-  heroWatermark: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", opacity: 0.14 },
-  heroFilmStrip: { position: "absolute", top: 0, bottom: 0, right: 0, width: 22, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "space-evenly", paddingVertical: 6 },
-  heroPerf: { width: 9, height: 6, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.14)" },
 
   hero: { backgroundColor: C.surface2, borderRadius: R.lg, overflow: "hidden" },
   heroBanner: { height: 176, justifyContent: "flex-start" },

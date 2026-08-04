@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl, Modal, TextInput } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { CoverArt } from "@/src/ui/CoverArt";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
@@ -106,8 +106,7 @@ export default function Projects() {
             <AnimIn key={p.id} delay={i * 40}>
               <View style={styles.card}>
                 <Pressable style={styles.thumb} onPress={() => router.push(`/project/${p.id}`)}>
-                  <LinearGradient colors={["#242015", "#0e0e0e"]} style={StyleSheet.absoluteFill} />
-                  <Ionicons name="film-outline" size={20} color={C.brand} />
+                  <CoverArt imageUrl={p.scenes?.[0]?.image_url} iconSize={20} />
                 </Pressable>
                 <Pressable style={{ flex: 1 }} onPress={() => router.push(`/project/${p.id}`)} testID={`open-${p.id}`}>
                   <View style={styles.rowBetween}>
