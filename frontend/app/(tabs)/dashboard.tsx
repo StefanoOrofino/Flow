@@ -169,20 +169,21 @@ export default function Dashboard() {
               <Text style={styles.overline}>{t("dashboard:recentProjects")}</Text>
               <Pressable onPress={() => router.push("/projects")}><Text style={styles.viewAll}>{t("dashboard:viewAll")}</Text></Pressable>
             </View>
-            <View style={wide ? styles.gridWide : undefined}>
+            <View style={styles.cardGrid}>
               {rest.map((p, i) => (
-                <AnimIn key={p.id} delay={i * 40} style={wide ? { width: "48.5%" } : undefined}>
-                  <Pressable style={styles.row} onPress={() => router.push(`/project/${p.id}`)} testID={`project-${p.id}`}>
-                    <View style={styles.rowThumb}>
-                      <CoverArt imageUrl={p.scenes?.[0]?.image_url} iconSize={20} />
+                <AnimIn key={p.id} delay={i * 40} style={wide ? styles.gridItemWide : styles.gridItemFull}>
+                  <Pressable style={styles.projCard} onPress={() => router.push(`/project/${p.id}`)} testID={`project-${p.id}`}>
+                    <View style={styles.projCover}>
+                      <CoverArt imageUrl={p.scenes?.[0]?.image_url} iconSize={46} scrim />
+                      <View style={styles.projBadge}><Text style={styles.projBadgeTxt}>{p.status === "generated" ? t("dashboard:stats.generated") : t("dashboard:draft")}</Text></View>
+                      <Pressable onPress={() => toggleFav(p)} hitSlop={10} style={styles.projFav} testID={`fav-${p.id}`}>
+                        <Icon name="star" size={16} color={p.favorite ? C.brand : "#fff"} strokeWidth={2} />
+                      </Pressable>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.rowTitle} numberOfLines={1}>{p.title}</Text>
-                      <Text style={styles.rowMeta} numberOfLines={1}>{rel(p.updated_at, t, locale)} · {t("projects:scenesCount", { count: p.scenes?.length || 0 })}</Text>
+                    <View style={styles.projBody}>
+                      <Text style={styles.projTitle} numberOfLines={1}>{p.title}</Text>
+                      <Text style={styles.projMeta} numberOfLines={1}>{rel(p.updated_at, t, locale)} · {t("projects:scenesCount", { count: p.scenes?.length || 0 })}</Text>
                     </View>
-                    <Pressable onPress={() => toggleFav(p)} hitSlop={10} style={{ padding: 6 }} testID={`fav-${p.id}`}>
-                      <Icon name="star" size={17} color={p.favorite ? C.brand : C.onSurface3} strokeWidth={2} />
-                    </Pressable>
                   </Pressable>
                 </AnimIn>
               ))}
@@ -252,6 +253,17 @@ const createStyles = (C: Palette) => StyleSheet.create({
   secHead: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
   viewAll: { color: C.brand, fontFamily: F.text, fontSize: 13.5, marginTop: S.xl, marginBottom: S.md },
   gridWide: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  cardGrid: { flexDirection: "row", flexWrap: "wrap", gap: S.lg },
+  gridItemWide: { width: "31.8%" },
+  gridItemFull: { width: "100%" },
+  projCard: { backgroundColor: C.surface2, borderRadius: R.lg, overflow: "hidden", borderWidth: StyleSheet.hairlineWidth, borderColor: C.border },
+  projCover: { aspectRatio: 16 / 10, width: "100%" },
+  projBadge: { position: "absolute", top: 10, left: 10, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: R.pill, paddingHorizontal: 9, paddingVertical: 3 },
+  projBadgeTxt: { color: "#fff", fontFamily: F.text, fontSize: 10.5, fontWeight: "600", textTransform: "capitalize" },
+  projFav: { position: "absolute", top: 8, right: 8, width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(0,0,0,0.4)", alignItems: "center", justifyContent: "center" },
+  projBody: { padding: S.md },
+  projTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 18, letterSpacing: -0.2 },
+  projMeta: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, marginTop: 3 },
   row: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface2, borderRadius: R.md, padding: S.sm, paddingRight: S.md, marginBottom: S.md, gap: S.md },
   rowThumb: { width: 52, height: 52, borderRadius: R.sm, overflow: "hidden", alignItems: "center", justifyContent: "center" },
   rowTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 14.5, fontWeight: "600" },
