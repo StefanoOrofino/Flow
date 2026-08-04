@@ -1,0 +1,35 @@
+{
+  "summary": "Tested Run 1 'Create Project from Client Brief' end-to-end. Backend /api/briefs/analyze works flawlessly (returned 98% overallConfidence, 8 fields extracted from TXT brief). /api/briefs/create-project with generate=False works fine. However /api/briefs/create-project with generate=True (the ACTUAL frontend flow) times out at the Kubernetes ingress (~100s), returning 502 to the client — even though backend DOES successfully create the generated project (verified via projects list). Frontend UI flow up through /brief-review is excellent (login -> /new -> file upload -> analyze -> review screen renders with summary banner, filter chips, editable inputs and confirmed badges). But the 'Confirm & Generate Project' -> 'confirm-yes' step fails with a visible 'Request failed (502)' error, leaving the user stranded on the review screen while an orphan generated project has actually been created behind the scenes. Manual fallback link works and navigates to /manual-project.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/briefs/create-project?generate=true", "issue": "AI full-project generation from brief (8-12 scenes) takes >100s and exceeds the Kubernetes ingress timeout, so the client receives 502 Bad Gateway even though the backend persists a generated project. Users see a failure and orphan projects accumulate. Split into two calls (create quickly then generate async and poll /projects/{id} for status), or navigate to /project/{id} immediately with a 'generating' state and rely on the existing /projects/{pid}/generate polling pattern.", "priority": "CRITICAL"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "confirm-generate -> confirm-yes on /brief-review", "issue": "Frontend calls api.createProjectFromBrief with generate:true and awaits the full AI generation synchronously. When ingress times out (502), the UI shows 'Request failed (502)' banner and stays on /brief-review, but a project was actually created server-side (orphan). Need to either (a) create project with generate=false, navigate to /project/{id}, then trigger /projects/{id}/generate separately with UI polling, or (b) short-circuit navigation optimistically and poll project status.", "affected_testIDs": ["confirm-generate", "confirm-yes"]}
+    ],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_briefs.py", "/app/test_reports/pytest/briefs_results.xml"],
+  "action_items": [
+    "CRITICAL: Refactor POST /api/briefs/create-project (or the frontend caller) so that AI generation does NOT block the HTTP response. Recommended flow: create-project returns immediately with a draft project (generate=false), frontend navigates to /project/{id}, then fires /projects/{id}/generate which is already the pattern used elsewhere. Poll from the project editor UI.",
+    "Add cleanup of orphan brief projects when the create-generate call fails (or make the endpoint idempotent + resumable).",
+    "Optional: surface a clearer error when 502/timeout is detected on /brief-review with a 'View partially-generated project' link."
+  ],
+  "critical_code_review_comments": [
+    "server.py::create_project_from_brief performs the full AI generation inline before returning — this is guaranteed to exceed the ~100s ingress cutoff for real gpt-5.4 8-scene generations. Same anti-pattern is avoided in /projects/{pid}/generate because that path is only invoked after the project already exists, so the frontend can retry / poll.",
+    "briefSession.ts uses an in-memory singleton (fine for same-runtime handoff) but any hard refresh on /brief-review erases the analysis. Consider persisting to sessionStorage/AsyncStorage for robustness.",
+    "new.tsx analyze() and brief-review.tsx doGenerate() should show a distinct message for 502/timeout ('Generation is taking longer than expected — check My Projects') instead of a generic Request failed banner."
+  ],
+  "updated_files": ["/app/backend/tests/test_briefs.py"],
+  "success_rate": {"backend": "86% (6/7 tests passed; only test that hit the 502 ingress timeout failed — endpoint itself is functionally correct but too slow for a sync HTTP call)", "frontend": "83% (5/6 flows pass; the confirm-generate final step surfaces a 502 to the user)"},
+  "seed_data_creation": "No seed data. Test brief.txt was uploaded via Playwright; created brief-generated projects were deleted after each run (verified — only the seeded c73286507b42 remains).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend analyze endpoint is solid (~40-60s for txt-only real AI). The critical failure is that create-project with generate=true crosses the ~100s ingress limit and returns 502 even though DB persistence succeeds. When retesting after the fix, watch the network tab on /brief-review 'confirm-yes' — it should return quickly (<10s) and the app should navigate to /project/{id} where scenes populate asynchronously. Also verify no orphan brief projects are left behind on failures.",
+  "rca_of_issue": "RCA: /api/briefs/create-project awaits ai_generate() (LLM call for full 8-scene package via gpt-5.4) BEFORE returning. Real generation timing observed: 100-130s. Kubernetes ingress (Cloudflare 524-style proxy) cuts the connection at ~100s and returns a 502 HTML page. Backend still completes and writes the fully generated project to Mongo. Reproduction: login as seeded user, upload any txt brief on /new, click Analyze, click Confirm & Generate Project -> Generate. UI shows 'Request failed (502)' on /brief-review but `GET /api/projects` lists a newly generated brief project. Mitigation: decouple project creation from generation (2-phase) using the already-existing /projects/{id}/generate endpoint + polling in the /project/[id] editor screen."
+}

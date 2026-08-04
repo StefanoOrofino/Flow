@@ -2,6 +2,7 @@ import os
 import re
 import json
 import uuid
+import base64
 import logging
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -1044,6 +1045,114 @@ async def billing_summary(user=Depends(get_current_user)):
 @api_router.get("/")
 async def root():
     return {"message": "Storyboard AI API", "mock_mode": MOCK_MODE}
+
+
+# ---------------------------------------------------------------------------
+# Create Project from Client Brief (Run 1) — upload -> analyze (text + vision)
+# ---------------------------------------------------------------------------
+class BriefFile(BaseModel):
+    name: str
+    data: str  # base64 (may include a data-URI prefix)
+
+
+class AnalyzeBriefIn(BaseModel):
+    documents: list[BriefFile] = []
+    images: list[BriefFile] = []
+
+
+class CreateFromBriefIn(BaseModel):
+    fields: dict = {}
+    visual: dict = {}
+    title: Optional[str] = None
+    generate: bool = True
+
+
+def _decode_b64(s: str) -> bytes:
+    if not s:
+        return b""
+    if "," in s[:64] and s[:5] in ("data:", "DATA:"):
+        s = s.split(",", 1)[1]
+    return base64.b64decode(s)
+
+
+IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "heic", "heif"}
+MAX_IMAGE_BYTES = 6 * 1024 * 1024
+
+
+@api_router.post("/briefs/analyze")
+async def analyze_brief_endpoint(body: AnalyzeBriefIn, user=Depends(get_current_user)):
+    if not body.documents and not body.images:
+        raise HTTPException(status_code=400, detail="Upload at least one document or reference image.")
+
+    docs, doc_errors = [], []
+    for f in body.documents:
+        try:
+            docs.append(brief_service.extract_document(f.name, _decode_b64(f.data)))
+        except brief_service.ExtractError as e:
+            doc_errors.append({"fileName": f.name, "code": e.code, "message": e.message})
+        except Exception as e:
+            logger.warning(f"extract failed {f.name}: {e}")
+            doc_errors.append({"fileName": f.name, "code": "extraction_failed", "message": "Could not read this file."})
+
+    images, image_errors = [], []
+    for f in body.images:
+        ext = (f.name.rsplit(".", 1)[-1] if "." in f.name else "").lower()
+        if ext not in IMAGE_EXTS:
+            image_errors.append({"fileName": f.name, "code": "unsupported_image", "message": f"Unsupported image: .{ext or '?'}"})
+            continue
+        try:
+            raw = _decode_b64(f.data)
+            if len(raw) > MAX_IMAGE_BYTES:
+                image_errors.append({"fileName": f.name, "code": "file_too_large", "message": "Image exceeds 6 MB."})
+                continue
+            images.append({"fileName": f.name, "fileType": ext.upper(),
+                           "fileSize": len(raw), "base64": base64.b64encode(raw).decode()})
+        except Exception:
+            image_errors.append({"fileName": f.name, "code": "corrupted_file", "message": "Could not read this image."})
+
+    analysis, mock = await brief_service.analyze_brief(docs, images)
+    return {
+        "documents": [{k: v for k, v in d.items() if k != "text"} for d in docs],
+        "documentErrors": doc_errors,
+        "images": [{"fileName": im["fileName"], "fileType": im["fileType"], "fileSize": im["fileSize"]} for im in images],
+        "imageErrors": image_errors,
+        "analysis": analysis,
+        "mock_mode": mock,
+    }
+
+
+@api_router.post("/briefs/create-project")
+async def create_project_from_brief(body: CreateFromBriefIn, user=Depends(get_current_user)):
+    payload = brief_service.map_brief_to_project(body.fields, body.visual)
+    if body.title:
+        payload["title"] = body.title[:80]
+    valid = set(ProjectIn.model_fields)
+    proj = ProjectIn(**{k: v for k, v in payload.items() if k in valid})
+    doc = proj.dict()
+    doc.update({"id": uuid.uuid4().hex[:12], "user_id": user["user_id"], "status": "draft",
+                "concept": {}, "treatment": {}, "equipment": {}, "crew": {}, "schedule": {}, "budget": {},
+                "scenes": [], "favorite": False, "archived": False, "export_count": 0,
+                "created_from": "brief", "created_at": now_iso(), "updated_at": now_iso()})
+    await db.projects.insert_one(dict(doc))
+    doc.pop("_id", None)
+
+    if body.generate:
+        used_mock = MOCK_MODE
+        try:
+            data = await ai_generate(doc)
+        except Exception as e:
+            logger.warning(f"Brief generation failed, using mock fallback: {e}")
+            data = mock_output(doc)
+            used_mock = True
+        scenes = [normalize_scene(s, i) for i, s in enumerate(data.get("scenes", []))]
+        update = {"concept": data.get("concept", {}), "treatment": data.get("treatment", {}),
+                  "equipment": data.get("equipment", {}), "crew": data.get("crew", {}),
+                  "schedule": data.get("schedule", {}), "budget": data.get("budget", {}),
+                  "scenes": scenes, "status": "generated", "mock_mode": used_mock, "updated_at": now_iso()}
+        await db.projects.update_one({"id": doc["id"], "user_id": user["user_id"]}, {"$set": update})
+        await bump_usage(user["user_id"], "ai_generations")
+        doc = await _get_owned(doc["id"], user)
+    return doc
 
 
 app.include_router(api_router)

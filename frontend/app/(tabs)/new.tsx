@@ -1,170 +1,283 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, KeyboardAvoidingView, Platform, Modal } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { View, Text, ScrollView, StyleSheet, Pressable, Platform, Modal, ActivityIndicator } from "react-native";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { api } from "@/src/api";
+import { briefSession } from "@/src/brief/briefSession";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
-import { Field, Picker, Btn, H1, H2, Body } from "@/src/components";
-import * as O from "@/src/options";
+import { H1, H2, Body } from "@/src/components";
 
-const STEPS = ["Project", "Video", "Creative", "Advanced", "Review"];
+const DOC_MIME = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain", "application/rtf", "text/rtf",
+];
 
-export default function NewProject() {
+async function assetToBase64(asset: any): Promise<string> {
+  if (asset.base64) return asset.base64;
+  if (Platform.OS === "web") {
+    const blob = asset.file ?? (await (await fetch(asset.uri)).blob());
+    return await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onerror = () => reject(new Error("read failed"));
+      fr.onload = () => resolve(String(fr.result).split(",")[1] || "");
+      fr.readAsDataURL(blob);
+    });
+  }
+  return await FileSystem.readAsStringAsync(asset.uri, { encoding: "base64" as any });
+}
+
+type Item = { id: string; name: string; uri: string; size?: number; base64?: string; status: "reading" | "ready" | "error" };
+
+export default function CreateProject() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { C } = useTheme();
+  const { t } = useTranslation("createProject");
   const styles = useMemo(() => createStyles(C), [C]);
-  const params = useLocalSearchParams<any>();
-  const [step, setStep] = useState(0);
+
+  const [docs, setDocs] = useState<Item[]>([]);
+  const [imgs, setImgs] = useState<Item[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const [f, setF] = useState<any>({
-    title: params.title || "", client: "", campaign: "", goal: "", target_audience: "", brand: "", language: "English",
-    video_type: params.video_type || "Commercial", platform: params.platform || "YouTube",
-    duration: params.duration || "30 seconds", aspect_ratio: params.aspect_ratio || "16:9",
-    crew_size: params.crew_size || "Small professional crew", budget: "", location_type: "", num_actors: "",
-    num_scenes: params.num_scenes ? Number(params.num_scenes) : 5,
-    mood: params.mood || "Premium", visual_style: params.visual_style || "Cinematic",
-    camera_style: "Steady & composed", lighting_style: "Natural", editing_style: "Rhythmic",
-    music_style: "Ambient score", director_references: "", film_references: "",
-    deliverables: "", special_requests: "", restrictions: "", extra_notes: "",
-  });
-  const set = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
+  const uid = () => Math.random().toString(36).slice(2, 9);
 
-  const next = () => {
+  const pickDocs = async () => {
     setErr("");
-    if (step === 0 && !f.title.trim()) return setErr("Project title is required.");
-    if (step < 4) setStep(step + 1);
+    const res = await DocumentPicker.getDocumentAsync({ multiple: true, type: DOC_MIME, copyToCacheDirectory: true });
+    if (res.canceled) return;
+    const added: Item[] = res.assets.map((a) => ({ id: uid(), name: a.name, uri: a.uri, size: a.size ?? undefined, status: "reading", ...( { file: (a as any).file }) } as any));
+    setDocs((p) => [...p, ...added]);
+    for (const it of added) {
+      const asset = res.assets.find((a) => a.name === it.name && a.uri === it.uri);
+      try {
+        const b64 = await assetToBase64({ ...asset, uri: it.uri });
+        setDocs((p) => p.map((x) => (x.id === it.id ? { ...x, base64: b64, status: "ready" } : x)));
+      } catch {
+        setDocs((p) => p.map((x) => (x.id === it.id ? { ...x, status: "error" } : x)));
+      }
+    }
   };
-  const back = () => (step > 0 ? setStep(step - 1) : router.back());
 
-  const generate = async () => {
+  const pickImages = async () => {
+    setErr("");
+    if (Platform.OS !== "web") {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { setErr(t("analyzeFailed")); return; }
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"], allowsMultipleSelection: true, base64: true, quality: 0.7,
+    });
+    if (res.canceled) return;
+    const added: Item[] = res.assets.map((a) => ({
+      id: uid(), name: a.fileName || `image-${uid()}.jpg`, uri: a.uri, size: a.fileSize, status: "reading",
+    }));
+    setImgs((p) => [...p, ...added]);
+    for (let i = 0; i < added.length; i++) {
+      const it = added[i];
+      const asset = res.assets[i];
+      try {
+        const b64 = await assetToBase64(asset);
+        setImgs((p) => p.map((x) => (x.id === it.id ? { ...x, base64: b64, status: "ready" } : x)));
+      } catch {
+        setImgs((p) => p.map((x) => (x.id === it.id ? { ...x, status: "error" } : x)));
+      }
+    }
+  };
+
+  const removeDoc = (id: string) => setDocs((p) => p.filter((x) => x.id !== id));
+  const removeImg = (id: string) => setImgs((p) => p.filter((x) => x.id !== id));
+  const moveImgUp = (i: number) => setImgs((p) => { if (i <= 0) return p; const n = [...p]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; });
+
+  const readyDocs = docs.filter((d) => d.status === "ready");
+  const readyImgs = imgs.filter((d) => d.status === "ready");
+  const anyReading = [...docs, ...imgs].some((d) => d.status === "reading");
+  const canAnalyze = (readyDocs.length + readyImgs.length) > 0 && !anyReading;
+
+  const analyze = async () => {
+    if (!canAnalyze) { setErr(t("noInput")); return; }
     setErr(""); setBusy(true);
     try {
-      const p = await api.createProject(f);
-      const gen = await api.generate(p.id);
-      router.replace(`/project/${gen.id}`);
-    } catch (e: any) { setErr(e.message || "Generation failed. Please try again."); setBusy(false); }
+      const resp = await api.analyzeBrief({
+        documents: readyDocs.map((d) => ({ name: d.name, data: d.base64 })),
+        images: readyImgs.map((d) => ({ name: d.name, data: d.base64 })),
+      });
+      briefSession.set({
+        analysis: resp.analysis,
+        documents: resp.documents || [],
+        documentErrors: resp.documentErrors || [],
+        images: resp.images || [],
+        imageErrors: resp.imageErrors || [],
+        imageThumbs: readyImgs.map((d) => ({ name: d.name, uri: d.uri })),
+        mockMode: !!resp.mock_mode,
+      });
+      setBusy(false);
+      router.push("/brief-review");
+    } catch (e: any) {
+      setErr(e.message || t("analyzeFailed"));
+      setBusy(false);
+    }
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.surface }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <View style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={[styles.header, { paddingTop: insets.top + S.md }]}>
-        <Pressable onPress={back} testID="wizard-back" hitSlop={10}><Ionicons name="arrow-back" size={22} color={C.onSurface} /></Pressable>
-        <Text style={styles.stepLabel}>Step {step + 1} of 5 · {STEPS[step]}</Text>
+        <Pressable onPress={() => router.back()} hitSlop={10} testID="create-back"><Ionicons name="arrow-back" size={22} color={C.onSurface} /></Pressable>
+        <Text style={styles.headerTitle}>{t("title")}</Text>
         <View style={{ width: 22 }} />
       </View>
-      <View style={styles.progress}>
-        {STEPS.map((_, i) => <View key={i} style={[styles.pBar, { backgroundColor: i <= step ? C.brand : C.surface3 }]} />)}
-      </View>
 
-      <ScrollView contentContainerStyle={{ padding: S.xl, paddingBottom: 150, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
+      <ScrollView contentContainerStyle={{ padding: S.xl, paddingBottom: insets.bottom + 120, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
+        <H1 style={{ marginBottom: 4 }}>{t("title")}</H1>
+        <Body muted style={{ marginBottom: S.xl }}>{t("subtitle")}</Body>
+
         {err ? <View style={styles.errBox}><Text style={styles.errText}>{err}</Text></View> : null}
-        <Animated.View key={step} entering={FadeIn.duration(260)}>
-          {step === 0 && (<>
-            <H1 style={{ marginBottom: 4 }}>Project</H1>
-            <Body muted style={{ marginBottom: S.lg }}>The essentials of your production.</Body>
-            <Field label="Project title *" value={f.title} onChangeText={(v: string) => set("title", v)} placeholder="e.g. Aurora Skincare Launch" testID="in-title" />
-            <Field label="Client" value={f.client} onChangeText={(v: string) => set("client", v)} placeholder="Client name" testID="in-client" />
-            <Field label="Campaign" value={f.campaign} onChangeText={(v: string) => set("campaign", v)} placeholder="Campaign name" />
-            <Field label="Goal" value={f.goal} onChangeText={(v: string) => set("goal", v)} placeholder="What should this video achieve?" multiline testID="in-goal" />
-            <Field label="Audience" value={f.target_audience} onChangeText={(v: string) => set("target_audience", v)} placeholder="Who is it for?" />
-            <Field label="Brand" value={f.brand} onChangeText={(v: string) => set("brand", v)} placeholder="Brand / tone of voice" />
-            <Field label="Language" value={f.language} onChangeText={(v: string) => set("language", v)} placeholder="English" />
-          </>)}
 
-          {step === 1 && (<>
-            <H1 style={{ marginBottom: 4 }}>Video</H1>
-            <Body muted style={{ marginBottom: S.lg }}>Format and logistics.</Body>
-            <Picker label="Video type" value={f.video_type} options={O.VIDEO_TYPES} onSelect={(v: string) => set("video_type", v)} testID="in-vtype" />
-            <Picker label="Platform" value={f.platform} options={O.PLATFORMS} onSelect={(v: string) => set("platform", v)} testID="in-platform" />
-            <Picker label="Duration" value={f.duration} options={O.DURATIONS} onSelect={(v: string) => set("duration", v)} testID="in-duration" />
-            <Picker label="Aspect ratio" value={f.aspect_ratio} options={O.ASPECT_RATIOS} onSelect={(v: string) => set("aspect_ratio", v)} testID="in-aspect" />
-            <Picker label="Crew size" value={f.crew_size} options={O.CREW_SIZES} onSelect={(v: string) => set("crew_size", v)} testID="in-crew" />
-            <Field label="Budget" value={f.budget} onChangeText={(v: string) => set("budget", v)} placeholder="e.g. $20k, indie, high-end" />
-            <Field label="Location" value={f.location_type} onChangeText={(v: string) => set("location_type", v)} placeholder="e.g. Studio, outdoor city" />
-            <Field label="Actors / subjects" value={f.num_actors} onChangeText={(v: string) => set("num_actors", v)} placeholder="e.g. 2 presenters" />
-            <Field label="Number of scenes" value={String(f.num_scenes)} onChangeText={(v: string) => set("num_scenes", Math.max(1, Math.min(20, Number(v.replace(/[^0-9]/g, "")) || 1)))} keyboardType="number-pad" testID="in-scenes" />
-          </>)}
+        {/* Section 1 — Client Brief */}
+        <View style={styles.sectionHead}>
+          <View style={styles.sectionIcon}><Ionicons name="document-text-outline" size={16} color={C.brand} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>{t("briefSection")}</Text>
+            <Text style={styles.sectionHint}>{t("briefHint")}</Text>
+          </View>
+        </View>
 
-          {step === 2 && (<>
-            <H1 style={{ marginBottom: 4 }}>Creative Direction</H1>
-            <Body muted style={{ marginBottom: S.lg }}>Define the look and feel.</Body>
-            <Picker label="Mood" value={f.mood} options={O.MOODS} onSelect={(v: string) => set("mood", v)} testID="in-mood" />
-            <Picker label="Visual style" value={f.visual_style} options={O.VISUAL_STYLES} onSelect={(v: string) => set("visual_style", v)} testID="in-style" />
-            <Picker label="Camera style" value={f.camera_style} options={O.CAMERA_STYLES} onSelect={(v: string) => set("camera_style", v)} />
-            <Picker label="Lighting style" value={f.lighting_style} options={O.LIGHTING_STYLES} onSelect={(v: string) => set("lighting_style", v)} />
-            <Picker label="Editing style" value={f.editing_style} options={O.EDITING_STYLES} onSelect={(v: string) => set("editing_style", v)} />
-            <Picker label="Music style" value={f.music_style} options={O.MUSIC_STYLES} onSelect={(v: string) => set("music_style", v)} />
-            <Field label="Director references" value={f.director_references} onChangeText={(v: string) => set("director_references", v)} placeholder="e.g. Fincher, Chazelle" multiline />
-            <Field label="Film references" value={f.film_references} onChangeText={(v: string) => set("film_references", v)} placeholder="Films / campaigns for inspiration" multiline />
-          </>)}
+        <Pressable onPress={pickDocs} style={styles.dropzone} testID="pick-docs">
+          <View style={styles.dropIcon}><Ionicons name="cloud-upload-outline" size={26} color={C.brand} /></View>
+          <Text style={styles.dropText}>{t("dropBrief")}</Text>
+          <View style={styles.browseBtn}><Text style={styles.browseTxt}>{t("browse")}</Text></View>
+        </Pressable>
 
-          {step === 3 && (<>
-            <H1 style={{ marginBottom: 4 }}>Advanced</H1>
-            <Body muted style={{ marginBottom: S.lg }}>Deliverables and constraints.</Body>
-            <Field label="Deliverables" value={f.deliverables} onChangeText={(v: string) => set("deliverables", v)} placeholder="e.g. 1x master + 3 cutdowns" multiline />
-            <Field label="Special requests" value={f.special_requests} onChangeText={(v: string) => set("special_requests", v)} placeholder="Anything specific to include" multiline />
-            <Field label="Restrictions" value={f.restrictions} onChangeText={(v: string) => set("restrictions", v)} placeholder="Legal, brand or content limits" multiline />
-            <Field label="Extra notes" value={f.extra_notes} onChangeText={(v: string) => set("extra_notes", v)} placeholder="Anything else for the director" multiline />
-          </>)}
+        {docs.map((d) => (
+          <Animated.View key={d.id} entering={FadeInDown.duration(200)} style={styles.fileRow} testID={`doc-${d.name}`}>
+            <Ionicons name={d.status === "error" ? "alert-circle" : "document-outline"} size={18} color={d.status === "error" ? C.error : C.brand} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fileName} numberOfLines={1}>{d.name}</Text>
+              <Text style={[styles.fileMeta, d.status === "error" && { color: C.error }]}>
+                {d.status === "reading" ? t("reading") : d.status === "error" ? t("error") : d.size ? `${Math.round((d.size / 1024))} KB` : "✓"}
+              </Text>
+            </View>
+            {d.status === "reading" ? <ActivityIndicator size="small" color={C.brand} />
+              : <Pressable onPress={() => removeDoc(d.id)} hitSlop={8} testID={`rm-doc-${d.name}`}><Ionicons name="close-circle" size={20} color={C.onSurface2} /></Pressable>}
+          </Animated.View>
+        ))}
 
-          {step === 4 && (<>
-            <H1 style={{ marginBottom: 4 }}>Review</H1>
-            <Body muted style={{ marginBottom: S.lg }}>Review your brief — tap Edit on any section.</Body>
-            {[
-              { t: "Project", s: 0, rows: [["Title", f.title], ["Client", f.client], ["Campaign", f.campaign], ["Goal", f.goal], ["Audience", f.target_audience], ["Brand", f.brand], ["Language", f.language]] },
-              { t: "Video", s: 1, rows: [["Type", f.video_type], ["Platform", f.platform], ["Duration", f.duration], ["Aspect", f.aspect_ratio], ["Crew", f.crew_size], ["Budget", f.budget], ["Location", f.location_type], ["Actors", f.num_actors], ["Scenes", String(f.num_scenes)]] },
-              { t: "Creative", s: 2, rows: [["Mood", f.mood], ["Visual", f.visual_style], ["Camera", f.camera_style], ["Lighting", f.lighting_style], ["Editing", f.editing_style], ["Music", f.music_style], ["Director refs", f.director_references], ["Film refs", f.film_references]] },
-              { t: "Advanced", s: 3, rows: [["Deliverables", f.deliverables], ["Special requests", f.special_requests], ["Restrictions", f.restrictions], ["Notes", f.extra_notes]] },
-            ].map((sec) => (
-              <View key={sec.t} style={styles.reviewCard}>
-                <View style={styles.rowBetween}><H2>{sec.t}</H2><Pressable onPress={() => setStep(sec.s)}><Text style={styles.edit}>Edit</Text></Pressable></View>
-                {sec.rows.filter((r) => r[1]).map((r) => (
-                  <View key={r[0]} style={styles.reviewRow}><Text style={styles.rLabel}>{r[0]}</Text><Text style={styles.rVal}>{r[1]}</Text></View>
-                ))}
-              </View>
+        {/* Section 2 — Visual References */}
+        <View style={[styles.sectionHead, { marginTop: S.xxl }]}>
+          <View style={styles.sectionIcon}><Ionicons name="images-outline" size={16} color={C.brand} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>{t("refsSection")}</Text>
+            <Text style={styles.sectionHint}>{t("refsHint")}</Text>
+          </View>
+        </View>
+        <Body muted style={{ marginBottom: S.md, fontSize: 13 }}>{t("refsDesc")}</Body>
+
+        <Pressable onPress={pickImages} style={styles.dropzone} testID="pick-images">
+          <View style={styles.dropIcon}><Ionicons name="image-outline" size={26} color={C.brand} /></View>
+          <Text style={styles.dropText}>{t("dropRefs")}</Text>
+          <View style={styles.browseBtn}><Text style={styles.browseTxt}>{t("addImages")}</Text></View>
+        </Pressable>
+
+        {imgs.length > 0 && (
+          <View style={styles.thumbGrid}>
+            {imgs.map((im, i) => (
+              <Animated.View key={im.id} entering={FadeIn.duration(200)} style={styles.thumb} testID={`img-${i}`}>
+                <Image source={{ uri: im.uri }} style={styles.thumbImg} contentFit="cover" />
+                {im.status === "reading" && <View style={styles.thumbOverlay}><ActivityIndicator size="small" color="#fff" /></View>}
+                {im.status === "error" && <View style={styles.thumbOverlay}><Ionicons name="alert-circle" size={20} color={C.error} /></View>}
+                <Pressable onPress={() => removeImg(im.id)} hitSlop={6} style={styles.thumbRemove} testID={`rm-img-${i}`}>
+                  <Ionicons name="close" size={13} color="#fff" />
+                </Pressable>
+                {i > 0 && (
+                  <Pressable onPress={() => moveImgUp(i)} hitSlop={6} style={styles.thumbMove} testID={`mv-img-${i}`}>
+                    <Ionicons name="arrow-back" size={12} color="#fff" />
+                  </Pressable>
+                )}
+                <View style={styles.thumbIndex}><Text style={styles.thumbIndexTxt}>{i + 1}</Text></View>
+              </Animated.View>
             ))}
-          </>)}
-        </Animated.View>
+          </View>
+        )}
+
+        <Pressable onPress={() => router.push("/manual-project")} style={styles.manualLink} testID="manual-link">
+          <Ionicons name="create-outline" size={15} color={C.onSurface2} />
+          <Text style={styles.manualTxt}>{t("manualLink")}</Text>
+        </Pressable>
       </ScrollView>
 
+      {/* Sticky footer CTA */}
       <View style={styles.footer}>
         <View style={{ padding: S.lg, paddingBottom: insets.bottom + S.md, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
-          {step < 4
-            ? <Btn title="Continue" icon="arrow-forward" onPress={next} testID="wizard-continue" />
-            : <Btn title="Generate Storyboard" icon="sparkles" onPress={generate} loading={busy} testID="generate-btn" />}
+          <Pressable onPress={analyze} disabled={!canAnalyze} testID="analyze-btn"
+            style={({ pressed }) => [styles.cta, { opacity: !canAnalyze ? 0.45 : pressed ? 0.9 : 1 }]}>
+            <Ionicons name="sparkles" size={17} color={C.onBrand} />
+            <Text style={styles.ctaText}>{t("analyze")}</Text>
+            {(readyDocs.length + readyImgs.length) > 0 && (
+              <View style={styles.ctaCount}><Text style={styles.ctaCountTxt}>{readyDocs.length + readyImgs.length}</Text></View>
+            )}
+          </Pressable>
         </View>
       </View>
 
       <Modal visible={busy} transparent animationType="fade">
-        <View style={styles.genOverlay}>
-          <Ionicons name="film-outline" size={40} color={C.brand} />
-          <H2 style={{ marginTop: S.lg }}>Directing your storyboard…</H2>
-          <Body muted style={{ marginTop: 4, textAlign: "center" }}>Building concept, treatment, script, scenes and shot list. This can take up to a minute.</Body>
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color={C.brand} />
+          <H2 style={{ marginTop: S.lg, textAlign: "center" }}>{t("analyzing")}</H2>
+          <Body muted style={{ marginTop: 6, textAlign: "center", maxWidth: 320 }}>{t("analyzingSub")}</Body>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const createStyles = (C: Palette) => StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: S.xl, paddingBottom: S.md },
-  stepLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 13 },
-  progress: { flexDirection: "row", paddingHorizontal: S.xl, gap: 6, marginBottom: S.sm },
-  pBar: { flex: 1, height: 3, borderRadius: 2 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: S.xl, paddingBottom: S.md, borderBottomWidth: 1, borderBottomColor: C.border },
+  headerTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 15, fontWeight: "600" },
   errBox: { backgroundColor: C.errorTint, borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.lg },
   errText: { color: C.onErrorTint, fontFamily: F.text, fontSize: 13 },
+
+  sectionHead: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: S.md },
+  sectionIcon: { width: 32, height: 32, borderRadius: 9, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
+  sectionTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 16, fontWeight: "700" },
+  sectionHint: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, marginTop: 1 },
+
+  dropzone: { borderWidth: 1.5, borderColor: C.borderStrong, borderStyle: "dashed", borderRadius: R.lg, backgroundColor: C.surface2, alignItems: "center", justifyContent: "center", paddingVertical: S.xxl, paddingHorizontal: S.lg, gap: 10 },
+  dropIcon: { width: 52, height: 52, borderRadius: 14, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
+  dropText: { color: C.onSurface2, fontFamily: F.text, fontSize: 13.5, textAlign: "center" },
+  browseBtn: { backgroundColor: C.surface3, borderRadius: R.pill, paddingHorizontal: 16, paddingVertical: 8, marginTop: 2 },
+  browseTxt: { color: C.onSurface, fontFamily: F.text, fontSize: 13, fontWeight: "600" },
+
+  fileRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md, marginTop: S.sm },
+  fileName: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5 },
+  fileMeta: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, marginTop: 1 },
+
+  thumbGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: S.md },
+  thumb: { width: 96, height: 96, borderRadius: R.md, overflow: "hidden", backgroundColor: C.surface3, borderWidth: 1, borderColor: C.border },
+  thumbImg: { width: "100%", height: "100%" },
+  thumbOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" },
+  thumbRemove: { position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
+  thumbMove: { position: "absolute", bottom: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
+  thumbIndex: { position: "absolute", top: 4, left: 4, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 5, backgroundColor: C.brand, alignItems: "center", justifyContent: "center" },
+  thumbIndexTxt: { color: C.onBrand, fontFamily: F.text, fontSize: 10, fontWeight: "700" },
+
+  manualLink: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: S.xxl, paddingVertical: S.sm },
+  manualTxt: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, textDecorationLine: "underline" },
+
   footer: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: C.surface2, borderTopWidth: 1, borderTopColor: C.border },
-  reviewCard: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.md },
-  rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: S.sm },
-  edit: { color: C.brand, fontFamily: F.text, fontSize: 14 },
-  reviewRow: { flexDirection: "row", paddingVertical: 6, borderTopWidth: 1, borderTopColor: C.border },
-  rLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, width: 120 },
-  rVal: { color: C.onSurface, fontFamily: F.text, fontSize: 13, flex: 1 },
-  genOverlay: { flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center", padding: S.xxl },
+  cta: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: C.brand, borderRadius: R.md, paddingVertical: 15, minHeight: 52 },
+  ctaText: { color: C.onBrand, fontFamily: F.text, fontSize: 15, fontWeight: "600" },
+  ctaCount: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.2)", paddingHorizontal: 6, alignItems: "center", justifyContent: "center" },
+  ctaCountTxt: { color: C.onBrand, fontFamily: F.text, fontSize: 12, fontWeight: "700" },
+
+  overlay: { flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center", padding: S.xxl },
 });

@@ -89,4 +89,7 @@ export const api = {
   deleteVersion: (id: string, vid: string) => req(`/projects/${id}/versions/${vid}`, "DELETE"),
   // Billing (read-only, Run 1)
   billingSummary: () => req("/billing/summary"),
+  // Create Project from Client Brief (Run 1)
+  analyzeBrief: (body: { documents: any[]; images: any[] }) => req("/briefs/analyze", "POST", body),
+  createProjectFromBrief: (body: any) => req("/briefs/create-project", "POST", body),
 };

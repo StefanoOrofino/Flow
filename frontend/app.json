@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.frameflowstudio.h3yl26"
+      "bundleIdentifier": "com.emergent.frameflowstudio.h3yl26",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Add reference images to analyze your brief"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +21,11 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.emergent.frameflowstudio.h3yl26"
+      "package": "com.emergent.frameflowstudio.h3yl26",
+      "permissions": [
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -36,7 +43,13 @@
           "backgroundColor": "#000000"
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Add reference images to analyze your brief"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
