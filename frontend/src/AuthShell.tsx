@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { S, R, F, Palette, darkPalette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
 import { useTranslation } from "react-i18next";
+import { LogoMark } from "@/src/brand/FrameFlowLogo";
 
 // The marketing Hero is an intentional, always-cinematic dark panel (like
 // Linear/Arc auth). It uses the fixed dark palette regardless of app theme.
@@ -67,7 +68,7 @@ function Hero() {
 
       <Animated.View style={{ opacity: enter, transform: [{ translateY: enterY }], flex: 1, justifyContent: "space-between" }}>
         <View style={s.brandRow}>
-          <View style={s.brandMark}><Ionicons name="film-outline" size={18} color={D.brand} /></View>
+          <View style={s.brandMark}><LogoMark color={D.brand} size={26} /></View>
           <Text style={s.brandText}>FRAMEFLOW STUDIO</Text>
         </View>
 
@@ -124,7 +125,7 @@ export default function AuthShell({ title, subtitle, children }: any) {
           <ScrollView contentContainerStyle={[r.rightContent, { paddingTop: insets.top + (wide ? S.xxxl : S.xxl), paddingBottom: insets.bottom + S.xxl }]} showsVerticalScrollIndicator={false}>
             <Animated.View style={[r.card, { opacity: enter, transform: [{ translateY: y }] }]}>
               <View style={r.logoRow}>
-                <View style={r.brandMark}><Ionicons name="film-outline" size={18} color={C.brand} /></View>
+                <View style={r.brandMark}><LogoMark color={C.brand} size={26} /></View>
                 <Text style={r.logoText}>FRAMEFLOW STUDIO</Text>
               </View>
               <Text style={r.title}>{title}</Text>

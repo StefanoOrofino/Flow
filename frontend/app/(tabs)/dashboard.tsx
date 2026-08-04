@@ -11,6 +11,7 @@ import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "@/src/LanguageProvider";
+import { LogoMark } from "@/src/brand/FrameFlowLogo";
 import { H1, H2, Body, StatCard, Skeleton, AnimIn, Badge } from "@/src/components";
 
 const HERO = "https://images.unsplash.com/photo-1608186336271-53313eeaf864?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBjYW1lcmElMjBsZW5zJTIwZGFya3xlbnwwfHx8fDE3ODU3NjIxNDZ8MA&ixlib=rb-4.1.0&q=85";
@@ -79,7 +80,10 @@ export default function Dashboard() {
         <Image source={{ uri: HERO }} style={StyleSheet.absoluteFill} contentFit="cover" />
         <LinearGradient colors={["rgba(10,10,10,0.55)", "rgba(10,10,10,0.97)"]} style={StyleSheet.absoluteFill} />
         <View style={[styles.heroInner, { paddingTop: insets.top + S.xl }]}>
-          <Text style={styles.kicker}>FRAMEFLOW STUDIO</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <LogoMark color={C.brand} size={22} />
+            <Text style={styles.kicker}>FRAMEFLOW STUDIO</Text>
+          </View>
           <H1 style={{ marginTop: S.sm }}>{t("dashboard:welcome", { name: user?.name?.split(" ")[0] || t("settings:director") })}</H1>
           <Body muted style={{ marginTop: 4 }}>{t("dashboard:subtitle")}</Body>
         </View>
