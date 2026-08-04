@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import {
-  View, Text, TextInput, Pressable, StyleSheet, Modal, ScrollView, ActivityIndicator, ViewStyle,
+  View, Text, TextInput, Pressable, StyleSheet, Modal, ScrollView, ActivityIndicator, ViewStyle, useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { S, R, F, Palette } from "./theme";
 import { useTheme } from "./ThemeProvider";
 
@@ -190,6 +191,109 @@ export function MockBadge() {
   );
 }
 
+/**
+ * Searchable multi-select with removable, reorderable chips + a free-text
+ * "Custom" value. Opens a bottom-sheet on phones, a centered sheet on wide.
+ */
+export function MultiSelect({ label, values = [], options = [], onChange, custom = "", onCustomChange, testID }: {
+  label?: string; values?: string[]; options?: string[]; onChange: (v: string[]) => void;
+  custom?: string; onCustomChange?: (v: string) => void; testID?: string;
+}) {
+  const { C } = useTheme();
+  const { t } = useTranslation("common");
+  const styles = useMemo(() => createStyles(C), [C]);
+  const { width } = useWindowDimensions();
+  const phone = width < 700;
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [customDraft, setCustomDraft] = useState("");
+
+  const toggle = (opt: string) => onChange(values.includes(opt) ? values.filter((v) => v !== opt) : [...values, opt]);
+  const remove = (opt: string) => onChange(values.filter((v) => v !== opt));
+  const moveUp = (i: number) => { if (i <= 0) return; const next = [...values]; [next[i - 1], next[i]] = [next[i], next[i - 1]]; onChange(next); };
+  const addCustom = () => { const v = customDraft.trim(); if (!v) return; onCustomChange && onCustomChange(v); setCustomDraft(""); };
+  const filtered = options.filter((o) => o.toLowerCase().includes(query.trim().toLowerCase()));
+  const hasChips = values.length > 0 || !!custom;
+
+  return (
+    <View style={{ marginBottom: S.lg }}>
+      {label ? <Label>{label}</Label> : null}
+      <Pressable style={styles.input} onPress={() => setOpen(true)} testID={testID}>
+        {hasChips ? (
+          <View style={styles.msChipWrap}>
+            {values.map((v, i) => (
+              <View key={v} style={styles.msChip} testID={`${testID}-chip-${v}`}>
+                <Text style={styles.msChipText} numberOfLines={1}>{v}</Text>
+                <Pressable onPress={() => remove(v)} hitSlop={8} testID={`${testID}-remove-${v}`}><Ionicons name="close" size={13} color={C.onBrandTint} /></Pressable>
+              </View>
+            ))}
+            {!!custom && (
+              <View style={[styles.msChip, { backgroundColor: C.surface3 }]}>
+                <Ionicons name="create-outline" size={12} color={C.onSurface2} />
+                <Text style={[styles.msChipText, { color: C.onSurface }]} numberOfLines={1}>{custom}</Text>
+                <Pressable onPress={() => onCustomChange && onCustomChange("")} hitSlop={8}><Ionicons name="close" size={13} color={C.onSurface2} /></Pressable>
+              </View>
+            )}
+          </View>
+        ) : (
+          <Text style={{ color: C.onSurface2, fontFamily: F.text, fontSize: 15 }}>{t("multiselect.empty")}</Text>
+        )}
+      </Pressable>
+
+      <Modal visible={open} transparent animationType={phone ? "slide" : "fade"} onRequestClose={() => setOpen(false)}>
+        <Pressable style={[styles.modalBg, phone && { justifyContent: "flex-end", padding: 0 }]} onPress={() => setOpen(false)}>
+          <Pressable style={[styles.centerSheet, phone && styles.bottomSheet]} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.msHeader}>
+              <Text style={styles.sheetTitle}>{label}</Text>
+              <Pressable onPress={() => setOpen(false)} testID={`${testID}-done`}><Text style={{ color: C.brand, fontFamily: F.text, fontSize: 15, fontWeight: "600" }}>{t("multiselect.done")}</Text></Pressable>
+            </View>
+
+            <View style={styles.msSearch}>
+              <Ionicons name="search" size={15} color={C.onSurface2} />
+              <TextInput value={query} onChangeText={setQuery} placeholder={t("multiselect.search")} placeholderTextColor={C.onSurface2}
+                style={{ flex: 1, color: C.onSurface, fontFamily: F.text, fontSize: 14, paddingVertical: 8 }} testID={`${testID}-search`} />
+            </View>
+
+            {values.length > 0 && (
+              <View style={{ marginBottom: S.sm }}>
+                <Text style={styles.msSelLabel}>{t("multiselect.selected")}</Text>
+                {values.map((v, i) => (
+                  <View key={v} style={styles.msSelRow}>
+                    <Pressable onPress={() => moveUp(i)} disabled={i === 0} hitSlop={6} style={{ opacity: i === 0 ? 0.3 : 1 }}><Ionicons name="arrow-up" size={16} color={C.onSurface2} /></Pressable>
+                    <Text style={{ flex: 1, color: C.onSurface, fontFamily: F.text, fontSize: 14 }} numberOfLines={1}>{i + 1}. {v}</Text>
+                    <Pressable onPress={() => remove(v)} hitSlop={6}><Ionicons name="close-circle" size={17} color={C.onSurface2} /></Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <ScrollView style={{ maxHeight: phone ? 300 : 340 }} keyboardShouldPersistTaps="handled">
+              {filtered.map((o) => {
+                const on = values.includes(o);
+                return (
+                  <Pressable key={o} style={styles.optRow} onPress={() => toggle(o)} testID={`${testID}-opt-${o}`}>
+                    <Text style={{ color: on ? C.brand : C.onSurface, fontFamily: F.text, fontSize: 15, flex: 1 }}>{o}</Text>
+                    <Ionicons name={on ? "checkbox" : "square-outline"} size={19} color={on ? C.brand : C.onSurface2} />
+                  </Pressable>
+                );
+              })}
+              {filtered.length === 0 && <Text style={{ color: C.onSurface2, fontFamily: F.text, fontSize: 13, padding: S.md }}>{t("multiselect.none")}</Text>}
+            </ScrollView>
+
+            {onCustomChange && (
+              <View style={styles.msCustomRow}>
+                <TextInput value={customDraft} onChangeText={setCustomDraft} placeholder={t("multiselect.customPlaceholder")} placeholderTextColor={C.onSurface2}
+                  style={styles.msCustomInput} onSubmitEditing={addCustom} testID={`${testID}-custom`} />
+                <Pressable style={styles.msAddBtn} onPress={addCustom} testID={`${testID}-custom-add`}><Text style={{ color: C.onBrand, fontFamily: F.text, fontSize: 13, fontWeight: "600" }}>{t("multiselect.add")}</Text></Pressable>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
 const createStyles = (C: Palette) => StyleSheet.create({
   label: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, marginBottom: S.sm, letterSpacing: 0.6, textTransform: "uppercase" },
   input: { backgroundColor: C.surface2, borderRadius: R.md, paddingHorizontal: S.lg, paddingVertical: S.md, color: C.onSurface, fontFamily: F.text, fontSize: 15, borderWidth: 1, borderColor: C.border, minHeight: 50, justifyContent: "center" },
@@ -216,4 +320,15 @@ const createStyles = (C: Palette) => StyleSheet.create({
   emptyInner: { alignItems: "center", backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.xxl, width: "100%" },
   emptyIcon: { width: 66, height: 66, borderRadius: R.lg, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
   mockBadge: { flexDirection: "row", alignItems: "center", backgroundColor: C.brandTint, paddingHorizontal: 10, paddingVertical: 5, borderRadius: R.pill, alignSelf: "flex-start" },
+  msChipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingVertical: 2 },
+  msChip: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: C.brandTint, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 6, maxWidth: "100%" },
+  msChipText: { color: C.onBrandTint, fontFamily: F.text, fontSize: 12.5, flexShrink: 1 },
+  bottomSheet: { maxWidth: "100%", width: "100%", borderBottomLeftRadius: 0, borderBottomRightRadius: 0, alignSelf: "stretch", paddingBottom: S.xl },
+  msHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: S.md },
+  msSearch: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.surface, borderRadius: R.md, borderWidth: 1, borderColor: C.border, paddingHorizontal: 10, marginBottom: S.sm },
+  msSelLabel: { color: C.brand, fontFamily: F.text, fontSize: 11, letterSpacing: 1, marginBottom: 4 },
+  msSelRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: C.border },
+  msCustomRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: S.sm },
+  msCustomInput: { flex: 1, backgroundColor: C.surface, borderRadius: R.md, borderWidth: 1, borderColor: C.border, color: C.onSurface, fontFamily: F.text, fontSize: 14, paddingHorizontal: 12, minHeight: 44 },
+  msAddBtn: { backgroundColor: C.brand, borderRadius: R.md, paddingHorizontal: 16, minHeight: 44, alignItems: "center", justifyContent: "center" },
 });

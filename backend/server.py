@@ -269,19 +269,44 @@ SCENE_FIELDS = ["title", "duration", "location", "time_of_day", "characters", "v
                 "director_notes", "production_notes", "comments", "ai_notes", "image_prompt", "image_url", "status"]
 
 
+def _style_list(p: dict, arr_key: str, custom_key: str, legacy_key: str) -> list:
+    vals = [str(x).strip() for x in (p.get(arr_key) or []) if str(x).strip()]
+    custom = str(p.get(custom_key) or "").strip()
+    if custom and custom not in vals:
+        vals.append(custom)
+    if not vals and p.get(legacy_key):
+        vals = [str(p.get(legacy_key)).strip()]
+    return vals
+
+
 def build_prompt(p: dict) -> str:
     n = min(12, max(8, int(p.get('num_scenes') or 8)))
+    cam = _style_list(p, "camera_styles", "custom_camera_style", "camera_style")
+    lgt = _style_list(p, "lighting_styles", "custom_lighting_style", "lighting_style")
+    cam_str = ", ".join(cam) if cam else (p.get('camera_style') or "")
+    lgt_str = ", ".join(lgt) if lgt else (p.get('lighting_style') or "")
+    distribute = ""
+    if len(cam) > 1 or len(lgt) > 1:
+        distribute = (
+            f"\nCREATIVE CONSTRAINTS — STYLE PALETTE:\n"
+            f"- Camera styles available (a palette, NOT a checklist): {cam_str}\n"
+            f"- Lighting styles available (a palette, NOT a checklist): {lgt_str}\n"
+            f"- Distribute these styles intelligently ACROSS scenes based on narrative needs. "
+            f"Do NOT force every style into every scene. Choose the most fitting camera style and lighting style per scene "
+            f"so the overall project uses the full palette cohesively.\n"
+        )
     return f"""You are an award-winning film director and line producer building a complete professional pre-production package for a real production. Think like software used by production companies — precise, structured, production-ready.
 
 CREATIVE BRIEF:
 - Project: {p.get('title')} | Client: {p.get('client')} | Campaign: {p.get('campaign')} | Brand: {p.get('brand')}
 - Goal: {p.get('goal')} | Audience: {p.get('target_audience')} | Language: {p.get('language')}
+- Key message: {p.get('key_message')} | Call to action: {p.get('call_to_action')}
 - Video type: {p.get('video_type')} | Platform: {p.get('platform')} | Duration: {p.get('duration')} | Aspect: {p.get('aspect_ratio')}
 - Crew size: {p.get('crew_size')} | Budget: {p.get('budget')} | Location: {p.get('location_type')} | Actors: {p.get('num_actors')}
-- Mood: {p.get('mood')} | Visual style: {p.get('visual_style')} | Camera: {p.get('camera_style')} | Lighting: {p.get('lighting_style')} | Editing: {p.get('editing_style')} | Music: {p.get('music_style')}
-- Director references: {p.get('director_references')} | Film references: {p.get('film_references')}
-- Deliverables: {p.get('deliverables')} | Special requests: {p.get('special_requests')} | Restrictions: {p.get('restrictions')} | Notes: {p.get('extra_notes')}
-
+- Mood: {p.get('mood')} | Visual style: {p.get('visual_style')} | Camera: {cam_str} | Lighting: {lgt_str} | Editing: {p.get('editing_style')} | Music: {p.get('music_style')}
+- Director references: {p.get('director_references')} | Film references: {p.get('film_references')} | References: {p.get('references')}
+- Deliverables: {p.get('deliverables')} | Special requests: {p.get('special_requests')} | Restrictions: {p.get('restrictions')} | Notes: {p.get('extra_notes') or p.get('notes')}
+{distribute}
 Respond with ONLY valid JSON (no markdown) matching EXACTLY this schema:
 {{
  "concept": {{

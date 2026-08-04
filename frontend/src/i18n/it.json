@@ -23,6 +23,16 @@
       "minutesAgo": "{{n}} min fa",
       "hoursAgo": "{{n}} h fa",
       "daysAgo": "{{n}} g fa"
+    },
+    "multiselect": {
+      "search": "Cerca…",
+      "custom": "Personalizzato",
+      "customPlaceholder": "Scrivi un valore personalizzato e premi aggiungi",
+      "add": "Aggiungi",
+      "selected": "Selezionati",
+      "none": "Nessuno selezionato",
+      "empty": "Tocca per scegliere…",
+      "done": "Fatto"
     }
   },
   "navigation": {
@@ -196,6 +206,33 @@
     "title": "Modelli",
     "subtitle": "Parti più velocemente con un formato di produzione collaudato.",
     "useTemplate": "Usa modello"
+  },
+  "overview": {
+    "briefSection": "BRIEF DEL PROGETTO",
+    "creativeSection": "DIREZIONE CREATIVA",
+    "referenceSection": "CONCEPT E TRATTAMENTO IA",
+    "referenceHint": "Generato dall'IA — modifica il brief qui sopra e rigenera per aggiornare.",
+    "projectTitle": "Titolo del progetto",
+    "client": "Cliente",
+    "campaign": "Campagna",
+    "objective": "Obiettivo",
+    "targetAudience": "Pubblico di riferimento",
+    "keyMessage": "Messaggio chiave",
+    "callToAction": "Call to action",
+    "duration": "Durata",
+    "platform": "Piattaforma",
+    "aspectRatio": "Proporzioni",
+    "language": "Lingua del progetto",
+    "productionLevel": "Livello di produzione",
+    "visualStyle": "Stile visivo",
+    "mood": "Atmosfera",
+    "cameraStyles": "Stili di ripresa",
+    "lightingStyles": "Stili di illuminazione",
+    "editingStyle": "Stile di montaggio",
+    "musicStyle": "Stile musicale",
+    "references": "Riferimenti",
+    "notes": "Note",
+    "empty": "Vuoto…"
   },
   "wizard": {},
   "storyboard": {},

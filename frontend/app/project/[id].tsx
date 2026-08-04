@@ -16,7 +16,9 @@ import AIDirector from "@/src/AIDirector";
 import { useAuth } from "@/src/auth";
 import { S, R, F, MAX_W, Palette, darkPalette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
-import { Btn, H2, Body, Badge, MockBadge, AnimIn } from "@/src/components";
+import { useTranslation } from "react-i18next";
+import { Btn, H2, Body, Badge, MockBadge, AnimIn, Picker, MultiSelect } from "@/src/components";
+import * as O from "@/src/options";
 import { exportPdf, exportCsv, printProject } from "@/src/exporter";
 import ShotList from "@/src/ShotList";
 
@@ -229,7 +231,7 @@ export default function Editor() {
             </View>
           ) : (
             <>
-              {tab === "Overview" && <Overview p={project} />}
+              {tab === "Overview" && <Overview p={project} persist={persist} />}
               {/* Storyboard tab is rendered separately below via DraggableFlatList */}
               {tab === "Shot List" && <ShotList project={project} commitScene={commitScene} onEditInStoryboard={(sid: string) => { setTab("Storyboard"); setExpanded((e: any) => ({ ...e, [sid]: true })); }} />}
               {tab === "Script" && (
@@ -313,13 +315,68 @@ export default function Editor() {
   );
 }
 
-function Overview({ p }: any) {
+function Overview({ p, persist }: any) {
+  const { t } = useTranslation();
+  // One-time safe migration from legacy single-select camera/lighting style.
+  useEffect(() => {
+    const patch: any = {};
+    if (!(p.camera_styles?.length) && !p.custom_camera_style && p.camera_style) patch.custom_camera_style = p.camera_style;
+    if (!(p.lighting_styles?.length) && !p.custom_lighting_style && p.lighting_style) patch.custom_lighting_style = p.lighting_style;
+    if (Object.keys(patch).length) persist(patch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const set = (k: string) => (v: any) => persist({ [k]: v });
+  const fld = (k: string, label: string, ml?: boolean) => (
+    <EditableField key={k} label={t(`overview:${label}`)} value={p[k] ?? ""} onCommit={set(k)} multiline={ml} testID={`ov-${k}`} />
+  );
+  const pick = (k: string, label: string, options: string[]) => (
+    <Picker key={k} label={t(`overview:${label}`)} value={p[k] ?? ""} options={options} onSelect={set(k)} testID={`ov-${k}`} />
+  );
+
   return (
     <View>
-      <AnimIn><KVCard label="CREATIVE CONCEPT" icon="bulb-outline" data={p.concept}
-        order={["title", "elevator_pitch", "main_message", "emotional_goal", "audience", "communication_objective"]} /></AnimIn>
-      <AnimIn delay={80}><KVCard label="DIRECTOR'S TREATMENT" icon="color-wand-outline" data={p.treatment}
-        order={["visual_style", "narrative_style", "camera_language", "editing_style", "lighting_style", "color_palette", "sound_design", "overall_mood"]} /></AnimIn>
+      <AnimIn>
+        <View style={styles.card}>
+          <View style={styles.kvHead}><Ionicons name="document-text-outline" size={16} color={C.brand} /><Text style={styles.secLabel}>{t("overview:briefSection")}</Text></View>
+          {fld("title", "projectTitle")}
+          {fld("client", "client")}
+          {fld("campaign", "campaign")}
+          {fld("goal", "objective", true)}
+          {fld("target_audience", "targetAudience", true)}
+          {fld("key_message", "keyMessage", true)}
+          {fld("call_to_action", "callToAction")}
+          {fld("references", "references", true)}
+          {fld("extra_notes", "notes", true)}
+        </View>
+      </AnimIn>
+
+      <AnimIn delay={60}>
+        <View style={styles.card}>
+          <View style={styles.kvHead}><Ionicons name="color-wand-outline" size={16} color={C.brand} /><Text style={styles.secLabel}>{t("overview:creativeSection")}</Text></View>
+          <MultiSelect label={t("overview:cameraStyles")} values={p.camera_styles || []} options={O.CAMERA_STYLES_MULTI}
+            onChange={set("camera_styles")} custom={p.custom_camera_style || ""} onCustomChange={set("custom_camera_style")} testID="ov-camera" />
+          <MultiSelect label={t("overview:lightingStyles")} values={p.lighting_styles || []} options={O.LIGHTING_STYLES_MULTI}
+            onChange={set("lighting_styles")} custom={p.custom_lighting_style || ""} onCustomChange={set("custom_lighting_style")} testID="ov-lighting" />
+          {pick("duration", "duration", O.DURATIONS)}
+          {pick("platform", "platform", O.PLATFORMS)}
+          {pick("aspect_ratio", "aspectRatio", O.ASPECT_RATIOS)}
+          {pick("language", "language", O.LANGUAGES)}
+          {pick("crew_size", "productionLevel", O.PRODUCTION_LEVELS)}
+          {pick("visual_style", "visualStyle", O.VISUAL_STYLES)}
+          {pick("mood", "mood", O.MOODS)}
+          {pick("editing_style", "editingStyle", O.EDITING_STYLES)}
+          {pick("music_style", "musicStyle", O.MUSIC_STYLES)}
+        </View>
+      </AnimIn>
+
+      <AnimIn delay={120}>
+        <Text style={[styles.secLabel, { marginBottom: 6, marginLeft: 2 }]}>{t("overview:referenceSection")}</Text>
+        <KVCard label="CREATIVE CONCEPT" icon="bulb-outline" data={p.concept}
+          order={["title", "elevator_pitch", "main_message", "emotional_goal", "audience", "communication_objective"]} />
+        <KVCard label="DIRECTOR'S TREATMENT" icon="color-wand-outline" data={p.treatment}
+          order={["visual_style", "narrative_style", "camera_language", "editing_style", "lighting_style", "color_palette", "sound_design", "overall_mood"]} />
+      </AnimIn>
     </View>
   );
 }

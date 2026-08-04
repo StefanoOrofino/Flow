@@ -33,3 +33,14 @@ export const TEMPLATE_CATEGORIES = ["All", "Commercial", "Corporate", "Product",
 export const PRODUCTION_LEVELS = CREW_SIZES;
 export const TONES = MOODS;
 export const PACINGS = ["Slow", "Medium", "Fast", "Dynamic (varied)"];
+export const LANGUAGES = ["English", "Italian", "Spanish", "French", "German", "Portuguese", "Dutch", "Arabic", "Japanese", "Chinese"];
+
+// Multi-select creative-direction palettes (Overview). "Custom" is handled by a
+// separate free-text field, so it is NOT included in these option lists.
+export const CAMERA_STYLES_MULTI = ["Static", "Handheld", "Gimbal", "Steadicam", "Dolly", "Slider",
+  "Crane / Jib", "Drone / Aerial", "FPV Drone", "Tracking Vehicle", "Tripod", "Shoulder Rig", "POV",
+  "Macro", "Slow Motion", "Time-lapse", "Locked-off", "Mixed Camera Language"];
+export const LIGHTING_STYLES_MULTI = ["Natural Light", "Golden Hour", "Blue Hour", "High Key", "Low Key",
+  "Soft Diffused", "Hard Light", "Backlight", "Rim Light", "Practical Lights", "Available Light",
+  "Studio Lighting", "Product Lighting", "Beauty Lighting", "Dramatic Contrast", "Silhouette", "Neon",
+  "Mixed Color Temperature", "Day for Night", "Night Exterior", "Candlelight", "Motivated Lighting"];
