@@ -12,6 +12,7 @@ PLANS = {
         "name": "Free",
         "price": "€0",
         "interval": "forever",
+        "recommended": False,
         "tagline": "Get started with core pre-production tools.",
         "limits": {
             "projects": 3,
@@ -20,51 +21,55 @@ PLANS = {
             "exports": 5,
         },
         "features": [
-            "Up to 3 projects",
+            "Up to 3 active projects",
             "20 AI generations / month",
             "10 storyboard image generations / month",
-            "5 PDF/CSV exports / month",
+            "5 PDF exports / month",
             "Light & dark themes, EN + IT",
         ],
     },
-    "studio": {
-        "id": "studio",
-        "name": "Studio",
+    "pro": {
+        "id": "pro",
+        "name": "Pro",
         "price": "€19",
         "interval": "month",
-        "tagline": "For working filmmakers and small teams.",
+        "recommended": True,
+        "tagline": "For working filmmakers and freelancers.",
         "limits": {
-            "projects": 50,
+            "projects": 25,
             "ai_generations": 500,
             "image_generations": 300,
             "exports": -1,
         },
         "features": [
-            "Up to 50 projects",
+            "Up to 25 active projects",
             "500 AI generations / month",
             "300 storyboard image generations / month",
-            "Unlimited exports",
+            "Unlimited PDF exports",
             "Priority AI Director",
+            "Client review links",
         ],
     },
-    "agency": {
-        "id": "agency",
-        "name": "Agency",
+    "studio": {
+        "id": "studio",
+        "name": "Studio",
         "price": "€49",
         "interval": "month",
-        "tagline": "Unlimited scale for agencies & studios.",
+        "recommended": False,
+        "tagline": "Unlimited scale for studios & teams.",
         "limits": {
             "projects": -1,
             "ai_generations": -1,
-            "image_generations": -1,
+            "image_generations": 1500,
             "exports": -1,
         },
         "features": [
-            "Unlimited projects",
+            "Unlimited active projects",
             "Unlimited AI generations",
-            "Unlimited storyboard images",
-            "Unlimited exports",
-            "Everything in Studio",
+            "1500 storyboard images / month",
+            "Unlimited PDF exports",
+            "Team seats & branded client portals",
+            "500 GB storage",
         ],
     },
 }
@@ -84,8 +89,8 @@ def get_plan(plan_id: str) -> dict:
 
 
 def public_plans() -> list:
-    """Ordered plan catalog for the read-only Billing UI."""
-    return [PLANS["free"], PLANS["studio"], PLANS["agency"]]
+    """Ordered plan catalog for the Billing + Pricing UI."""
+    return [PLANS["free"], PLANS["pro"], PLANS["studio"]]
 
 
 def build_summary(subscription: dict, usage_counts: dict) -> dict:
@@ -108,6 +113,7 @@ def build_summary(subscription: dict, usage_counts: dict) -> dict:
             "id": plan["id"], "name": plan["name"], "price": plan["price"],
             "interval": plan["interval"], "tagline": plan["tagline"],
             "features": plan["features"], "limits": limits,
+            "recommended": plan.get("recommended", False),
         },
         "status": subscription.get("status", "active"),
         "currentPeriodEnd": subscription.get("current_period_end"),

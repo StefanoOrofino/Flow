@@ -123,7 +123,25 @@ export default function Billing() {
                 <Text style={styles.interval}>{data.plan.interval === "forever" ? t("freeForever") : t("perInterval", { interval: data.plan.interval })}</Text>
               </View>
             </View>
+            <View style={[styles.limitRow, styles.divider, { marginTop: S.sm }]}>
+              <Text style={styles.limitLabel}>{t("nextRenewal")}</Text>
+              <Text style={styles.limitValue}>{data.currentPeriodEnd ? String(data.currentPeriodEnd).slice(0, 10) : t("noRenewal")}</Text>
+            </View>
           </Card>
+
+          {/* Limit reached upsell */}
+          {data.usage.some((m: any) => !m.unlimited && m.percent >= 100) && (
+            <Pressable onPress={() => router.push("/pricing")} testID="limit-banner">
+              <View style={styles.limitBanner}>
+                <Ionicons name="alert-circle" size={20} color={C.warning} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.limitBannerTitle}>{t("limitReached")}</Text>
+                  <Text style={styles.limitBannerBody}>{t("limitReachedBody")}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={C.onSurface2} />
+              </View>
+            </Pressable>
+          )}
 
           {/* Usage */}
           <Text style={styles.sectionHeading}>{t("usage")}</Text>
@@ -142,20 +160,22 @@ export default function Billing() {
             ))}
           </Card>
 
-          {/* Upgrade placeholder */}
+          {/* Upgrade CTA -> Pricing */}
           <Card style={{ marginBottom: S.lg }}>
             <View style={styles.rowCenterGap}>
               <Ionicons name="sparkles-outline" size={18} color={C.brand} />
               <Text style={styles.upgradeNote}>{t("upgradeSoon")}</Text>
             </View>
-            <Btn title={t("upgrade")} icon="arrow-up-circle-outline" disabled style={{ marginTop: S.md }} testID="upgrade-btn" onPress={() => {}} />
+            <Btn title={t("comparePlans")} icon="arrow-up-circle-outline" style={{ marginTop: S.md }} testID="upgrade-btn" onPress={() => router.push("/pricing")} />
           </Card>
 
           {/* Available plans */}
           <Text style={styles.sectionHeading}>{t("comparePlans")}</Text>
           <View style={{ gap: 12 }}>
             {data.plans.map((p: any) => (
-              <PlanCard key={p.id} plan={p} current={p.id === data.plan.id} C={C} styles={styles} t={t} />
+              <Pressable key={p.id} onPress={() => router.push("/pricing")} testID={`plan-card-${p.id}`}>
+                <PlanCard plan={p} current={p.id === data.plan.id} C={C} styles={styles} t={t} />
+              </Pressable>
             ))}
           </View>
 
@@ -188,6 +208,9 @@ const createStyles = (C: Palette) => StyleSheet.create({
   fill: { height: 8, borderRadius: 4 },
 
   limitRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 11 },
+  limitBanner: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.surface2, borderWidth: 1, borderColor: C.warning, borderRadius: R.md, padding: S.md, marginBottom: S.lg },
+  limitBannerTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5, fontWeight: "700" },
+  limitBannerBody: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, marginTop: 1 },
   divider: { borderTopWidth: 1, borderTopColor: C.border },
   limitLabel: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5 },
   limitValue: { color: C.onSurface, fontFamily: F.text, fontSize: 14, fontWeight: "600" },
