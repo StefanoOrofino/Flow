@@ -87,4 +87,6 @@ export const api = {
   restoreVersion: (id: string, vid: string) => req(`/projects/${id}/versions/${vid}/restore`, "POST"),
   renameVersion: (id: string, vid: string, name: string) => req(`/projects/${id}/versions/${vid}`, "PUT", { name }),
   deleteVersion: (id: string, vid: string) => req(`/projects/${id}/versions/${vid}`, "DELETE"),
+  // Billing (read-only, Run 1)
+  billingSummary: () => req("/billing/summary"),
 };

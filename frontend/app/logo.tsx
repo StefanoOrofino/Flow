@@ -5,94 +5,27 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
-import { LogoMark, LOGO_VARIANTS, LogoVariant } from "@/src/brand/FrameFlowLogo";
+import { LogoMark, AppIcon, HorizontalLogo, VerticalLogo, BRAND } from "@/src/brand/FrameFlowLogo";
 
-// Brand palette for the exploration (fixed — independent of app theme).
-const GOLD = "#C5A059";
-const INK = "#141518";
-const INK2 = "#1F2126";
-const CREAM = "#F5F1E8";
-const MONO = "#9A9A9A";
-
-function Wordmark({ tone, size = 22 }: { tone: "light" | "dark"; size?: number }) {
-  const base = tone === "light" ? CREAM : INK;
+function Section({ title, sub, styles, children }: any) {
   return (
-    <View>
-      <Text style={{ fontFamily: F.display, fontSize: size, letterSpacing: 0.3 }}>
-        <Text style={{ color: base }}>Frame</Text>
-        <Text style={{ color: GOLD }}>Flow</Text>
-      </Text>
-      <Text style={{ fontFamily: F.text, fontSize: size * 0.34, letterSpacing: size * 0.22, color: tone === "light" ? "rgba(245,241,232,0.7)" : "rgba(20,21,24,0.6)", marginTop: 2 }}>
-        STUDIO
-      </Text>
+    <View style={styles.section}>
+      <Text style={styles.secTitle}>{title}</Text>
+      {sub ? <Text style={styles.secSub}>{sub}</Text> : null}
+      <View style={styles.secBody}>{children}</View>
     </View>
   );
 }
 
-function Tile({ label, bg, border, children, styles }: any) {
+function Panel({ bg, border, children, styles, flex = 1, h, full }: any) {
   return (
-    <View style={styles.tileWrap}>
-      <View style={[styles.tile, { backgroundColor: bg, borderColor: border || "transparent" }]}>
-        {children}
-      </View>
-      <Text style={styles.tileLabel}>{label}</Text>
+    <View style={[styles.panel, full && { flexBasis: "100%" }, { backgroundColor: bg, borderColor: border || "transparent", flexGrow: flex, minHeight: h || 120 }]}>
+      {children}
     </View>
   );
 }
 
-function VariantCard({ v, styles }: { v: { id: LogoVariant; name: string; note: string }; styles: any }) {
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHead}>
-        <View style={styles.badge}><Text style={styles.badgeTxt}>{String(v.id).padStart(2, "0")}</Text></View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>{v.name}</Text>
-          <Text style={styles.cardNote}>{v.note}</Text>
-        </View>
-      </View>
-
-      <View style={styles.grid}>
-        <Tile label="Dark background" bg={INK} styles={styles}>
-          <LogoMark variant={v.id} color={CREAM} size={62} />
-        </Tile>
-        <Tile label="Light background" bg={CREAM} styles={styles}>
-          <LogoMark variant={v.id} color={INK} size={62} />
-        </Tile>
-        <Tile label="Gold accent" bg={INK} styles={styles}>
-          <LogoMark variant={v.id} color={GOLD} size={62} />
-        </Tile>
-        <Tile label="Monochrome" bg="#FFFFFF" border="#E7E3D9" styles={styles}>
-          <LogoMark variant={v.id} color={MONO} size={62} />
-        </Tile>
-
-        <Tile label="Horizontal lockup" bg={INK} styles={styles} >
-          <View style={styles.lockup}>
-            <LogoMark variant={v.id} color={GOLD} size={44} />
-            <Wordmark tone="light" size={20} />
-          </View>
-        </Tile>
-        <Tile label="Icon only" bg={INK2} styles={styles}>
-          <LogoMark variant={v.id} color={GOLD} size={56} />
-        </Tile>
-
-        <Tile label="App icon" bg="transparent" styles={styles}>
-          <View style={styles.appIcon}>
-            <LogoMark variant={v.id} color={GOLD} size={64} />
-          </View>
-        </Tile>
-        <Tile label="Favicon" bg="#FFFFFF" border="#E7E3D9" styles={styles}>
-          <View style={styles.faviconRow}>
-            <View style={styles.faviBox}><LogoMark variant={v.id} color={GOLD} size={16} /></View>
-            <View style={styles.faviBox}><LogoMark variant={v.id} color={INK} size={24} /></View>
-            <View style={styles.faviBoxDark}><LogoMark variant={v.id} color={GOLD} size={32} /></View>
-          </View>
-        </Tile>
-      </View>
-    </View>
-  );
-}
-
-export default function LogoExploration() {
+export default function BrandLogo() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { C } = useTheme();
@@ -104,27 +37,113 @@ export default function LogoExploration() {
         <Pressable onPress={() => router.back()} hitSlop={10} testID="logo-back">
           <Ionicons name="arrow-back" size={22} color={C.onSurface} />
         </Pressable>
-        <Text style={styles.headerTitle}>Logo Exploration</Text>
+        <Text style={styles.headerTitle}>Brand Identity</Text>
         <View style={{ width: 22 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: S.xl, paddingBottom: insets.bottom + 80, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
+        {/* Hero */}
         <Text style={styles.hero}>Flow Forward</Text>
         <Text style={styles.sub}>
-          Six refined variations of one direction: a negative-space “F” built from cinematic frames with
-          forward motion. Choose the direction to take into final brand implementation.
+          The official FrameFlow Studio mark — two cinematic frames flowing into each other with forward
+          motion. Refined for perfect balance and scalability. Minimal, premium, no gradients, no shadows.
         </Text>
 
-        <View style={styles.pillRow}>
-          {["Negative-space F", "Cinematic frames", "Premium SaaS", "Simple", "Scalable", "Balanced"].map((p) => (
-            <View key={p} style={styles.pill}><Text style={styles.pillTxt}>{p}</Text></View>
-          ))}
+        <View style={styles.heroMark}>
+          <LogoMark color={BRAND.gold} size={132} />
         </View>
 
-        {LOGO_VARIANTS.map((v) => <VariantCard key={v.id} v={v} styles={styles} />)}
+        {/* Primary lockups */}
+        <Section title="Horizontal logo" sub="Primary lockup for headers, documents and exports." styles={styles}>
+          <Panel bg={BRAND.ink} styles={styles} h={104} full><HorizontalLogo tone="dark" size={40} /></Panel>
+          <Panel bg={BRAND.light} border="#E7E3D9" styles={styles} h={104} full><HorizontalLogo tone="light" size={40} /></Panel>
+        </Section>
+
+        <Section title="Vertical logo" sub="Stacked lockup for splash screens and centered layouts." styles={styles}>
+          <Panel bg={BRAND.ink} styles={styles} h={180} full><VerticalLogo tone="dark" size={72} /></Panel>
+          <Panel bg={BRAND.light} border="#E7E3D9" styles={styles} h={180} full><VerticalLogo tone="light" size={72} /></Panel>
+        </Section>
+
+        {/* App icons */}
+        <Section title="App icon" sub="Rounded square, radius matches the FrameFlow UI (22.5%)." styles={styles}>
+          <Panel bg={C.surface3} styles={styles} h={170}>
+            <AppIcon size={104} bg={BRAND.ink} fg={BRAND.gold} />
+            <Text style={styles.cap}>Dark</Text>
+          </Panel>
+          <Panel bg={C.surface3} styles={styles} h={170}>
+            <AppIcon size={104} bg={BRAND.light} fg={BRAND.ink} border="#E7E3D9" />
+            <Text style={styles.cap}>Light</Text>
+          </Panel>
+        </Section>
+
+        {/* Color versions */}
+        <Section title="Color versions" sub="Single-color mark — works everywhere." styles={styles}>
+          <Panel bg={BRAND.ink} styles={styles}><LogoMark color={BRAND.gold} size={64} /><Text style={styles.cap}>Gold #C5A059</Text></Panel>
+          <Panel bg={BRAND.ink} styles={styles}><LogoMark color={BRAND.light} size={64} /><Text style={styles.cap}>On dark</Text></Panel>
+          <Panel bg={BRAND.light} border="#E7E3D9" styles={styles}><LogoMark color={BRAND.ink} size={64} /><Text style={styles.capD}>On light</Text></Panel>
+          <Panel bg="#FFFFFF" border="#E7E3D9" styles={styles}><LogoMark color={BRAND.mono} size={64} /><Text style={styles.capD}>Monochrome</Text></Panel>
+        </Section>
+
+        {/* Favicon */}
+        <Section title="Favicon" sub="App-icon style for maximum legibility on browser tabs." styles={styles}>
+          <Panel bg={C.surface3} styles={styles} h={130}>
+            <View style={styles.faviRow}>
+              <AppIcon size={16} />
+              <AppIcon size={24} />
+              <AppIcon size={32} />
+              <AppIcon size={48} />
+            </View>
+            <Text style={styles.cap}>16 · 24 · 32 · 48 px</Text>
+          </Panel>
+          <Panel bg={C.surface3} styles={styles} h={130}>
+            <View style={styles.tab}>
+              <AppIcon size={16} />
+              <Text style={styles.tabTxt}>FrameFlow Studio</Text>
+              <Ionicons name="close" size={12} color={C.onSurface3} />
+            </View>
+            <Text style={styles.cap}>Browser tab</Text>
+          </Panel>
+        </Section>
+
+        {/* Scalability */}
+        <Section title="Scalability" sub="Crisp from 16px to 1024px — pure vector, even stroke weight." styles={styles}>
+          <Panel bg={BRAND.ink} styles={styles} h={150}>
+            <View style={styles.scaleRow}>
+              <View style={styles.scaleItem}><LogoMark color={BRAND.gold} size={16} /><Text style={styles.tiny}>16</Text></View>
+              <View style={styles.scaleItem}><LogoMark color={BRAND.gold} size={24} /><Text style={styles.tiny}>24</Text></View>
+              <View style={styles.scaleItem}><LogoMark color={BRAND.gold} size={32} /><Text style={styles.tiny}>32</Text></View>
+              <View style={styles.scaleItem}><LogoMark color={BRAND.gold} size={64} /><Text style={styles.tiny}>64</Text></View>
+              <View style={styles.scaleItem}><LogoMark color={BRAND.gold} size={96} /><Text style={styles.tiny}>1024</Text></View>
+            </View>
+          </Panel>
+        </Section>
+
+        {/* Spacing / safe area */}
+        <Section title="Clear space & safe area" sub="Keep clear space of one frame-height (X) on every side." styles={styles}>
+          <Panel bg={C.surface3} styles={styles} h={200}>
+            <View style={styles.safeOuter}>
+              <View style={styles.safeInner}>
+                <LogoMark color={BRAND.gold} size={92} />
+              </View>
+              <Text style={styles.safeTag}>X</Text>
+            </View>
+            <Text style={styles.cap}>Minimum clear space = X on all sides</Text>
+          </Panel>
+        </Section>
+
+        {/* Palette */}
+        <Section title="Brand palette" styles={styles}>
+          {[["Gold", BRAND.gold, "#C5A059"], ["Ink", BRAND.ink, "#232333"], ["Light", BRAND.light, "#F7F5EF"]].map(([n, hex, code]) => (
+            <Panel key={n as string} bg={C.surface3} styles={styles} h={110}>
+              <View style={[styles.swatch, { backgroundColor: hex as string, borderColor: C.border }]} />
+              <Text style={styles.cap}>{n} · {code}</Text>
+            </Panel>
+          ))}
+        </Section>
 
         <Text style={styles.footNote}>
-          Exploration board only — not the production logo. Tell me which number to refine and lock in.
+          Official direction — refined from Concept 2 “Flow Forward”. SVG source exported to
+          assets/brand/. Tell me to wire it into the app header, splash and favicon to ship it.
         </Text>
       </ScrollView>
     </View>
@@ -135,28 +154,31 @@ const createStyles = (C: Palette) => StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: S.xl, paddingBottom: S.md, borderBottomWidth: 1, borderBottomColor: C.border },
   headerTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 15, fontWeight: "600" },
   hero: { color: C.onSurface, fontFamily: F.display, fontSize: 40, lineHeight: 44 },
-  sub: { color: C.onSurface2, fontFamily: F.text, fontSize: 14, lineHeight: 21, marginTop: S.sm, marginBottom: S.lg },
-  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: S.xl },
-  pill: { backgroundColor: C.surface3, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: C.border },
-  pillTxt: { color: C.onSurface2, fontFamily: F.text, fontSize: 12 },
+  sub: { color: C.onSurface2, fontFamily: F.text, fontSize: 14, lineHeight: 21, marginTop: S.sm },
+  heroMark: { alignItems: "center", justifyContent: "center", paddingVertical: S.xl, marginTop: S.md, marginBottom: S.sm, backgroundColor: BRAND.ink, borderRadius: R.lg, borderWidth: 1, borderColor: C.border },
 
-  card: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.lg },
-  cardHead: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: S.md },
-  badge: { width: 40, height: 40, borderRadius: 10, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
-  badgeTxt: { color: C.brand, fontFamily: F.display, fontSize: 18, fontWeight: "700" },
-  cardTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 16, fontWeight: "600" },
-  cardNote: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, marginTop: 1 },
+  section: { marginTop: S.xl },
+  secTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 16, fontWeight: "700" },
+  secSub: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, marginTop: 2, marginBottom: S.md },
+  secBody: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: S.sm },
 
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  tileWrap: { width: 150, maxWidth: "47%", flexGrow: 1 },
-  tile: { height: 108, borderRadius: R.md, borderWidth: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  tileLabel: { color: C.onSurface3, fontFamily: F.text, fontSize: 11, marginTop: 6, textAlign: "center" },
+  panel: { flexBasis: "45%", borderRadius: R.md, borderWidth: 1, alignItems: "center", justifyContent: "center", padding: S.md, overflow: "hidden" },
+  cap: { color: "rgba(245,241,232,0.75)", fontFamily: F.text, fontSize: 11, marginTop: 8 },
+  capD: { color: "rgba(35,35,51,0.7)", fontFamily: F.text, fontSize: 11, marginTop: 8 },
+  tiny: { color: "rgba(245,241,232,0.6)", fontFamily: F.text, fontSize: 10, marginTop: 4 },
 
-  lockup: { flexDirection: "row", alignItems: "center", gap: 10 },
-  appIcon: { width: 72, height: 72, borderRadius: 16, backgroundColor: INK, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(197,160,89,0.25)" },
-  faviconRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  faviBox: { alignItems: "center", justifyContent: "center" },
-  faviBoxDark: { backgroundColor: INK, borderRadius: 6, padding: 4, alignItems: "center", justifyContent: "center" },
+  faviRow: { flexDirection: "row", alignItems: "flex-end", gap: 12 },
+  tab: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: BRAND.ink, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7 },
+  tabTxt: { color: BRAND.light, fontFamily: F.text, fontSize: 12 },
 
-  footNote: { color: C.onSurface3, fontFamily: F.text, fontSize: 12.5, textAlign: "center", marginTop: S.md, fontStyle: "italic" },
+  scaleRow: { flexDirection: "row", alignItems: "flex-end", gap: 18 },
+  scaleItem: { alignItems: "center" },
+
+  safeOuter: { padding: 22, borderWidth: 1, borderStyle: "dashed", borderColor: BRAND.gold, borderRadius: 10, position: "relative" },
+  safeInner: { padding: 22, borderWidth: 1, borderStyle: "dashed", borderColor: "rgba(197,160,89,0.4)", borderRadius: 8 },
+  safeTag: { position: "absolute", top: 4, left: 8, color: BRAND.gold, fontFamily: F.text, fontSize: 11, fontWeight: "700" },
+
+  swatch: { width: 60, height: 40, borderRadius: 8, borderWidth: 1 },
+
+  footNote: { color: C.onSurface3, fontFamily: F.text, fontSize: 12.5, textAlign: "center", marginTop: S.xl, fontStyle: "italic" },
 });

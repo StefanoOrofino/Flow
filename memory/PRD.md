@@ -107,3 +107,12 @@ Implemented in strict priority order per user request:
 
 ## PAUSED — brief_service backend (inert, not wired)
 - `brief_service.py` fully built (extract PDF/DOCX/PPTX/TXT/RTF + analyze_brief LLM call w/ confidence scores 0-100, conflict detection, map_brief_to_project) and `ai_config.py` (model-agnostic per-module config) added. `import brief_service` added to server.py but NO endpoints wired yet — safe/inert. Resume: add POST /api/briefs/analyze (multipart) + POST /api/briefs/generate, then frontend flow.
+
+## Sprint 9b — OFFICIAL logo (Flow Forward, refined)
+- Chosen = Concept 2 "Flow Forward", REFINED in `src/brand/FrameFlowLogo.tsx`: two overlapping cinematic rounded-rect FRAME OUTLINES offset diagonally up-right (frames flowing forward); removed the old play triangle. Single color, no gradient/shadow, rx12, scales 16→1024. Exports LogoMark/AppIcon(22.5% radius)/Wordmark/HorizontalLogo/VerticalLogo. BRAND gold #C5A059 / ink #232333 / light #F7F5EF.
+- `app/logo.tsx` rebuilt as Brand Identity deliverables board (hero, H/V lockups dark+light full-width, app icon, color versions, favicon 16-48 + tab mock, scalability, clear-space, palette). SVG at `assets/brand/frameflow-mark.svg`. NOT yet wired into header/splash/favicon (awaiting approval).
+
+## Sprint 10 — Auth & Subscriptions Run 1 (read-only Billing, NO Stripe)
+- Backend `billing.py` (plans free/studio/agency + limits, build_summary). `server.py`: get_or_create_subscription (Free auto-assign, db.subscriptions), bump_usage (db.usage), GET /api/billing/summary (projects live; ai/image/export counters bumped in generate/frames-generate/exported). stripeEnabled:false.
+- Frontend `app/billing.tsx` read-only: Current Plan + status badge, Usage bars (warn≥80/error≥100), Plan Limits, Upgrade placeholder (disabled), Available plans (Free=Current/Studio=Popular/Agency), pull-to-refresh, i18n billing ns EN+IT, useTheme. Linked from Settings → "Plan & Billing". api.billingSummary added.
+- Verified backend curl + frontend screenshots. NEXT Run 2: Stripe Test checkout/webhooks/portal (test key in pod env).

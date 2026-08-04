@@ -22,6 +22,7 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 import image_service
 import ai_director
 import brief_service
+import billing
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -488,6 +489,7 @@ async def mark_exported(pid: str, user=Depends(get_current_user)):
     doc = await _get_owned(pid, user)
     await db.projects.update_one({"id": pid, "user_id": user["user_id"]},
                                  {"$set": {"export_count": (doc.get("export_count") or 0) + 1}})
+    await bump_usage(user["user_id"], "exports")
     return {"ok": True}
 
 
@@ -511,6 +513,7 @@ async def generate(pid: str, user=Depends(get_current_user)):
               "schedule": data.get("schedule", {}), "budget": data.get("budget", {}),
               "scenes": scenes, "status": "generated", "mock_mode": used_mock, "updated_at": now_iso()}
     await db.projects.update_one({"id": pid, "user_id": user["user_id"]}, {"$set": update})
+    await bump_usage(user["user_id"], "ai_generations")
     return await _get_owned(pid, user)
 
 
@@ -743,6 +746,7 @@ async def _run_generation(pid: str, sid: str, user: dict, base_desc: str, aspect
     frames.append(frame)
     updated = {**scene, "frames": frames, "image_prompt": base_desc or scene.get("image_prompt", ""),
                "active_frame_id": frame["id"], "image_url": frame["image_url"]}
+    await bump_usage(user["user_id"], "image_generations")
     return await _save_scene(pid, user, doc, sid, updated, inc_gen=(provider == "gemini"))
 
 
@@ -1003,6 +1007,38 @@ TEMPLATES = [
 @api_router.get("/templates")
 async def get_templates(user=Depends(get_current_user)):
     return TEMPLATES
+
+
+# ---------------------------------------------------------------------------
+# Subscriptions & entitlements (Run 1 — read-only, no Stripe)
+# ---------------------------------------------------------------------------
+async def get_or_create_subscription(user_id: str) -> dict:
+    sub = await db.subscriptions.find_one({"user_id": user_id}, {"_id": 0})
+    if not sub:
+        sub = {"user_id": user_id, "plan_id": billing.DEFAULT_PLAN, "status": "active",
+               "current_period_end": None, "cancel_at_period_end": False,
+               "created_at": now_iso(), "updated_at": now_iso()}
+        await db.subscriptions.insert_one(dict(sub))
+    return sub
+
+
+async def bump_usage(user_id: str, field: str, n: int = 1):
+    """Increment a monthly usage counter for the current user."""
+    try:
+        await db.usage.update_one({"user_id": user_id}, {"$inc": {field: n},
+                                  "$set": {"updated_at": now_iso()}}, upsert=True)
+    except Exception as e:
+        logger.warning(f"usage bump failed ({field}): {e}")
+
+
+@api_router.get("/billing/summary")
+async def billing_summary(user=Depends(get_current_user)):
+    uid = user["user_id"]
+    sub = await get_or_create_subscription(uid)
+    usage = await db.usage.find_one({"user_id": uid}, {"_id": 0}) or {}
+    # projects usage is always computed live (source of truth)
+    usage["projects"] = await db.projects.count_documents({"user_id": uid})
+    return billing.build_summary(sub, usage)
 
 
 @api_router.get("/")

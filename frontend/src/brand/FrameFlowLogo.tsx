@@ -1,119 +1,120 @@
 /**
- * FrameFlow "Flow Forward" logo exploration marks.
+ * FrameFlow Studio — OFFICIAL logo (refined "Flow Forward" direction).
  *
- * Single creative direction — a negative-space "F" built from cinematic
- * frames with forward motion. Six refined variations iterate ONLY on this idea:
- *  1 Aperture F   — negative-space F inside a cinematic frame
- *  2 Filmstrip F  — negative-space F cut from a vertical filmstrip
- *  3 Motion F     — F with trailing frame echoes (forward momentum)
- *  4 Bracket F    — solid F framed by film corner brackets
- *  5 Forward F    — F with forward-slanted arm ends (speed / flow)
- *  6 Play Frame F — app-icon hero: framed F with a play notch
+ * Concept: two cinematic (widescreen) frames flowing into each other, offset
+ * diagonally up-and-right to read as forward motion / creative progression.
+ * The old solid "play" triangle is removed — the mark is now purely two
+ * overlapping rounded frame outlines. Single foreground color, no gradients,
+ * no shadows, rounded corners consistent with the app UI. Scales 16px → 1024px.
  *
- * Every mark is a single foreground color on a transparent ground, so it can be
- * rendered on dark, light, gold or monochrome backgrounds without edits.
+ * Geometry (viewBox 0 0 100 100):
+ *   back frame  : x10  y36  w52 h40  rx12
+ *   front frame : x38  y22  w52 h40  rx12   (offset +28, -14)
+ *   stroke      : 9    (round joins/caps)
  */
 import React from "react";
-import Svg, { Path, G } from "react-native-svg";
+import { View, Text } from "react-native";
+import Svg, { Rect } from "react-native-svg";
+import { F } from "@/src/theme";
 
-export type LogoVariant = 1 | 2 | 3 | 4 | 5 | 6;
+// Official brand palette (fixed — from the approved board).
+export const BRAND = {
+  gold: "#C5A059",
+  ink: "#232333",
+  light: "#F7F5EF",
+  mono: "#8C8C93",
+};
 
-// Canonical negative-space "F" in a 0..100 grid (used as an even-odd hole
-// or a solid glyph depending on the variation).
-const F_PATH = "M22,20 H74 V36 H40 V47 H62 V61 H40 V80 H22 Z";
+const STROKE = 9;
 
-// Rounded cinematic frame (even-odd outer body).
-const FRAME = "M22,6 H78 A16,16 0 0 1 94,22 V78 A16,16 0 0 1 78,94 H22 A16,16 0 0 1 6,78 V22 A16,16 0 0 1 22,6 Z";
-
-// Forward-leaning F (arm ends slashed to imply motion).
-const F_FORWARD = "M22,20 L74,20 L64,36 L40,36 V47 L62,47 L54,61 L40,61 V80 H22 Z";
-
-function filmstripHoles(): string {
-  // small perforation squares down both vertical edges
-  const parts: string[] = [];
-  const ys = [16, 30, 44, 58, 72];
-  for (const y of ys) {
-    // left column
-    parts.push(`M23,${y} h6 v8 h-6 Z`);
-    // right column
-    parts.push(`M71,${y} h6 v8 h-6 Z`);
-  }
-  return parts.join(" ");
-}
-
-function renderVariant(v: LogoVariant, color: string) {
-  switch (v) {
-    case 1: // Aperture F — negative space in a rounded frame
-      return <Path d={`${FRAME} ${F_PATH}`} fill={color} fillRule="evenodd" />;
-
-    case 2: // Filmstrip F — vertical strip with perforations + negative F
-      return (
-        <Path
-          d={`M18,6 H82 V94 H18 Z ${filmstripHoles()} ${F_PATH}`}
-          fill={color}
-          fillRule="evenodd"
-        />
-      );
-
-    case 3: // Motion F — trailing frame echoes behind a solid F (forward momentum)
-      return (
-        <G>
-          <G transform="translate(-16 0)"><Path d={F_PATH} fill={color} opacity={0.18} /></G>
-          <G transform="translate(-8 0)"><Path d={F_PATH} fill={color} opacity={0.42} /></G>
-          <Path d={F_PATH} fill={color} />
-        </G>
-      );
-
-    case 4: // Bracket F — solid F inside film corner brackets
-      return (
-        <G>
-          <Path d={F_PATH} fill={color} />
-          <G stroke={color} strokeWidth={5} fill="none" strokeLinecap="square">
-            <Path d="M10,26 V10 H26" />
-            <Path d="M90,26 V10 H74" />
-            <Path d="M10,74 V90 H26" />
-            <Path d="M90,74 V90 H74" />
-          </G>
-        </G>
-      );
-
-    case 5: // Forward F — forward-slanted arm ends
-      return <Path d={F_FORWARD} fill={color} />;
-
-    case 6: // Play Frame F — framed negative F with a forward "play" notch
-      return (
-        <G>
-          <Path
-            d={`${FRAME} ${F_PATH} M64,25 L78,31 L64,37 Z`}
-            fill={color}
-            fillRule="evenodd"
-          />
-        </G>
-      );
-  }
-}
-
-export function LogoMark({
-  variant = 1,
-  color = "#C5A059",
-  size = 64,
-}: {
-  variant?: LogoVariant;
-  color?: string;
-  size?: number;
-}) {
+/** The bare mark — two overlapping cinematic frames flowing forward. */
+export function LogoMark({ color = BRAND.gold, size = 64 }: { color?: string; size?: number }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100">
-      {renderVariant(variant, color)}
+    <Svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+      <Rect x={10} y={36} width={52} height={40} rx={12} stroke={color} strokeWidth={STROKE} strokeLinejoin="round" />
+      <Rect x={38} y={22} width={52} height={40} rx={12} stroke={color} strokeWidth={STROKE} strokeLinejoin="round" />
     </Svg>
   );
 }
 
-export const LOGO_VARIANTS: { id: LogoVariant; name: string; note: string }[] = [
-  { id: 1, name: "Aperture F", note: "Negative-space F inside a cinematic frame" },
-  { id: 2, name: "Filmstrip F", note: "F cut from a vertical filmstrip" },
-  { id: 3, name: "Motion F", note: "Trailing frame echoes — forward momentum" },
-  { id: 4, name: "Bracket F", note: "Solid F framed by film corner brackets" },
-  { id: 5, name: "Forward F", note: "Forward-slanted arms for speed & flow" },
-  { id: 6, name: "Play Frame F", note: "App-icon hero with a play notch" },
-];
+/** App-icon lockup — rounded square container with the mark centered. */
+export function AppIcon({
+  size = 96,
+  bg = BRAND.ink,
+  fg = BRAND.gold,
+  border,
+}: {
+  size?: number;
+  bg?: string;
+  fg?: string;
+  border?: string;
+}) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.225,
+        backgroundColor: bg,
+        alignItems: "center",
+        justifyContent: "center",
+        borderWidth: border ? 1 : 0,
+        borderColor: border,
+        overflow: "hidden",
+      }}
+    >
+      <LogoMark color={fg} size={size * 0.66} />
+    </View>
+  );
+}
+
+/** Wordmark — "FRAMEFLOW" over a ruled "STUDIO" line. */
+export function Wordmark({
+  color = BRAND.light,
+  accent = BRAND.gold,
+  size = 26,
+  align = "flex-start",
+}: {
+  color?: string;
+  accent?: string;
+  size?: number;
+  align?: "flex-start" | "center";
+}) {
+  const studio = Math.max(8, size * 0.34);
+  return (
+    <View style={{ alignItems: align }}>
+      <Text style={{ fontFamily: F.display, fontSize: size, letterSpacing: size * 0.14, color, lineHeight: size * 1.05 }}>
+        FRAMEFLOW
+      </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", marginTop: size * 0.16 }}>
+        <View style={{ width: size * 0.5, height: 1, backgroundColor: accent, opacity: 0.8 }} />
+        <Text style={{ fontFamily: F.text, fontSize: studio, letterSpacing: studio * 0.5, color: accent, marginHorizontal: size * 0.28 }}>
+          STUDIO
+        </Text>
+        <View style={{ width: size * 0.5, height: 1, backgroundColor: accent, opacity: 0.8 }} />
+      </View>
+    </View>
+  );
+}
+
+/** Horizontal lockup — mark + wordmark side by side. */
+export function HorizontalLogo({ tone = "dark", size = 56 }: { tone?: "dark" | "light"; size?: number }) {
+  const color = tone === "dark" ? BRAND.light : BRAND.ink;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: size * 0.22 }}>
+      <LogoMark color={BRAND.gold} size={size} />
+      <Wordmark color={color} accent={BRAND.gold} size={size * 0.46} />
+    </View>
+  );
+}
+
+/** Vertical lockup — mark stacked above the wordmark. */
+export function VerticalLogo({ tone = "dark", size = 84 }: { tone?: "dark" | "light"; size?: number }) {
+  const color = tone === "dark" ? BRAND.light : BRAND.ink;
+  return (
+    <View style={{ alignItems: "center", gap: size * 0.14 }}>
+      <LogoMark color={BRAND.gold} size={size} />
+      <Wordmark color={color} accent={BRAND.gold} size={size * 0.34} align="center" />
+    </View>
+  );
+}

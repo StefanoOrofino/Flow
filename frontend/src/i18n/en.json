@@ -238,5 +238,31 @@
   "storyboard": {},
   "shotList": {},
   "aiDirector": {},
-  "exports": {}
+  "exports": {},
+  "billing": {
+    "title": "Plan & Billing",
+    "subtitle": "Your current plan, usage and limits.",
+    "currentPlan": "Current plan",
+    "status": "Status",
+    "statusActive": "Active",
+    "statusPast_due": "Past due",
+    "statusCanceled": "Canceled",
+    "freeForever": "Free forever",
+    "perInterval": "/ {{interval}}",
+    "usage": "Usage this period",
+    "planLimits": "Plan limits",
+    "used": "{{used}} of {{limit}}",
+    "unlimited": "Unlimited",
+    "remaining": "{{count}} remaining",
+    "includedFeatures": "Included",
+    "upgrade": "Upgrade plan",
+    "upgradeSoon": "Paid plans are coming soon. You are on the Free plan.",
+    "comparePlans": "Available plans",
+    "mostPopular": "Most popular",
+    "currentTag": "Current",
+    "billedMonthly": "Billed monthly",
+    "note": "Billing is read-only for now — checkout will arrive with secure payments.",
+    "loadError": "Could not load billing information.",
+    "retry": "Retry"
+  }
 }

@@ -238,5 +238,31 @@
   "storyboard": {},
   "shotList": {},
   "aiDirector": {},
-  "exports": {}
+  "exports": {},
+  "billing": {
+    "title": "Piano e fatturazione",
+    "subtitle": "Il tuo piano attuale, utilizzo e limiti.",
+    "currentPlan": "Piano attuale",
+    "status": "Stato",
+    "statusActive": "Attivo",
+    "statusPast_due": "Scaduto",
+    "statusCanceled": "Annullato",
+    "freeForever": "Gratis per sempre",
+    "perInterval": "/ {{interval}}",
+    "usage": "Utilizzo in questo periodo",
+    "planLimits": "Limiti del piano",
+    "used": "{{used}} di {{limit}}",
+    "unlimited": "Illimitato",
+    "remaining": "{{count}} rimanenti",
+    "includedFeatures": "Incluso",
+    "upgrade": "Aggiorna piano",
+    "upgradeSoon": "I piani a pagamento arriveranno presto. Sei sul piano Free.",
+    "comparePlans": "Piani disponibili",
+    "mostPopular": "Piu popolare",
+    "currentTag": "Attuale",
+    "billedMonthly": "Fatturazione mensile",
+    "note": "La fatturazione e in sola lettura per ora — il pagamento arrivera con i pagamenti sicuri.",
+    "loadError": "Impossibile caricare le informazioni di fatturazione.",
+    "retry": "Riprova"
+  }
 }

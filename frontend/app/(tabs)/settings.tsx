@@ -57,6 +57,14 @@ export default function Settings() {
           </View>
         </Card>
 
+        {/* Plan & Billing */}
+        <Text style={styles.sectionLabel}>{t("billing:title")}</Text>
+        <Card style={{ marginBottom: S.lg }}>
+          <Pressable onPress={() => router.push("/billing")} testID="billing-link">
+            <Row C={C} styles={styles} icon="card-outline" label={t("billing:currentPlan")} value={`${t("billing:title")} ›`} />
+          </Pressable>
+        </Card>
+
         {/* Appearance */}
         <Text style={styles.sectionLabel}>{t("appearance")}</Text>
         <Card style={{ marginBottom: S.lg }}>
