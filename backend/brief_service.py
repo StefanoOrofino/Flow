@@ -187,68 +187,220 @@ def build_analysis_prompt(docs: list) -> str:
         for d in docs
     )[:MAX_TEXT]
     keys = ", ".join(f'"{k}"' for k, _ in BRIEF_FIELDS)
+    multi = len(docs) > 1
+    conflict_rule = (
+        'CONFLICT DETECTION: Multiple documents were provided. If two or more documents state DIFFERENT '
+        'values for the same field, set "conflict" to an object {"hasConflict": true, "values": '
+        '[{"document": "<fileName>", "value": "<value in that doc>"}]} listing each conflicting value. '
+        'When there is no conflict, set "conflict" to null.\n'
+        if multi else 'Only one document was provided; always set "conflict" to null.\n'
+    )
     return f"""You are a senior advertising producer analyzing one or more client brief documents.
-Extract ONLY information actually present. NEVER invent values. If a field is not present, set value to null and confidence to "low".
+Extract ONLY information actually present. NEVER invent values. If a field is not present, set value to null, confidence to "low" and confidenceScore to 0.
 
 Extract these fields:
 {fields_desc}
 
 For EACH field return an object with:
 - "value": the extracted value as a concise string (or null if absent)
-- "confidence": "high" | "medium" | "low"  (base this on EVIDENCE quality in the documents, not your own certainty)
+- "confidence": "high" | "medium" | "low"  (based on EVIDENCE quality in the documents, not your own certainty)
+- "confidenceScore": integer 0-100. Use 85-100 for high (explicit, unambiguous), 60-84 for medium (implied/partial), 0-59 for low/absent.
 - "sourceDocument": the fileName the value came from (or null)
 - "sourceLocation": a SHORT verbatim snippet (<=140 chars) from the document supporting the value (or null)
-- "extractionNotes": brief note if ambiguous/merged/conflicting (or "")
+- "extractionNotes": brief note if ambiguous/merged (or "")
+- "lowConfidenceReason": if confidence is low/medium, a SHORT reason why (e.g. "implied, not explicitly stated") else ""
+- "suggestedCorrection": if the value looks incomplete or you can infer a likely intended value, a short suggestion else null
+- "conflict": null OR {{"hasConflict": true, "values": [{{"document": "<fileName>", "value": "<value>"}}]}}
 
+{conflict_rule}
 DOCUMENTS:
 {corpus}
 
 Respond with ONLY valid JSON, no markdown, shaped exactly:
-{{ "fields": {{ {keys}: {{"value": null, "confidence": "low", "sourceDocument": null, "sourceLocation": null, "extractionNotes": ""}} , ... }} }}
+{{ "fields": {{ {keys}: {{"value": null, "confidence": "low", "confidenceScore": 0, "sourceDocument": null, "sourceLocation": null, "extractionNotes": "", "lowConfidenceReason": "", "suggestedCorrection": null, "conflict": null}} , ... }} }}
 Include EVERY listed field key."""
+
+
+def _band_from_score(score: int) -> str:
+    if score >= 85:
+        return "high"
+    if score >= 60:
+        return "medium"
+    return "low"
 
 
 def normalize_analysis(raw: dict, docs: list) -> dict:
     fields_in = (raw or {}).get("fields", {}) if isinstance(raw, dict) else {}
     out = {}
     present = 0
+    conflicts = 0
     conf_counts = {"high": 0, "medium": 0, "low": 0}
+    score_sum = 0
     for k, label in BRIEF_FIELDS:
         f = fields_in.get(k) or {}
         val = f.get("value")
         if isinstance(val, (list, dict)):
             val = json.dumps(val, ensure_ascii=False)
         val = (str(val).strip() if val not in (None, "", "null") else "")
-        conf = str(f.get("confidence", "low")).lower()
-        if conf not in conf_counts:
-            conf = "low"
+
+        # score + band (prefer explicit score, else derive from label)
+        try:
+            score = int(round(float(f.get("confidenceScore"))))
+        except (TypeError, ValueError):
+            lbl = str(f.get("confidence", "low")).lower()
+            score = {"high": 92, "medium": 72, "low": 30}.get(lbl, 30)
+        score = max(0, min(100, score))
+        if not val:
+            score = 0
+        band = _band_from_score(score) if val else "low"
+
+        # conflict normalization
+        conflict = f.get("conflict")
+        has_conflict = False
+        conflict_values = []
+        if isinstance(conflict, dict) and conflict.get("hasConflict"):
+            vals = conflict.get("values") or []
+            for v in vals:
+                if isinstance(v, dict) and str(v.get("value", "")).strip():
+                    conflict_values.append({
+                        "document": str(v.get("document") or ""),
+                        "value": str(v.get("value")).strip(),
+                    })
+            has_conflict = len(conflict_values) >= 2
+
+        status = "missing"
+        if val and has_conflict:
+            status = "conflict"
+        elif val:
+            status = "found"
+
         if val:
             present += 1
-            conf_counts[conf] += 1
+            conf_counts[band] += 1
+            score_sum += score
+        if status == "conflict":
+            conflicts += 1
+
         out[k] = {
             "key": k, "label": label, "category": FIELD_CATEGORY.get(k, "Other"),
-            "value": val, "confidence": conf if val else "low",
+            "value": val,
+            "confidence": band,
+            "confidenceScore": score,
+            "aiConfidence": band, "aiConfidenceScore": score,
             "sourceDocument": f.get("sourceDocument") or "",
             "sourceLocation": f.get("sourceLocation") or "",
             "extractionNotes": f.get("extractionNotes") or "",
+            "lowConfidenceReason": f.get("lowConfidenceReason") or "",
+            "suggestedCorrection": (str(f.get("suggestedCorrection")).strip()
+                                    if f.get("suggestedCorrection") not in (None, "", "null") else ""),
+            "conflict": {"hasConflict": has_conflict, "values": conflict_values} if has_conflict else None,
+            "status": status,
             "isUserEdited": False, "confirmed": False,
         }
+    overall = round(score_sum / present) if present else 0
     return {
         "fields": out,
         "summary": {
             "totalFields": len(BRIEF_FIELDS), "fieldsFound": present,
-            "fieldsMissing": len(BRIEF_FIELDS) - present, "confidence": conf_counts,
+            "fieldsMissing": len(BRIEF_FIELDS) - present,
+            "conflicts": conflicts,
+            "confidence": conf_counts,
+            "overallConfidence": overall,
         },
     }
 
 
 def mock_analysis(docs: list) -> dict:
-    """Heuristic fallback when no LLM key is configured."""
+    """Heuristic fallback when no LLM key is configured or the AI call fails."""
     raw = {"fields": {}}
-    joined = "\n".join(d["text"] for d in docs).lower()
-    src = docs[0]["fileName"] if docs else None
     for k, _ in BRIEF_FIELDS:
-        raw["fields"][k] = {"value": None, "confidence": "low",
+        raw["fields"][k] = {"value": None, "confidence": "low", "confidenceScore": 0,
                             "sourceDocument": None, "sourceLocation": None,
-                            "extractionNotes": "MOCK — add LLM balance for real analysis"}
+                            "extractionNotes": "MOCK — add LLM balance for real analysis",
+                            "lowConfidenceReason": "", "suggestedCorrection": None, "conflict": None}
     return normalize_analysis(raw, docs)
+
+
+SYSTEM = (
+    "You are a meticulous senior advertising producer. You extract structured brief data from client "
+    "documents. You NEVER invent information and you return ONLY strict JSON."
+)
+
+
+async def analyze_brief(docs: list) -> dict:
+    """Run the LLM brief analysis. Returns (normalized_analysis, mock_mode)."""
+    import os
+    import uuid
+    from ai_config import get_ai_config
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        logger.warning("Brief analysis MOCK MODE — no EMERGENT_LLM_KEY")
+        return mock_analysis(docs), True
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage
+        provider, model = get_ai_config("brief")
+        chat = LlmChat(api_key=api_key, session_id="brief_" + uuid.uuid4().hex[:10],
+                       system_message=SYSTEM).with_model(provider, model)
+        resp = await chat.send_message(UserMessage(text=build_analysis_prompt(docs)))
+        text = resp if isinstance(resp, str) else str(resp)
+        text = text.strip()
+        text = re.sub(r"^```(json)?", "", text).strip()
+        text = re.sub(r"```$", "", text).strip()
+        start, end = text.find("{"), text.rfind("}")
+        if start == -1 or end == -1:
+            raise ValueError("No JSON object in AI response")
+        raw = json.loads(text[start:end + 1])
+        return normalize_analysis(raw, docs), False
+    except Exception as e:
+        logger.warning(f"Brief analysis failed, using mock fallback: {e}")
+        return mock_analysis(docs), True
+
+
+# brief field key -> project field (ProjectIn) for Run 2 generation.
+_BRIEF_TO_PROJECT = {
+    "client": "client", "brand": "brand", "campaign": "campaign",
+    "objective": "goal", "target_audience": "target_audience",
+    "key_message": "key_message", "call_to_action": "call_to_action",
+    "deliverables": "deliverables", "duration": "duration", "aspect_ratio": "aspect_ratio",
+    "budget": "budget", "locations": "location_type", "mood": "mood",
+    "visual_style": "visual_style", "references": "references",
+    "tone_of_voice": "brand",
+}
+
+
+def map_brief_to_project(fields: dict) -> dict:
+    """Map a reviewed brief field-map -> ProjectIn-compatible payload."""
+    def val(k):
+        f = fields.get(k) or {}
+        return str(f.get("value") or "").strip() if isinstance(f, dict) else str(f or "").strip()
+
+    payload = {}
+    for bkey, pkey in _BRIEF_TO_PROJECT.items():
+        v = val(bkey)
+        if v and not payload.get(pkey):
+            payload[pkey] = v
+
+    # platform: take first from a comma/newline list
+    platforms = val("platforms")
+    if platforms:
+        payload["platform"] = re.split(r"[,\n/]", platforms)[0].strip()
+
+    # title: campaign > client > first non-empty
+    title = val("campaign") or val("client") or val("objective")
+    payload["title"] = (title[:80] if title else "Untitled Brief Project")
+
+    # restrictions from legal/constraints/mandatory
+    restr = " ".join(x for x in [val("legal_notes"), val("constraints"),
+                                 val("mandatory_requirements")] if x).strip()
+    if restr:
+        payload["restrictions"] = restr[:500]
+
+    # extra notes: fold in leftover strategic fields
+    notes = " • ".join(f"{lbl}: {val(k)}" for k, lbl in [
+        ("problem", "Problem"), ("success_metrics", "Success Metrics"),
+        ("competitors", "Competitors"), ("risks", "Risks"), ("deadline", "Deadline"),
+        ("products", "Products"),
+    ] if val(k))
+    if notes:
+        payload["extra_notes"] = notes[:800]
+    return payload

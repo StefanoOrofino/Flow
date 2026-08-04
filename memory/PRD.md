@@ -99,3 +99,11 @@ Implemented in strict priority order per user request:
 - i18n: overview namespace + common.multiselect (EN + IT).
 - Verified iteration_12: 9/9 acceptance (autosave+persist, focus retention while autosaving, pickers, both multiselects incl. search/custom/reorder/persist, undo/redo, no regressions in Storyboard/ShotList/AIDirector, EN+IT no raw keys, Light/Dark, mobile bottom-sheet no overflow). Applied post-test fix: migration guarded with styles_migrated flag.
 - NEXT EPIC (approved for next run): "Create Project from Client Brief" — entry point, multi-file upload, PDF/DOCX/PPTX/TXT/RTF extraction, structured AI analysis w/ High/Med/Low confidence, editable Analysis Summary review (no project generation yet in that run).
+
+## Sprint 9 (2026-06) — Logo Exploration board (Flow Forward)
+- New standalone route `app/logo.tsx` + reusable SVG mark `src/brand/FrameFlowLogo.tsx` (react-native-svg). Six refined variations of ONE direction ("Flow Forward" — negative-space F built from cinematic frames + forward motion): 1 Aperture F, 2 Filmstrip F, 3 Motion F (trailing echoes), 4 Bracket F, 5 Forward F (slanted arms), 6 Play Frame F (app-icon hero w/ play notch).
+- Each variation rendered across 8 contexts: dark bg, light bg, gold accent, monochrome, horizontal lockup (mark + FrameFlow/STUDIO wordmark), icon only, app-icon preview (rounded square), favicon preview (16/24/32). Fixed brand palette (GOLD #C5A059 / INK / CREAM), theme-token chrome via useTheme. Discoverable via Settings → About → "Logo Exploration".
+- Purpose: choose final identity before production implementation. Verified rendering on mobile 390px.
+
+## PAUSED — brief_service backend (inert, not wired)
+- `brief_service.py` fully built (extract PDF/DOCX/PPTX/TXT/RTF + analyze_brief LLM call w/ confidence scores 0-100, conflict detection, map_brief_to_project) and `ai_config.py` (model-agnostic per-module config) added. `import brief_service` added to server.py but NO endpoints wired yet — safe/inert. Resume: add POST /api/briefs/analyze (multipart) + POST /api/briefs/generate, then frontend flow.

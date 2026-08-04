@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/src/auth";
@@ -23,6 +24,7 @@ const DENSITY_OPTIONS: { key: Density; labelKey: string; subKey: string }[] = [
 
 export default function Settings() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation("settings");
   const { currentLanguage, setLanguage, availableLanguages } = useLanguage();
@@ -191,6 +193,10 @@ export default function Settings() {
           <Row C={C} styles={styles} icon="shield-checkmark-outline" label={t("data")} value={t("dataValue")} />
           <View style={styles.divider} />
           <Row C={C} styles={styles} icon="information-circle-outline" label={t("version")} value="FrameFlow Studio 1.0" />
+          <View style={styles.divider} />
+          <Pressable onPress={() => router.push("/logo")} testID="logo-explore-link">
+            <Row C={C} styles={styles} icon="color-palette-outline" label="Logo Exploration" value="Flow Forward ›" />
+          </Pressable>
         </Card>
 
         <Btn title={t("logout")} variant="ghost" icon="log-out-outline" onPress={logout} testID="logout-btn" />
