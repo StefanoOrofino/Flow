@@ -1,0 +1,50 @@
+{
+  "summary": "BOTTOM TAB BAR BUG NOT FIXED. Labels are still clipped and INVISIBLE on every mobile viewport tested (iPhone SE 375x667, iPhone 13/14/15 390x844, Android 412x915, iPhone Pro Max 430x932). DOM inspection shows every label DIV (Dashboard, Projects, New, Templates, Account) is crushed to height=3px with overflow:hidden while font-size is 12px, so no text is rendered visually. Screenshots at all four viewports confirm only the 5 icons appear, no labels. Navigation between all 5 tabs works correctly and the theme background/border are applied (surface2 #16171B, border #2A2C31). Root cause is a height-math bug in the new (tabs)/_layout.tsx: on react-native-web box-sizing is border-box, so `tabBarStyle.height = contentHeight (56) + bottomInset (10) = 66` INCLUDES paddingTop (8) + paddingBottom (10) + borderTopWidth (1), leaving only 47px of usable inner content. Icon takes 27px (New icon takes 34px), which leaves ~13-20px of vertical space that the label is forced into, and the label collapses to 3px with overflow:hidden. Tab item height on-screen is also 43px, i.e. below the 44pt spec.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "(tabs)/_layout.tsx BottomTabBar",
+        "issue": "Tab labels (Dashboard/Projects/New/Templates/Account) rendered but visually invisible: every label DIV has computed height=3px with overflow:hidden even though font-size:12px is applied. Reproduced at 375x667, 390x844, 412x915 and 430x932. Screenshots show only icons in the tab bar. Reference: /app/frontend/app/(tabs)/_layout.tsx:34-53",
+        "testID": "n/a (react-navigation-managed)",
+        "priority": "HIGH"
+      },
+      {
+        "component": "(tabs)/_layout.tsx BottomTabBar",
+        "issue": "Each tab item measures 43px tall on-screen (below the 44pt minimum touch-target requested in the spec). tabBarItemStyle.minHeight:44 is not being honoured because the outer container is not tall enough. Reference: /app/frontend/app/(tabs)/_layout.tsx:47-51",
+        "testID": "n/a",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "All tabbed screens (dashboard, projects, new, templates, settings)",
+        "issues": [
+          "Labels invisible — user only sees 5 icons with no accompanying text. This breaks the 'labels fully visible' acceptance criterion.",
+          "New (add-circle) icon is enlarged to 31px correctly, other icons render at 25px correctly.",
+          "Tab item height 43px < 44pt spec; touch targets slightly undersized."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_10.json"],
+  "action_items": [
+    "Fix the height math in /app/frontend/app/(tabs)/_layout.tsx so labels are not clipped. On react-native-web `height` uses border-box (padding included). Two safe fixes: (a) set `height: contentHeight + bottomInset + 8` (i.e. also reserve paddingTop inside the height), or (b) increase `contentHeight` from 56 to ~68-72 so the inner content area (currently ~47px) becomes ~59-63px which comfortably fits the 34px 'New' icon + gap + 12px/16px line-height label.",
+    "After the fix, also raise tab-item height above 44pt (react-navigation will honour it once the outer container is tall enough).",
+    "Retest: verify label DIV computed height >= 14-16px and label text visible in a cropped screenshot of the tab bar on all four viewports (375x667, 390x844, 412x915, 430x932). Also verify Italian labels (Dashboard/Progetti/Nuovo/Modelli/Account) render without truncation after switching language in Settings."
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/app/(tabs)/_layout.tsx:34 — bottomInset math is fine, but the `height: contentHeight + bottomInset` on line 47 assumes content-box sizing. On react-native-web the tab bar container renders with border-box, so paddingTop:8 + paddingBottom:bottomInset are subtracted from the specified height rather than added, which is why the label area collapses to ~3px.",
+    "/app/frontend/app/(tabs)/_layout.tsx:53 — `tabBarLabelStyle` sets fontSize:12/fontWeight:500 correctly, but the label wrapper it gets applied to inherits overflow:hidden and is height-constrained by its parent, so the style is functionally invisible today.",
+    "/app/frontend/app/(tabs)/_layout.tsx:51 — `tabBarItemStyle.minHeight:44` is not enforced by react-navigation-web when the outer bar height is too small; the achieved tab item height is 43px. Raising the outer height will let the minHeight take effect."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped)", "frontend": "40% (2/5 acceptance criteria met: navigation works, theme applied; 3 fail: labels not visible, no comfortable bottom padding around labels since labels collapsed, touch target 43 < 44)"},
+  "seed_data_creation": "None. Used seeded account sb_1785767871@studio.com / secret123.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Reproduce quickly by logging in with sb_1785767871@studio.com / secret123 at 390x844 and running `document.querySelectorAll('[role=tablist] [role=tab]')` — inspect the deepest text-only DIV in each tab; its bounding rect height should be >= ~14px after the fix. Also crop-screenshot the bottom 90px of the viewport and confirm the five text labels are visible under each icon. Test at least two Italian labels ('Progetti', 'Modelli') too by toggling lang-it in Settings.",
+  "rca_of_issue": "PROBLEM: All five bottom tab labels are invisible; user only sees icons. REPRO: Login → any tabbed screen → inspect [role=tab] descendants — label DIV has height 3px, overflow hidden. ROOT CAUSE: In react-native-web the tab bar's outer container uses border-box sizing, so `tabBarStyle.height` (currently contentHeight+bottomInset = 56+10 = 66px) INCLUDES paddingTop(8) + paddingBottom(10) + borderTopWidth(1). Inner content area = 66-8-10-1 = 47px. Icon reserves 27-34px, leaving ~13-20px for label + gap. The label view is therefore squeezed to 3px with overflow:hidden and the 12px font never appears. MITIGATION: change line 47 of (tabs)/_layout.tsx to `height: contentHeight + bottomInset + 8` (or equivalently increase contentHeight to 68-72). This preserves the intended visual height while giving the label the ~16px it needs. Also increases tab-item height to satisfy the 44pt touch-target requirement automatically."
+}

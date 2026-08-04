@@ -172,3 +172,19 @@ agent_communication:
 agent_communication:
     - agent: "main"
       message: "i18n Phase 1+2 regression (frontend only). Seeded login: sb_1785767871@studio.com / secret123. Verify: (1) App loads in English by default with NO raw i18n keys (no 'auth:...' or 'settings:...' visible). (2) Login/Signup/Reset screens fully translated. (3) Bottom tab labels translated. (4) Settings > 🌐 Language shows English + Italiano (testIDs lang-en, lang-it). Tapping Italiano instantly switches Settings + tab labels to Italian with NO reload/logout/navigation reset (e.g. title becomes 'Impostazioni', tabs 'Progetti/Modelli/Nuovo', logout 'Esci'). Tapping English switches back. (5) Selection persists after full page reload (AsyncStorage frameflow.language). (6) Theme/density/accessibility from previous sprint still work. NOTE: Dashboard/Projects/Templates/New-wizard/Editor body content is intentionally still English in this phase (Phase 3/4 pending) - do NOT fail the run for those; only confirm the translated surfaces above and that no raw keys appear on translated screens. Test at desktop 1280 and mobile 390 (Compact density disabled on mobile)."
+
+  - task: "Bottom tab bar iOS safe-area redesign (labels clipped near bottom edge)"
+    implemented: true
+    working: "NA"
+    file: "app/(tabs)/_layout.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Tab bar now respects useSafeAreaInsets bottom (min 10 iOS / 12 Android); height=56+bottomInset, paddingBottom=bottomInset, paddingTop=8. Icons 25px (add 31px), labels 12px medium with reduced icon-label gap, tabBarItemStyle minHeight 44. Fixes clipped labels / labels too close to bottom edge on iPhones with home indicator."
+
+agent_communication:
+    - agent: "main"
+      message: "BUG FIX regression: Bottom tab bar labels were clipped and too close to the bottom edge on iPhone (safe-area not respected). Fixed in app/(tabs)/_layout.tsx. Please verify (frontend only, seeded login sb_1785767871@studio.com / secret123): (1) All 5 tab labels (Dashboard/Projects/New/Templates/Account, or IT equivalents) are FULLY visible and not clipped; (2) tab bar sits above the home-indicator area with comfortable bottom padding; (3) icons ~25px and labels legible ~12px medium with a small icon-label gap; (4) tapping each tab navigates correctly and touch targets feel >=44pt. Test primarily at mobile widths simulating iPhone SE (375x667), iPhone 13/14/15 (390x844), iPhone Pro Max (430x932) and an Android width. It's a web preview so exact home-indicator inset may be 0 there — confirm no clipping and correct layout/spacing; note that on-device iOS inset padding is driven by useSafeAreaInsets."
