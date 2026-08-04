@@ -11,30 +11,32 @@ import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
 import { H1, H2, Body } from "@/src/components";
 
-const FILTERS = ["all", "review", "medium", "high", "missing", "edited"] as const;
+const FILTERS = ["all", "found", "ambiguous", "conflict", "missing", "edited"] as const;
 type Filter = typeof FILTERS[number];
 
 function statusMeta(f: any, C: Palette) {
-  if (f.userEntered && !f.isUserEdited) return { key: "userEntered", color: C.onSurface2, bg: C.surface3, plain: true };
-  if (f.isUserEdited) return { key: "userConfirmed", color: C.success, bg: C.successTint, plain: true };
-  if (f.conflict?.hasConflict) return { key: "conflict", color: C.warning, bg: C.surface3, plain: true };
-  if (!f.value) return { key: "missing", color: C.onSurface3, bg: C.surface3, plain: true };
-  if (f.confidence === "high") return { key: "high", color: C.success, bg: C.successTint };
-  if (f.confidence === "medium") return { key: "medium", color: C.warning, bg: C.surface3 };
-  return { key: "low", color: C.error, bg: C.errorTint };
+  if (f.isUserEdited || f.confirmed) return { key: "confirmed", label: "Confirmed", color: C.success, bg: C.successTint };
+  const st = f.status || (f.value ? "found" : "missing");
+  if (st === "suggestion") return { key: "suggestion", label: "AI suggestion", color: C.brand, bg: C.brandTint };
+  if (st === "conflict") return { key: "conflict", label: "Conflict", color: C.warning, bg: C.errorTint };
+  if (st === "ambiguous") return { key: "ambiguous", label: "Ambiguous", color: C.warning, bg: C.surface3 };
+  if (st === "missing") return { key: "missing", label: "Missing", color: C.onSurface3, bg: C.surface3 };
+  return { key: "found", label: "Extracted", color: C.success, bg: C.successTint };
 }
 
 function FieldRow({ f, onChange, C, styles, t }: any) {
   const meta = statusMeta(f, C);
-  const src = f.userEntered && !f.isUserEdited ? "" : (f.sourceImage ? `${t("sourceImage")}: ${f.sourceImage}` : f.sourceDocument || "");
-  const showScore = f.value && !meta.plain;
+  const isSuggestion = f.status === "suggestion" || f.isSuggestion;
+  const src = f.sourceImage ? `${t("sourceImage", { defaultValue: "Image" })}: ${f.sourceImage}`
+    : (f.sourceDocument ? `${f.sourceDocument}${f.sourceLocation ? " · " + f.sourceLocation : ""}` : "");
+  const showScore = !!f.value && meta.key === "found";
   return (
     <View style={styles.fieldRow} testID={`field-${f.key}`}>
       <View style={styles.fieldTop}>
         <Text style={styles.fieldLabel}>{f.label}</Text>
         <View style={[styles.badge, { backgroundColor: meta.bg }]}>
           <Text style={[styles.badgeTxt, { color: meta.color }]}>
-            {t(meta.key)}{showScore ? ` · ${f.confidenceScore}` : ""}
+            {meta.label}{showScore ? ` · ${f.confidenceScore}` : ""}
           </Text>
         </View>
       </View>
@@ -42,40 +44,55 @@ function FieldRow({ f, onChange, C, styles, t }: any) {
       <TextInput
         value={f.value}
         onChangeText={(v) => onChange(f.key, v)}
-        placeholder={t("fillManually")}
+        placeholder={isSuggestion ? t("suggestionPlaceholder", { defaultValue: "AI observation — confirm to use" }) : t("fillManually", { defaultValue: "Not found — add manually" })}
         placeholderTextColor={C.onSurface3}
         multiline
         style={styles.input}
         testID={`input-${f.key}`}
       />
 
-      {f.conflict?.hasConflict && (
+      {/* Verbatim evidence for extracted facts */}
+      {meta.key === "found" && !!f.evidenceSnippet && (
+        <View style={styles.evidenceBox}>
+          <Ionicons name="document-text-outline" size={12} color={C.onSurface2} />
+          <Text style={styles.evidenceTxt} numberOfLines={4}>“{f.evidenceSnippet}”</Text>
+        </View>
+      )}
+
+      {/* Ambiguous — pick a possible value */}
+      {f.status === "ambiguous" && (f.possibleValues?.length > 0) && (
         <View style={styles.conflictBox}>
-          <Text style={styles.conflictLbl}>{t("chooseValue")}</Text>
+          <Text style={styles.ambiguousLbl}>{t("possibleValues", { defaultValue: "Possible values — choose to confirm" })}</Text>
           <View style={styles.chipWrap}>
-            {f.conflict.values.map((v: any, i: number) => (
-              <Pressable key={i} onPress={() => onChange(f.key, v.value)} style={styles.choiceChip}>
-                <Text style={styles.choiceChipTxt} numberOfLines={2}>{v.document ? `${v.document}: ` : ""}{v.value}</Text>
+            {f.possibleValues.map((v: string, i: number) => (
+              <Pressable key={i} onPress={() => onChange(f.key, v)} style={styles.choiceChip} testID={`possible-${f.key}-${i}`}>
+                <Text style={styles.choiceChipTxt} numberOfLines={2}>{v}</Text>
               </Pressable>
             ))}
           </View>
         </View>
       )}
 
-      {!!f.suggestedCorrection && f.suggestedCorrection !== f.value && (
-        <Pressable style={styles.suggest} onPress={() => onChange(f.key, f.suggestedCorrection)}>
-          <Ionicons name="bulb-outline" size={13} color={C.brand} />
-          <Text style={styles.suggestTxt}>{t("suggested")}: {f.suggestedCorrection}</Text>
-        </Pressable>
+      {/* Conflict — two sources disagree, user must pick */}
+      {f.conflict?.hasConflict && (
+        <View style={styles.conflictBox}>
+          <Text style={styles.conflictLbl}>{t("chooseValue", { defaultValue: "Sources disagree — choose the correct value" })}</Text>
+          <View style={styles.chipWrap}>
+            {f.conflict.values.map((v: any, i: number) => (
+              <Pressable key={i} onPress={() => onChange(f.key, v.value)} style={styles.choiceChip} testID={`conflict-${f.key}-${i}`}>
+                <Text style={styles.choiceChipTxt} numberOfLines={3}>{v.document ? `${v.document}: ` : ""}{v.value}{v.evidenceSnippet ? `  — “${v.evidenceSnippet}”` : ""}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
       )}
 
-      {f.confidence === "low" && !!f.value && !!f.lowConfidenceReason && (
-        <Text style={styles.reason}>{t("whyLow")}: {f.lowConfidenceReason}</Text>
+      {/* Why missing / ambiguous */}
+      {(f.status === "missing" || f.status === "ambiguous") && !!f.extractionReason && (
+        <Text style={styles.reason}>{f.extractionReason}</Text>
       )}
 
-      {f.userEntered && !f.isUserEdited
-        ? <Text style={styles.source}>{t("source")}: {t("userEntered")}</Text>
-        : (!!src && <Text style={styles.source}>{t("source")}: {src}</Text>)}
+      {!!src && <Text style={styles.source}>{t("source", { defaultValue: "Source" })}: {src}</Text>}
     </View>
   );
 }
@@ -106,16 +123,19 @@ export default function ReviewAnalysis() {
 
   const summary = session.analysis?.summary || {};
   const thumbs = session.imageThumbs || [];
+  const suggestions = session.analysis?.suggestions || [];
 
   const editField = (setter: any) => (key: string, value: string) =>
     setter((p: any) => ({ ...p, [key]: { ...p[key], value, isUserEdited: true, confirmed: true, status: value ? "found" : "missing" } }));
 
   const matches = (f: any) => {
+    if (f.isUserEdited) return filter === "all" || filter === "edited" || filter === "found";
+    const st = f.status || (f.value ? "found" : "missing");
     switch (filter) {
-      case "review": return !!f.value && f.confidence === "low";
-      case "medium": return !!f.value && f.confidence === "medium";
-      case "high": return !!f.value && f.confidence === "high";
-      case "missing": return !f.value;
+      case "found": return st === "found";
+      case "ambiguous": return st === "ambiguous";
+      case "conflict": return st === "conflict" || !!f.conflict?.hasConflict;
+      case "missing": return st === "missing";
       case "edited": return !!f.isUserEdited;
       default: return true;
     }
@@ -150,8 +170,6 @@ export default function ReviewAnalysis() {
     }
   };
 
-  const conf = summary.confidence || { high: 0, medium: 0, low: 0 };
-
   return (
     <View style={{ flex: 1, backgroundColor: C.surface }}>
       <View style={[styles.header, { paddingTop: insets.top + S.md }]}>
@@ -169,15 +187,16 @@ export default function ReviewAnalysis() {
         {/* Summary banner */}
         <View style={styles.banner}>
           <View style={styles.bannerRow}>
-            <Text style={styles.bannerExtract}>{t("extracted", { count: summary.fieldsFound || 0 })}</Text>
+            <Text style={styles.bannerExtract}>{t("extracted", { count: summary.fieldsFound || 0, defaultValue: `${summary.fieldsFound || 0} facts extracted` })}</Text>
             <View style={styles.overallPill}><Text style={styles.overallTxt}>{summary.overallConfidence || 0}%</Text></View>
           </View>
           <View style={styles.statChips}>
-            <View style={styles.statChip}><View style={[styles.dot, { backgroundColor: C.success }]} /><Text style={styles.statTxt}>{conf.high} {t("high")}</Text></View>
-            <View style={styles.statChip}><View style={[styles.dot, { backgroundColor: C.warning }]} /><Text style={styles.statTxt}>{conf.medium} {t("medium")}</Text></View>
-            <View style={styles.statChip}><View style={[styles.dot, { backgroundColor: C.error }]} /><Text style={styles.statTxt}>{conf.low} {t("low")}</Text></View>
-            <View style={styles.statChip}><View style={[styles.dot, { backgroundColor: C.onSurface3 }]} /><Text style={styles.statTxt}>{summary.fieldsMissing} {t("missing")}</Text></View>
+            <View style={styles.statChip}><View style={[styles.dot, { backgroundColor: C.success }]} /><Text style={styles.statTxt}>{summary.fieldsFound || 0} {t("foundShort", { defaultValue: "extracted" })}</Text></View>
+            <View style={styles.statChip}><View style={[styles.dot, { backgroundColor: C.warning }]} /><Text style={styles.statTxt}>{summary.fieldsAmbiguous || 0} {t("ambiguousShort", { defaultValue: "ambiguous" })}</Text></View>
+            <View style={styles.statChip}><View style={[styles.dot, { backgroundColor: C.error }]} /><Text style={styles.statTxt}>{summary.conflicts || 0} {t("conflictShort", { defaultValue: "conflict" })}</Text></View>
+            <View style={styles.statChip}><View style={[styles.dot, { backgroundColor: C.onSurface3 }]} /><Text style={styles.statTxt}>{summary.fieldsMissing || 0} {t("missing", { defaultValue: "missing" })}</Text></View>
           </View>
+          <Text style={styles.bannerNote}>{t("strictNote", { defaultValue: "Only facts explicitly stated in your documents are shown as extracted. Everything else stays empty for you to confirm." })}</Text>
         </View>
 
         {/* Filters */}
@@ -185,7 +204,12 @@ export default function ReviewAnalysis() {
           {FILTERS.map((fl) => (
             <Pressable key={fl} onPress={() => setFilter(fl)} style={[styles.filterChip, filter === fl && styles.filterChipOn]} testID={`filter-${fl}`}>
               <Text style={[styles.filterTxt, filter === fl && styles.filterTxtOn]}>
-                {fl === "all" ? t("filterAll") : fl === "review" ? t("filterReview") : fl === "medium" ? t("medium") : fl === "high" ? t("high") : fl === "missing" ? t("filterMissing") : t("filterEdited")}
+                {fl === "all" ? t("filterAll", { defaultValue: "All" })
+                  : fl === "found" ? t("foundShort", { defaultValue: "Extracted" })
+                  : fl === "ambiguous" ? t("ambiguousShort", { defaultValue: "Ambiguous" })
+                  : fl === "conflict" ? t("conflictShort", { defaultValue: "Conflict" })
+                  : fl === "missing" ? t("filterMissing", { defaultValue: "Missing" })
+                  : t("filterEdited", { defaultValue: "Confirmed" })}
               </Text>
             </Pressable>
           ))}
@@ -196,15 +220,34 @@ export default function ReviewAnalysis() {
         {projList.map((f: any) => <FieldRow key={f.key} f={f} onChange={editField(setFields)} C={C} styles={styles} t={t} />)}
         {projList.length === 0 && <Text style={styles.emptyFilter}>—</Text>}
 
-        {/* Visual Analysis */}
-        <View style={[styles.sectionHead, { marginTop: S.xl }]}><Ionicons name="color-palette-outline" size={16} color={C.brand} /><Text style={styles.sectionTitle}>{t("visualAnalysis")}</Text></View>
+        {/* AI Suggestions — from reference images (kept separate from extracted facts) */}
+        <View style={[styles.sectionHead, { marginTop: S.xl }]}><Ionicons name="sparkles-outline" size={16} color={C.brand} /><Text style={styles.sectionTitle}>{t("aiSuggestionsImages", { defaultValue: "AI Suggestions — from reference images" })}</Text></View>
+        <Text style={styles.sectionNote}>{t("aiSuggestionsNote", { defaultValue: "These are AI observations, not facts from your brief. Confirm any you want to use." })}</Text>
         {thumbs.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: S.sm }}>
             {thumbs.map((im: any, i: number) => <Image key={i} source={{ uri: im.uri }} style={styles.vThumb} contentFit="cover" />)}
           </ScrollView>
-        ) : <Text style={styles.noImages}>{t("noImages")}</Text>}
+        ) : <Text style={styles.noImages}>{t("noImages", { defaultValue: "No reference images were uploaded." })}</Text>}
         {visList.map((f: any) => <FieldRow key={f.key} f={f} onChange={editField(setVisual)} C={C} styles={styles} t={t} />)}
         {visList.length === 0 && <Text style={styles.emptyFilter}>—</Text>}
+
+        {/* AI Suggestions — creative recommendations (never mixed with facts) */}
+        {suggestions.length > 0 && (
+          <>
+            <View style={[styles.sectionHead, { marginTop: S.xl }]}><Ionicons name="bulb-outline" size={16} color={C.brand} /><Text style={styles.sectionTitle}>{t("aiSuggestionsCreative", { defaultValue: "AI Suggestions — creative recommendations" })}</Text></View>
+            <Text style={styles.sectionNote}>{t("aiSuggestionsCreativeNote", { defaultValue: "Optional ideas generated by AI. They are not part of your brief and are not applied automatically." })}</Text>
+            {suggestions.map((s: any, i: number) => (
+              <View key={i} style={styles.suggestionCard} testID={`suggestion-${i}`}>
+                <View style={styles.suggestionTop}>
+                  <View style={[styles.badge, { backgroundColor: C.brandTint }]}><Text style={[styles.badgeTxt, { color: C.brand }]}>{t("suggestionBadge", { defaultValue: "AI suggestion" })}</Text></View>
+                  <Text style={styles.suggestionField}>{String(s.field || "").replace(/_/g, " ")}</Text>
+                </View>
+                <Text style={styles.suggestionValue}>{s.value}</Text>
+                {!!s.rationale && <Text style={styles.reason}>{s.rationale}</Text>}
+              </View>
+            ))}
+          </>
+        )}
       </ScrollView>
 
       {/* Sticky footer */}
@@ -284,6 +327,16 @@ const createStyles = (C: Palette) => StyleSheet.create({
   suggestTxt: { color: C.brand, fontFamily: F.text, fontSize: 12, flex: 1 },
   reason: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, marginTop: 6, fontStyle: "italic" },
   source: { color: C.onSurface3, fontFamily: F.text, fontSize: 11, marginTop: 6 },
+
+  bannerNote: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, marginTop: S.md, lineHeight: 17 },
+  sectionNote: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, marginBottom: S.md, lineHeight: 18 },
+  evidenceBox: { flexDirection: "row", gap: 6, alignItems: "flex-start", marginTop: 8, backgroundColor: C.surface3, borderRadius: R.sm, padding: 8 },
+  evidenceTxt: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, flex: 1, fontStyle: "italic", lineHeight: 17 },
+  ambiguousLbl: { color: C.warning, fontFamily: F.text, fontSize: 11.5, fontWeight: "600", marginBottom: 6 },
+  suggestionCard: { backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md, marginBottom: S.sm },
+  suggestionTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  suggestionField: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, letterSpacing: 0.5, textTransform: "capitalize" },
+  suggestionValue: { color: C.onSurface, fontFamily: F.text, fontSize: 14, lineHeight: 20 },
 
   vThumb: { width: 110, height: 110, borderRadius: R.md, backgroundColor: C.surface3, borderWidth: 1, borderColor: C.border },
   noImages: { color: C.onSurface3, fontFamily: F.text, fontSize: 12.5, marginBottom: S.sm, fontStyle: "italic" },

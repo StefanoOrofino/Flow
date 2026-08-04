@@ -25,6 +25,7 @@ import image_service
 import ai_director
 import brief_service
 import billing
+import admin as admin_module
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -171,7 +172,8 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
 
 
 def public_user(u: dict) -> dict:
-    return {"user_id": u["user_id"], "email": u.get("email"), "name": u.get("name", ""), "picture": u.get("picture")}
+    return {"user_id": u["user_id"], "email": u.get("email"), "name": u.get("name", ""),
+            "picture": u.get("picture"), "role": (u.get("role") or "user")}
 
 
 @api_router.post("/auth/register")
@@ -1040,7 +1042,19 @@ async def billing_summary(user=Depends(get_current_user)):
     usage = await db.usage.find_one({"user_id": uid}, {"_id": 0}) or {}
     # projects usage is always computed live (source of truth)
     usage["projects"] = await db.projects.count_documents({"user_id": uid})
-    return billing.build_summary(sub, usage)
+    storage_bytes = await compute_storage_bytes(uid)
+    return billing.build_summary(sub, usage, storage_bytes)
+
+
+async def compute_storage_bytes(user_id: str = None) -> int:
+    """Live storage usage = total BSON size of the user's project documents
+    (briefs, storyboards, base64 frames, exports metadata, reference materials).
+    Passing user_id=None returns platform-wide usage."""
+    match = {"user_id": user_id} if user_id else {}
+    pipeline = [{"$match": match}] if match else []
+    pipeline += [{"$group": {"_id": None, "bytes": {"$sum": {"$bsonSize": "$$ROOT"}}}}]
+    agg = await db.projects.aggregate(pipeline).to_list(1)
+    return int(agg[0]["bytes"]) if agg else 0
 
 
 @api_router.get("/")
@@ -1170,6 +1184,7 @@ async def _generate_project_bg(pid: str, user_id: str):
                                      {"$set": {"status": "generation_failed", "updated_at": now_iso()}})
 
 
+api_router.include_router(admin_module.build_admin_router(db, get_current_user))
 app.include_router(api_router)
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])
@@ -1181,6 +1196,13 @@ async def startup():
     await db.users.create_index("user_id", unique=True)
     await db.user_sessions.create_index("session_token", unique=True)
     await db.projects.create_index("user_id")
+    await db.users.create_index("role")
+    # Backfill role on legacy users, then run optional configurable Owner seed.
+    await db.users.update_many({"role": {"$exists": False}}, {"$set": {"role": "user"}})
+    try:
+        await admin_module.seed_owner_from_env(db)
+    except Exception as e:
+        logger.warning(f"owner seed skipped: {e}")
     logger.info(f"Storyboard AI started. MOCK_MODE={MOCK_MODE} provider={AI_PROVIDER} model={AI_MODEL}")
 
 

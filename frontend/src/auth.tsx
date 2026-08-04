@@ -7,7 +7,7 @@ import { api, setToken, getToken } from "./api";
 
 if (Platform.OS !== "web") WebBrowser.maybeCompleteAuthSession();
 
-type User = { user_id: string; email: string; name: string; picture?: string } | null;
+type User = { user_id: string; email: string; name: string; picture?: string; role?: string } | null;
 
 type Ctx = {
   user: User;

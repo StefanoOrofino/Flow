@@ -19,7 +19,7 @@ function matrix(t: (k: string) => string) {
     { key: "pdf_exports", free: `5 ${t("perMo")}`, pro: t("unlimited"), studio: t("unlimited") },
     { key: "team", free: t("none"), pro: `3 ${t("seats")}`, studio: t("unlimited") },
     { key: "client_review", free: t("none"), pro: t("linkSharing"), studio: t("brandedPortals") },
-    { key: "storage", free: "1 GB", pro: "50 GB", studio: "500 GB" },
+    { key: "storage", free: "storage", pro: "storage", studio: "storage" },
   ];
 }
 
@@ -76,12 +76,17 @@ export default function Pricing() {
         </Pressable>
 
         <View style={styles.featureList}>
-          {rows.map((r) => (
-            <View key={r.key} style={styles.featRow}>
-              <Text style={styles.featLabel}>{t(r.key)}</Text>
-              <Text style={styles.featVal}>{(r as any)[plan.id] ?? "—"}</Text>
-            </View>
-          ))}
+          {rows.map((r) => {
+            const val = r.key === "storage"
+              ? (plan.storage_gb != null ? `${plan.storage_gb} GB` : "—")
+              : ((r as any)[plan.id] ?? "—");
+            return (
+              <View key={r.key} style={styles.featRow}>
+                <Text style={styles.featLabel}>{t(r.key)}</Text>
+                <Text style={styles.featVal}>{val}</Text>
+              </View>
+            );
+          })}
         </View>
       </View>
     );

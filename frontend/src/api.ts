@@ -92,4 +92,12 @@ export const api = {
   // Create Project from Client Brief (Run 1)
   analyzeBrief: (body: { documents: any[]; images: any[] }) => req("/briefs/analyze", "POST", body),
   createProjectFromBrief: (body: any) => req("/briefs/create-project", "POST", body),
+  // Admin Console (RBAC — server enforced)
+  adminStatus: () => req("/admin/status"),
+  adminClaimOwner: () => req("/admin/claim-owner", "POST"),
+  adminSummary: () => req("/admin/summary"),
+  adminUsers: () => req("/admin/users"),
+  adminSetRole: (uid: string, role: string) => req(`/admin/users/${uid}/role`, "PATCH", { role }),
+  adminProjects: () => req("/admin/projects"),
+  adminAudit: () => req("/admin/audit"),
 };

@@ -149,6 +149,29 @@ export default function Billing() {
             {data.usage.map((m: any) => <UsageBar key={m.key} m={m} C={C} styles={styles} t={t} />)}
           </Card>
 
+          {/* Cloud storage */}
+          {data.storage && (
+            <>
+              <Text style={styles.sectionHeading}>{t("cloudStorage")}</Text>
+              <Card style={{ marginBottom: S.lg }}>
+                <View style={styles.usageRow}>
+                  <View style={styles.rowCenterGap}>
+                    <Ionicons name="cloud-outline" size={16} color={C.brand} />
+                    <Text style={styles.usageLabel}>{t("cloudStorageIncluded")}</Text>
+                  </View>
+                  <Text style={styles.usageValue}>{data.storage.display}</Text>
+                </View>
+                <View style={styles.track}>
+                  <View style={[styles.fill, {
+                    width: `${data.storage.unlimited ? 100 : data.storage.percent}%`,
+                    backgroundColor: data.storage.percent >= 100 ? C.error : data.storage.percent >= 80 ? C.warning : C.brand,
+                  }]} />
+                </View>
+                <Text style={styles.storageNote}>{t("storageNote")}</Text>
+              </Card>
+            </>
+          )}
+
           {/* Plan limits */}
           <Text style={styles.sectionHeading}>{t("planLimits")}</Text>
           <Card style={{ marginBottom: S.lg }}>
@@ -226,4 +249,5 @@ const createStyles = (C: Palette) => StyleSheet.create({
   featTxt: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, flex: 1 },
 
   footNote: { color: C.onSurface3, fontFamily: F.text, fontSize: 12, textAlign: "center", marginTop: S.lg, fontStyle: "italic" },
+  storageNote: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, marginTop: S.md, lineHeight: 17 },
 });

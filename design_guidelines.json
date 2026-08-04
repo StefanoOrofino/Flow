@@ -1,104 +1,90 @@
 {
-  "app_name": "FrameFlow Premium UI",
-  "personality": "3 Editorial structure with 6 Glass / Luxe surfaces",
-  "personality_one_liner": "A calm, elegant, and precision-driven workspace that frames creative content with high-end editorial typography and cinematic glass surfaces.",
+  "app_name": "FrameFlow Studio",
+  "personality": "Fusion of 5 Brutalist Mobile (structure, utility, dense data) with 6 Glass / Luxe DARK (cinematic surfaces, depth, premium feel)",
+  "personality_one_liner": "A cinematic, precision-engineered command center that elevates the creative process with the restraint of Linear and the atmosphere of Frame.io.",
   "color": {
-    "surface": "#FAFAFC",
-    "onSurface": "#1A1A24",
-    "surfaceSecondary": "#FFFFFF",
-    "onSurfaceSecondary": "#232333",
-    "surfaceTertiary": "#F2F2F5",
-    "onSurfaceTertiary": "#4A4A5E",
-    "surfaceInverse": "#171721",
+    "surface": "#FAFAFA",
+    "onSurface": "#121212",
+    "surfaceSecondary": "#F5F5F7",
+    "onSurfaceSecondary": "#3A3A3C",
+    "surfaceTertiary": "#EBEBEB",
+    "onSurfaceTertiary": "#1C1C1E",
+    "surfaceInverse": "#121212",
     "onSurfaceInverse": "#FFFFFF",
     "brand": "#C5A059",
     "brandPrimary": "#C5A059",
-    "onBrandPrimary": "#171721",
-    "brandSecondary": "#E0C38C",
-    "onBrandSecondary": "#171721",
-    "brandTertiary": "#F4EBD9",
-    "onBrandTertiary": "#8B6B32",
-    "success": "#32D74B",
+    "onBrandPrimary": "#000000",
+    "brandSecondary": "#E0C387",
+    "onBrandSecondary": "#121212",
+    "brandTertiary": "#3A301D",
+    "onBrandTertiary": "#E0C387",
+    "success": "#34C759",
     "onSuccess": "#FFFFFF",
-    "warning": "#FFD60A",
-    "onWarning": "#171721",
-    "error": "#FF453A",
+    "warning": "#FFCC00",
+    "onWarning": "#000000",
+    "error": "#FF3B30",
     "onError": "#FFFFFF",
-    "info": "#0A84FF",
+    "info": "#007AFF",
     "onInfo": "#FFFFFF",
     "border": "#E5E5EA",
-    "borderStrong": "#C5C5CE",
-    "divider": "#E5E5EA"
-  },
-  "dark_color": {
-    "surface": "#171721",
-    "onSurface": "#FFFFFF",
-    "surfaceSecondary": "#232333",
-    "onSurfaceSecondary": "#EBEBF5",
-    "surfaceTertiary": "#2C2C3E",
-    "onSurfaceTertiary": "#A0A0B0",
-    "surfaceInverse": "#FAFAFC",
-    "onSurfaceInverse": "#171721",
-    "brand": "#C5A059",
-    "brandPrimary": "#C5A059",
-    "onBrandPrimary": "#171721",
-    "brandSecondary": "#A6823E",
-    "onBrandSecondary": "#FFFFFF",
-    "brandTertiary": "#3B3322",
-    "onBrandTertiary": "#E0C38C",
-    "success": "#30D158",
-    "onSuccess": "#171721",
-    "warning": "#FFD60A",
-    "onWarning": "#171721",
-    "error": "#FF453A",
-    "onError": "#FFFFFF",
-    "info": "#0A84FF",
-    "onInfo": "#FFFFFF",
-    "border": "#313144",
-    "borderStrong": "#4A4A5E",
-    "divider": "#313144"
+    "borderStrong": "#C7C7CC",
+    "divider": "#E5E5EA",
+    "dark": {
+      "surface": "#121212",
+      "onSurface": "#FAFAFA",
+      "surfaceSecondary": "#1C1C1E",
+      "onSurfaceSecondary": "#D1D1D6",
+      "surfaceTertiary": "#2C2C2E",
+      "onSurfaceTertiary": "#E5E5EA",
+      "surfaceInverse": "#FFFFFF",
+      "onSurfaceInverse": "#000000",
+      "border": "#2C2C2E",
+      "borderStrong": "#48484A",
+      "divider": "#2C2C2E"
+    }
   },
   "typography": {
-    "displayFontFamily": "Cormorant Garamond",
-    "textFontFamily": "Geist",
+    "displayFontFamily": "CormorantGaramond-Medium",
+    "textFontFamily": "Geist-Regular",
     "scale": {
       "sm": 12,
       "base": 14,
       "lg": 16,
       "xl": 20,
       "2xl": 24
-    },
-    "guidelines": "Use Cormorant Garamond exclusively for top-level headers (H1/H2) and prominent empty states. Use Geist for all body, labels, metadata, and buttons. Cap font weight at 500 across both families; rely on size and the serif vs. sans contrast to establish hierarchy."
+    }
   },
   "spacing": {
-    "rule": "Drastically increase whitespace. Apply 3xl padding between major vertical sections. Use md or lg for internal component padding. Prevent content from crowding screen edges (always lg or xl outer margins). Do not let lists or grids feel cramped.",
+    "rule": "Rigid 8pt grid structure. Use compact padding (sm/md) for dense workspaces (Shot List, Budget) and generous padding (xl/2xl) for creative presentation views.",
     "xs": 4,
     "sm": 8,
-    "md": 12,
-    "lg": 16,
-    "xl": 24,
-    "2xl": 32,
-    "3xl": 48
+    "md": 16,
+    "lg": 24,
+    "xl": 32,
+    "2xl": 48,
+    "3xl": 64
   },
   "radius_tokens": {
-    "sm": 6,
-    "md": 12,
-    "lg": 20,
+    "sm": 4,
+    "md": 8,
+    "lg": 16,
     "pill": 999
   },
   "shadow_tier": "1",
-  "navigation": "bottom_tabs",
-  "icon_set": "Ionicons",
+  "navigation": "drawer",
+  "icon_set": "custom",
   "glassmorphism": {
     "enabled": "true",
     "do's": [
-      "Use subtle glassmorphism (expo-blur) on the bottom tab bar, floating actions (FAB), and sticky headers.",
-      "Apply frosted glass overlays behind text that sits on top of media/project thumbnails.",
-      "Ensure a translucent tinted base (≥70% of surface color) sits behind the blur for readability."
+      "Sticky headers over Storyboard scrolling grid",
+      "Floating action buttons for AI generation",
+      "Floating context menus for shot/list editing",
+      "Bottom-sheet headers"
     ],
     "dont's": [
-      "Do not apply glass to generic input fields, standard list rows, or body text regions.",
-      "Do not stack more than two blur layers on a single screen."
+      "Glass on form fields",
+      "Glass on standard list rows",
+      "Overusing blur in dense data tables like Budget or Schedule"
     ]
   },
   "platform_libraries": {
@@ -115,39 +101,53 @@
   },
   "screens": [
     {
-      "name": "Dashboard & Projects List",
-      "purpose": "A calm, cinematic overview of recent projects and core metrics.",
+      "name": "Project Workspace (Dashboard)",
+      "purpose": "A modular, data-rich command center with progressive disclosure, providing tabs for Brief, Storyboard, Script, Shot List, Crew, Budget.",
       "states": {
-        "loading": "Premium skeleton state: use a subtle, slow-pulsing surfaceTertiary opacity animation on large structural blocks, no generic spinners.",
-        "empty": "Cinematic empty state: an elegant abstract graphic with a brief Cormorant Garamond headline and a single gold CTA button.",
-        "error": "Minimalist text message with a 'Retry' text button; no heavy red banners."
+        "loading": "Skeleton grids replicating the exact table/board layout to prevent layout shift.",
+        "empty": "Subtle cinematic illustration (camera/lens abstraction) with a centered 'Upload Brief to Generate' gold CTA.",
+        "error": "Minimalist red border toast + Retry overlay in the center of the failed panel."
       },
-      "layout": "Increase padding heavily. Use a top header with glassmorphism. Represent projects as large edge-to-edge (minus screen padding) cards. Use a 2-column grid only if imagery is extremely prominent, otherwise default to spacious single-column list. Remove heavy borders; define cards using surfaceSecondary against the surface background. For active states/hover, use a 0.98 scale press animation."
+      "layout": "Desktop: Three-panel layout (Left Nav Drawer, Center Content Tab, Right AI/Properties Panel). Mobile: Left nav becomes a hamburger drawer, Right panel becomes a draggable bottom sheet. Top sticky header stays visible with glass blur."
     },
     {
-      "name": "Project Editor (Tabs)",
-      "purpose": "The core workspace for film/video metadata and assets, prioritizing precision and readability.",
+      "name": "Storyboard Grid",
+      "purpose": "Visual workspace for reviewing, dragging, and dropping AI-generated shot frames with inline text editors.",
       "states": {
-        "loading": "Staggered skeleton rows matching the tab content structure.",
-        "empty": "Subtle placeholder icon centered in the tab view with a single-line directive.",
-        "error": "Inline minimalist error text."
+        "loading": "Pulsing skeleton rectangles matching the exact aspect ratio of frames.",
+        "empty": "Empty drop-zone with dashed border and an icon indicating 'Drag frames here or Generate'.",
+        "error": "Error badge over the specific failed frame, not destroying the whole board."
       },
-      "layout": "The tab bar should feel like a premium segmented control (no clunky bounding boxes, just text with an active gold indicator). Forms in Overview/Script should be single-column with Geist labels above inputs. Eliminate all visible borders from inputs; use surfaceTertiary with a subtle radius for fields. Display Storyboard grids with absolute precision, utilizing 1px subtle dividers if necessary rather than wrapping cards in shadows."
+      "layout": "Responsive grid (2-col mobile, 4-to-6-col desktop). Cards have zero-margin images at the top, tight padding text metadata at the bottom. Sticky header with View Toggles (Grid/List) and Scale slider."
+    },
+    {
+      "name": "Client Brief AI Review",
+      "purpose": "Side-by-side multimodal review showing extracted evidence vs AI suggestions with strict conflict/ambiguity badges.",
+      "states": {
+        "loading": "Typing indicator or skeleton text highlighting.",
+        "empty": "Prompt to upload brief documents.",
+        "error": "Fallback to manual brief entry mode."
+      },
+      "layout": "Split screen on desktop (Original Doc left, AI Extracted Data right). On mobile, tabs or stacked cards. High use of colored badges (Success/Warning) on surfaceTertiary chips to map extracted entities."
     }
   ],
   "images": {
-    "abstract_cinematic_hero": {
-      "url": "https://images.unsplash.com/photo-1709377195538-5522ed0f9e10?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTJ8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBhYnN0cmFjdCUyMGxpZ2h0aW5nfGVufDB8fHxibGFja3wxNzg1ODcwMjE0fDA&ixlib=rb-4.1.0&q=85",
-      "alt": "amber and dark curves on black cinematic lighting"
+    "hero_cinematic_camera": {
+      "url": "https://images.pexels.com/photos/13811053/pexels-photo-13811053.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "dark": "https://images.pexels.com/photos/10395639/pexels-photo-10395639.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "alt": "Cinematic film camera setup"
+    },
+    "empty_abstract_dark": {
+      "url": "https://images.unsplash.com/photo-1761998066478-821bf52c2849?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzF8MHwxfHNlYXJjaHwyfHxtaW5pbWFsaXN0JTIwYWJzdHJhY3QlMjBnZW9tZXRyeSUyMGRhcmt8ZW58MHx8fHwxNzg1ODc0NTc0fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Minimalist abstract geometry dark"
     }
   },
   "instructions_to_main_agent": [
-    "Strictly follow the styling of a premium SaaS application (like Linear, Frame.io). Do not introduce any new workflow steps or features.",
-    "Refine the Typography Hierarchy: Use Cormorant Garamond ONLY for top-level Display headings (H1/H2). Use Geist for all UI elements (buttons, inputs, tabs, lists). Never use font weights above 500; achieve hierarchy through font-size and the serif/sans contrast.",
-    "Increase Whitespace & Layout Calmness: Apply 3xl (48px) and 2xl (32px) vertical spacing aggressively between distinct page sections. Let the UI breathe.",
-    "Minimize Borders and Shadows: Remove heavy borders from inputs and cards. Use surface color contrast (e.g., surfaceSecondary on surface) and very subtle borders (0.5pt max using 'border' token) to define boundaries. Eliminate all heavy drop shadows; default to shadow_tier 1 or 0.",
-    "Refine Interactions: All buttons and interactive cards must implement a premium 0.98 scale-down on press. For web hovering, use a subtle opacity shift or background lighten instead of aggressive border changes.",
-    "Implement the Gold / Ink Brand Accurately: Map the existing #C5A059 (Gold) to the brandPrimary token and #232333 (Ink) into the dark mode surface/surfaceSecondary tokens. Avoid using the gold indiscriminately; use it solely for primary actions, active indicators, and high-level accents.",
-    "Apply Glassmorphism thoughtfully: Introduce expo-blur layered over a translucent tint (surface at 70% opacity) for sticky headers, tab bars, and bottom sheets to give it that native Apple HIG / Premium SaaS depth."
+    "Retain the signature gold (#C5A059) accent but use it sparingly as a spot color (brandPrimary) for primary CTAs and active states. Do not overuse it; let the dark/monochrome surfaces do the heavy lifting.",
+    "Typography: Use the Serif display font (Cormorant Garamond/Playfair) ONLY for top-level Page Titles or Hero headers to maintain the cinematic/editorial feel. Use Geist/Inter (sans-serif) for ALL data grids, inputs, tabs, and metadata to maintain Vercel/Linear utility.",
+    "Implement a responsive Layout: On desktop-web, utilize a 3-panel architecture (sidebar, main content, right properties/AI drawer). On mobile, collapse the sidebars into a hamburger menu and a bottom sheet respectively.",
+    "Glassmorphism should be applied explicitly to the sticky top navigation header and floating contextual action menus to create a premium depth layer over scrolling content.",
+    "Data Tables (Shot List, Budget, Crew): Must be strictly functional, similar to Linear. Use 1px subtle dividers, compact row heights, monospace fonts for numbers/timecodes, and avoid any heavy shadows or rounded corners inside the table.",
+    "Images/Storyboard: All frames and uploaded media MUST have a gradient scrim if text is overlaid. Storyboard cards should be flush to the edge of the card container (no internal padding for the image)."
   ]
 }

@@ -1,10 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/src/auth";
+import { api } from "@/src/api";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme, ThemeMode, Density } from "@/src/ThemeProvider";
 import { useLanguage } from "@/src/LanguageProvider";
@@ -33,6 +34,10 @@ export default function Settings() {
     highContrast, setHighContrast, isPhone,
   } = useTheme();
   const styles = useMemo(() => createStyles(C), [C]);
+
+  const [adminInfo, setAdminInfo] = useState<{ is_privileged: boolean; can_claim: boolean } | null>(null);
+  useEffect(() => { api.adminStatus().then((s: any) => setAdminInfo({ is_privileged: !!s.is_privileged, can_claim: !!s.can_claim })).catch(() => {}); }, []);
+  const showAdmin = adminInfo && (adminInfo.is_privileged || adminInfo.can_claim);
 
   const SHORTCUTS: [string, string][] = [
     [t("shortcutUndo"), "⌘ / Ctrl + Z"],
@@ -64,6 +69,19 @@ export default function Settings() {
             <Row C={C} styles={styles} icon="card-outline" label={t("billing:currentPlan")} value={`${t("billing:title")} ›`} />
           </Pressable>
         </Card>
+
+        {/* Admin Console — only for privileged users, or to bootstrap the first Owner */}
+        {showAdmin ? (
+          <>
+            <Text style={styles.sectionLabel}>{t("settings:adminSection")}</Text>
+            <Card style={{ marginBottom: S.lg }}>
+              <Pressable onPress={() => router.push("/admin")} testID="admin-link">
+                <Row C={C} styles={styles} icon="shield-checkmark-outline" label={t("settings:adminConsole")}
+                  value={adminInfo?.is_privileged ? t("settings:adminManage") : t("settings:adminSetup")} />
+              </Pressable>
+            </Card>
+          </>
+        ) : null}
 
         {/* Appearance */}
         <Text style={styles.sectionLabel}>{t("appearance")}</Text>

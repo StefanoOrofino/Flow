@@ -206,43 +206,67 @@ def build_analysis_prompt(docs: list, images: list) -> str:
     multi = len(docs) > 1
     conflict_rule = (
         'CONFLICT DETECTION: Multiple documents were provided. If two or more documents state DIFFERENT '
-        'values for the same field, set "conflict" to {"hasConflict": true, "values": '
-        '[{"document":"<fileName>","value":"<value>"}]}. Otherwise "conflict" is null.\n'
-        if multi else 'Set "conflict" to null.\n'
+        'values for the SAME field, set "status":"conflict" and "conflict":{"hasConflict": true, "values": '
+        '[{"document":"<fileName>","value":"<value>","evidenceSnippet":"<verbatim quote>"}]}. Do NOT pick one.\n'
+        if multi else 'There is only one document, so "conflict" is always null.\n'
     )
-    return f"""You are a senior advertising producer + art director analyzing a client brief.
-You are given DOCUMENT TEXT and, when present, VISUAL REFERENCE IMAGES (attached to this message, in the listed order).
-Analyze BOTH together. Extract ONLY information actually present. NEVER invent values. If a field is absent set value to null, confidence "low", confidenceScore 0.
+    return f"""You are a STRICT DOCUMENT ANALYST performing fact extraction from a client brief.
+You are given DOCUMENT TEXT and, when present, VISUAL REFERENCE IMAGES (attached in the listed order).
 
-PART A — TEXTUAL FIELDS (from documents; images may reinforce):
+═══════════════ ABSOLUTE RULES (READ CAREFULLY) ═══════════════
+1. Extract ONLY information EXPLICITLY stated in the documents. Quote the exact supporting passage.
+2. Do NOT invent. Do NOT assume. Do NOT complete missing fields. Do NOT reinterpret vague text as fact.
+3. Do NOT use general advertising/filmmaking knowledge to fill gaps.
+4. Do NOT put creative recommendations (suggested mood, camera, lighting, crew, equipment, estimated budget,
+   assumed deadline, inferred audience) into the extracted FIELDS. Those belong ONLY in "suggestions".
+5. A field may be "found" ONLY if you can cite BOTH a sourceDocument AND a verbatim evidenceSnippet.
+   If you cannot quote a supporting passage, the field is NOT found.
+
+═══════════════ STATUS FOR EACH FIELD ═══════════════
+- "found": explicitly stated. REQUIRES sourceDocument + evidenceSnippet (verbatim quote from the text).
+- "missing": not present in any document → value MUST be null.
+- "ambiguous": mentioned but unclear / multiple plausible readings → value null, fill "possibleValues": [..],
+  and "extractionReason" explaining the ambiguity.
+- "conflict": two documents disagree (see below).
+
+PART A — TEXTUAL FIELDS (extract from DOCUMENTS only; do not infer from images):
 {fields_desc}
 
-PART B — VISUAL ANALYSIS (primarily from the attached images):
+PART B — VISUAL OBSERVATIONS (only what you literally SEE in the attached images; describe, never identify people):
 {visual_desc}
-For visual fields, describe what you actually SEE across the images (people only as visual subjects, never identity). "colors" = a short palette description (e.g. "warm amber, deep charcoal, cream").
+These are observations/inferences from imagery, NOT document facts. Mark each with "status":"suggestion".
 
 ATTACHED IMAGES (in order):
 {img_list}
 
-For EACH field (Part A and Part B) return an object:
-- "value": concise string (or null)
-- "confidence": "high" | "medium" | "low"
-- "confidenceScore": integer 0-100 (85-100 high, 60-84 medium, 0-59 low)
-- "sourceDocument": fileName it came from (or null)
-- "sourceImage": image fileName it came from (or null)
-- "sourceLocation": SHORT verbatim snippet or brief visual note (<=140 chars) (or null)
-- "extractionNotes": short note if ambiguous (or "")
-- "lowConfidenceReason": short reason if confidence is not high (or "")
-- "suggestedCorrection": a likely value if inferable (or null)
-- "conflict": null OR {{"hasConflict": true, "values": [{{"document":"<fileName>","value":"<value>"}}]}}
+For EACH Part A field return an object:
+{{
+  "value": <verbatim or tightly-paraphrased string, or null>,
+  "status": "found" | "missing" | "ambiguous" | "conflict",
+  "confidence": "high" | "medium" | "low",
+  "confidenceScore": 0-100,
+  "sourceDocument": "<fileName>" or null,
+  "sourceLocation": "<short location hint e.g. 'page 3' / 'Budget section'>" or null,
+  "evidenceSnippet": "<EXACT quote from the document that supports the value>" or null,
+  "extractionReason": "<why found/missing/ambiguous>",
+  "possibleValues": [ ... ]  (only for ambiguous, else []),
+  "conflict": null | {{"hasConflict": true, "values": [{{"document":"..","value":"..","evidenceSnippet":".."}}]}}
+}}
+For each Part B (visual) field return: {{ "value": <what you see, or null>, "status":"suggestion",
+  "confidence": "...", "confidenceScore": 0-100, "sourceImage": "<image fileName>" or null,
+  "evidenceSnippet": "<short visual note>", "extractionReason": "" }}
+
+Separately, return "suggestions": creative recommendations you (the analyst) would propose — these are NOT facts.
+Each suggestion: {{ "field": "<e.g. mood/camera_style/lighting/budget_estimate>", "value": "..", "rationale": ".." }}.
+Only include suggestions that are genuinely helpful; do not duplicate extracted facts.
 
 {conflict_rule}
 DOCUMENTS:
 {corpus}
 
-Respond with ONLY valid JSON, no markdown, shaped exactly:
-{{ "fields": {{ {keys}: {{...}} }}, "visual": {{ {vkeys}: {{...}} }} }}
-Include EVERY listed key in BOTH objects."""
+Respond with ONLY valid JSON (no markdown), shaped EXACTLY:
+{{ "fields": {{ {keys}: {{...}} }}, "visual": {{ {vkeys}: {{...}} }}, "suggestions": [ ... ] }}
+Include EVERY listed key in BOTH "fields" and "visual"."""
 
 
 def _band_from_score(score: int) -> str:
@@ -253,7 +277,15 @@ def _band_from_score(score: int) -> str:
     return "low"
 
 
-def _norm_field(k: str, label: str, category: str, f: dict) -> tuple:
+def _norm_field(k: str, label: str, category: str, f: dict, kind: str = "fact") -> tuple:
+    """Normalize one model field with STRICT evidence enforcement.
+
+    kind="fact"  -> Part A document fields. A value is only accepted as "found" when the
+                    model supplied a sourceDocument AND a verbatim evidenceSnippet. Otherwise it
+                    is downgraded to "ambiguous" (value moved to possibleValues) so nothing
+                    unsupported is ever presented as an extracted fact.
+    kind="visual"-> Part B image observations, surfaced as AI suggestions (never document facts).
+    """
     f = f or {}
     val = f.get("value")
     if isinstance(val, (list, dict)):
@@ -265,33 +297,93 @@ def _norm_field(k: str, label: str, category: str, f: dict) -> tuple:
         lbl = str(f.get("confidence", "low")).lower()
         score = {"high": 92, "medium": 72, "low": 30}.get(lbl, 30)
     score = max(0, min(100, score))
-    if not val:
-        score = 0
-    band = _band_from_score(score) if val else "low"
 
+    src_doc = f.get("sourceDocument") or ""
+    src_img = f.get("sourceImage") or ""
+    evidence = (f.get("evidenceSnippet") or f.get("sourceLocation") or "").strip()
+    reason = (f.get("extractionReason") or f.get("extractionNotes") or "").strip()
+    model_status = str(f.get("status") or "").lower()
+
+    possible = []
+    for pv in (f.get("possibleValues") or []):
+        s = str(pv).strip()
+        if s:
+            possible.append(s)
+
+    # conflict parsing
     conflict = f.get("conflict")
     conflict_values = []
     if isinstance(conflict, dict) and conflict.get("hasConflict"):
         for v in (conflict.get("values") or []):
             if isinstance(v, dict) and str(v.get("value", "")).strip():
-                conflict_values.append({"document": str(v.get("document") or ""),
-                                        "value": str(v.get("value")).strip()})
+                conflict_values.append({
+                    "document": str(v.get("document") or ""),
+                    "value": str(v.get("value")).strip(),
+                    "evidenceSnippet": str(v.get("evidenceSnippet") or "").strip(),
+                })
     has_conflict = len(conflict_values) >= 2
 
-    status = "conflict" if (val and has_conflict) else ("found" if val else "missing")
+    if kind == "visual":
+        # Image observations are AI suggestions — never "found" facts.
+        status = "suggestion" if val else "missing"
+        band = _band_from_score(score) if val else "low"
+        obj = {
+            "key": k, "label": label, "category": "Visual",
+            "value": val if status == "suggestion" else "",
+            "confidence": band, "confidenceScore": score if val else 0,
+            "aiConfidence": band, "aiConfidenceScore": score if val else 0,
+            "sourceDocument": "", "sourceImage": src_img,
+            "sourceLocation": evidence, "evidenceSnippet": evidence,
+            "extractionReason": reason, "extractionNotes": reason,
+            "lowConfidenceReason": "", "suggestedCorrection": "", "possibleValues": [],
+            "conflict": None, "status": status, "isSuggestion": True,
+            "isUserEdited": False, "confirmed": False,
+        }
+        return obj, (score if val else 0), band, status
+
+    # ---- fact fields: strict evidence gate --------------------------------
+    if has_conflict:
+        status = "conflict"
+    elif not val:
+        status = "missing"
+    elif model_status == "ambiguous":
+        status = "ambiguous"
+    elif not (src_doc and evidence):
+        # Value given but NOT backed by a cited passage → cannot be a fact.
+        status = "ambiguous"
+        if val and val not in possible:
+            possible.insert(0, val)
+        if not reason:
+            reason = "No supporting passage was cited, so this value could not be verified against the documents."
+    else:
+        status = "found"
+
+    if status in ("missing", "ambiguous", "conflict"):
+        display_val = ""      # never present an unverified value as a fact
+    else:
+        display_val = val
+
+    if status == "missing":
+        score = 0
+    band = _band_from_score(score) if display_val else "low"
+
     obj = {
         "key": k, "label": label, "category": category,
-        "value": val, "confidence": band, "confidenceScore": score,
+        "value": display_val,
+        "confidence": band, "confidenceScore": score if display_val else (score if status in ("ambiguous", "conflict") else 0),
         "aiConfidence": band, "aiConfidenceScore": score,
-        "sourceDocument": f.get("sourceDocument") or "",
-        "sourceImage": f.get("sourceImage") or "",
+        "sourceDocument": src_doc,
+        "sourceImage": "",
         "sourceLocation": f.get("sourceLocation") or "",
-        "extractionNotes": f.get("extractionNotes") or "",
-        "lowConfidenceReason": f.get("lowConfidenceReason") or "",
-        "suggestedCorrection": (str(f.get("suggestedCorrection")).strip()
-                                if f.get("suggestedCorrection") not in (None, "", "null") else ""),
+        "evidenceSnippet": evidence,
+        "extractionReason": reason,
+        "extractionNotes": reason,
+        "lowConfidenceReason": reason if band == "low" else "",
+        "suggestedCorrection": "",
+        "possibleValues": possible if status == "ambiguous" else [],
         "conflict": {"hasConflict": True, "values": conflict_values} if has_conflict else None,
-        "status": status, "isUserEdited": False, "confirmed": False,
+        "status": status, "isSuggestion": False,
+        "isUserEdited": False, "confirmed": False,
     }
     return obj, score, band, status
 
@@ -300,40 +392,57 @@ def normalize_analysis(raw: dict, docs: list) -> dict:
     raw = raw or {}
     fields_in = raw.get("fields", {}) if isinstance(raw, dict) else {}
     visual_in = raw.get("visual", {}) if isinstance(raw, dict) else {}
+    suggestions_in = raw.get("suggestions", []) if isinstance(raw, dict) else []
 
     out_fields, out_visual = {}, {}
-    present = conflicts = score_sum = 0
+    found = ambiguous = conflicts = missing = score_sum = 0
     conf_counts = {"high": 0, "medium": 0, "low": 0}
 
     for k, label in BRIEF_FIELDS:
-        obj, score, band, status = _norm_field(k, label, FIELD_CATEGORY.get(k, "Other"), fields_in.get(k))
+        obj, score, band, status = _norm_field(k, label, FIELD_CATEGORY.get(k, "Other"), fields_in.get(k), "fact")
         out_fields[k] = obj
-        if obj["value"]:
-            present += 1
+        if status == "found":
+            found += 1
             conf_counts[band] += 1
             score_sum += score
-        if status == "conflict":
+        elif status == "ambiguous":
+            ambiguous += 1
+        elif status == "conflict":
             conflicts += 1
+        else:
+            missing += 1
 
-    visual_present = 0
+    suggestions_count = 0
     for k, label in VISUAL_FIELDS:
-        obj, score, band, status = _norm_field(k, label, "Visual", visual_in.get(k))
+        obj, score, band, status = _norm_field(k, label, "Visual", visual_in.get(k), "visual")
         out_visual[k] = obj
-        if obj["value"]:
-            visual_present += 1
-            present += 1
-            conf_counts[band] += 1
-            score_sum += score
+        if status == "suggestion":
+            suggestions_count += 1
 
-    overall = round(score_sum / present) if present else 0
-    total = len(BRIEF_FIELDS) + len(VISUAL_FIELDS)
+    # Explicit creative suggestions (kept entirely separate from extracted facts).
+    suggestions = []
+    for s in (suggestions_in or []):
+        if not isinstance(s, dict):
+            continue
+        v = str(s.get("value") or "").strip()
+        if not v:
+            continue
+        suggestions.append({
+            "field": str(s.get("field") or "").strip() or "suggestion",
+            "value": v,
+            "rationale": str(s.get("rationale") or "").strip(),
+        })
+
+    overall = round(score_sum / found) if found else 0
+    total = len(BRIEF_FIELDS)
     return {
         "fields": out_fields,
         "visual": out_visual,
+        "suggestions": suggestions,
         "summary": {
-            "totalFields": total, "fieldsFound": present,
-            "fieldsMissing": total - present, "conflicts": conflicts,
-            "visualFound": visual_present,
+            "totalFields": total, "fieldsFound": found,
+            "fieldsMissing": missing, "fieldsAmbiguous": ambiguous, "conflicts": conflicts,
+            "visualFound": suggestions_count, "suggestionsCount": len(suggestions),
             "confidence": conf_counts, "overallConfidence": overall,
         },
     }
@@ -351,9 +460,17 @@ def mock_analysis(docs: list) -> dict:
 
 
 SYSTEM = (
-    "You are a meticulous senior advertising producer and art director. You extract structured brief data "
-    "from client documents AND visual reference images. You NEVER invent information and return ONLY strict JSON."
+    "You are a strict document analyst. Your task is to extract facts from uploaded client brief documents. "
+    "You must NOT invent, infer beyond the evidence, or complete missing information. You must NOT use general "
+    "filmmaking knowledge to fill gaps. Every returned fact value must be grounded in a cited source passage "
+    "quoted verbatim from the documents. If a value is not explicitly present, return it as missing. Return ONLY strict JSON."
 )
+
+# Fields that must NEVER be creatively invented — only extracted if explicitly stated.
+_NO_INVENT = {
+    "target_audience", "budget", "deadline", "duration", "aspect_ratio", "platforms",
+    "tone_of_voice", "locations", "technical_requirements", "constraints",
+}
 
 MAX_IMAGES = 6
 
@@ -432,13 +549,9 @@ def map_brief_to_project(fields: dict, visual: dict | None = None) -> dict:
         if desc:
             payload["goal"] = desc
 
-    # visual analysis -> creative direction
-    mood = _pick(visual, "mood")
-    if mood:
-        payload["mood"] = mood[:60]
-    style = _pick(visual, "style")
-    if style:
-        payload["visual_style"] = style[:60]
+    # NOTE: Image-derived visual observations are AI SUGGESTIONS, not confirmed brief facts,
+    # so they are NOT auto-applied to project creative fields (mood/visual_style). They remain
+    # available in the analysis for the user; the generation step proposes creative direction.
 
     restr = " ".join(x for x in [_pick(fields, "legal_notes"), _pick(fields, "constraints"),
                                  _pick(fields, "mandatory_requirements")] if x).strip()
@@ -449,16 +562,8 @@ def map_brief_to_project(fields: dict, visual: dict | None = None) -> dict:
     for k, lbl in [("problem", "Problem"), ("success_metrics", "Success Metrics"),
                    ("competitors", "Competitors"), ("risks", "Risks"), ("deadline", "Deadline"),
                    ("products", "Products"), ("technical_requirements", "Tech"),
-                   ("assets_required", "Assets"), ("tone_of_voice", "Tone"),
-                   ("project_type", "Type"), ("creative_direction", "Creative Direction"),
-                   ("shoot_date", "Shoot Date"), ("assets_available", "Assets Available"),
-                   ("internal_notes", "Notes")]:
+                   ("assets_required", "Assets"), ("tone_of_voice", "Tone")]:
         v = _pick(fields, k)
-        if v:
-            extra_bits.append(f"{lbl}: {v}")
-    for k, lbl in [("colors", "Palette"), ("lighting", "Lighting"), ("camera", "Camera"),
-                   ("editing", "Editing"), ("aesthetic", "Aesthetic")]:
-        v = _pick(visual, k)
         if v:
             extra_bits.append(f"{lbl}: {v}")
     if extra_bits:
