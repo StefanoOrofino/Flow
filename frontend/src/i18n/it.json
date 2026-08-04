@@ -33,6 +33,9 @@
       "none": "Nessuno selezionato",
       "empty": "Tocca per scegliere…",
       "done": "Fatto"
+    },
+    "actions": {
+      "open": "Apri"
     }
   },
   "navigation": {
@@ -476,7 +479,7 @@
     "tabOverview": "Panoramica",
     "tabUsers": "Utenti",
     "tabProjects": "Progetti",
-    "tabAudit": "Registro attività",
+    "tabAudit": "Attività",
     "statTotalUsers": "Utenti totali",
     "statProjects": "Progetti",
     "statGenerated": "Generati",

@@ -33,6 +33,9 @@
       "none": "None selected yet",
       "empty": "Tap to choose…",
       "done": "Done"
+    },
+    "actions": {
+      "open": "Open"
     }
   },
   "navigation": {
@@ -476,7 +479,7 @@
     "tabOverview": "Overview",
     "tabUsers": "Users",
     "tabProjects": "Projects",
-    "tabAudit": "Audit Log",
+    "tabAudit": "Audit",
     "statTotalUsers": "Total Users",
     "statProjects": "Projects",
     "statGenerated": "Generated",
