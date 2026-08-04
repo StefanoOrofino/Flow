@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl, useWindowDimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Image } from "expo-image";
@@ -7,7 +7,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/src/auth";
 import { api } from "@/src/api";
-import { C, S, R, F, MAX_W } from "@/src/theme";
+import { S, R, F, MAX_W, Palette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { H1, H2, Body, StatCard, Skeleton, AnimIn, Badge } from "@/src/components";
 
 const HERO = "https://images.unsplash.com/photo-1608186336271-53313eeaf864?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzB8MHwxfHNlYXJjaHwxfHxjaW5lbWF0aWMlMjBjYW1lcmElMjBsZW5zJTIwZGFya3xlbnwwfHx8fDE3ODU3NjIxNDZ8MA&ixlib=rb-4.1.0&q=85";
@@ -25,6 +26,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const { width } = useWindowDimensions();
   const wide = width > 760;
   const [projects, setProjects] = useState<any[]>([]);
@@ -52,7 +55,7 @@ export default function Dashboard() {
   const recent = active.slice(0, 5);
   const lastActivity = active[0]?.updated_at;
 
-  const useTemplate = (t: any) => router.push({ pathname: "/new", params: {
+  const applyTemplate = (t: any) => router.push({ pathname: "/new", params: {
     title: t.name, video_type: t.video_type, platform: t.platform, duration: t.duration,
     aspect_ratio: t.aspect_ratio, num_scenes: String(t.num_scenes), crew_size: t.crew_size,
     visual_style: t.visual_style, mood: t.mood } });
@@ -161,7 +164,7 @@ export default function Dashboard() {
             <View style={styles.secHead}><H2>Templates</H2><Pressable onPress={() => router.push("/templates")}><Text style={styles.viewAll}>Browse</Text></Pressable></View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: S.md, paddingRight: S.lg }}>
               {templates.slice(0, 8).map((t) => (
-                <Pressable key={t.id} style={styles.tplCard} onPress={() => useTemplate(t)} testID={`tpl-${t.id}`}>
+                <Pressable key={t.id} style={styles.tplCard} onPress={() => applyTemplate(t)} testID={`tpl-${t.id}`}>
                   <View style={styles.tplIcon}><Ionicons name="albums-outline" size={18} color={C.brand} /></View>
                   <Text style={styles.tplTitle} numberOfLines={2}>{t.name}</Text>
                   <Text style={styles.tplMeta}>{t.duration} · {t.num_scenes} scenes</Text>
@@ -175,7 +178,7 @@ export default function Dashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   hero: { minHeight: 210, overflow: "hidden" },
   heroInner: { padding: S.xl, paddingBottom: S.xl },
   kicker: { color: C.brand, fontFamily: F.text, fontSize: 11.5, letterSpacing: 3.5, fontWeight: "600" },

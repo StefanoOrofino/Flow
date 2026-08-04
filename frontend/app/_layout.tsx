@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { AuthProvider } from "@/src/auth";
+import { ThemeProvider, useTheme } from "@/src/ThemeProvider";
 
 LogBox.ignoreAllLogs(true);
 SplashScreen.preventAutoHideAsync();
@@ -23,6 +24,11 @@ if (Platform.OS === "web" && typeof document !== "undefined") {
   }
 }
 
+function ThemedStack() {
+  const { C } = useTheme();
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.surface } }} />;
+}
+
 export default function RootLayout() {
   const [loaded, error] = useIconFonts();
 
@@ -35,9 +41,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AuthProvider>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#0A0A0A" } }} />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <ThemedStack />
+          </AuthProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

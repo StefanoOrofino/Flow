@@ -2,10 +2,11 @@ import { useEffect } from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/src/auth";
-import { C } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 
 export default function Index() {
   const { user, loading } = useAuth();
+  const { C } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -15,12 +16,12 @@ export default function Index() {
   }, [user, loading]);
 
   return (
-    <View style={styles.c} testID="splash-screen">
+    <View style={[styles.c, { backgroundColor: C.surface }]} testID="splash-screen">
       <ActivityIndicator color={C.brand} size="large" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  c: { flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
+  c: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

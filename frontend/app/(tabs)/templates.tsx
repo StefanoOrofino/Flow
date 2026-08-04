@@ -5,7 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
-import { C, S, R, F, MAX_W } from "@/src/theme";
+import { S, R, F, MAX_W, Palette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { H1, Body, AnimIn, Skeleton } from "@/src/components";
 import { TEMPLATE_CATEGORIES } from "@/src/options";
 
@@ -19,6 +20,8 @@ const ICONS: Record<string, string> = {
 export default function Templates() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const { width } = useWindowDimensions();
   const cols = width > 720 ? 2 : 1;
   const [templates, setTemplates] = useState<any[]>([]);
@@ -81,9 +84,13 @@ export default function Templates() {
   );
 }
 
-function Tag({ children }: any) { return <View style={styles.tag}><Text style={styles.tagText}>{children}</Text></View>; }
+function Tag({ children }: any) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
+  return <View style={styles.tag}><Text style={styles.tagText}>{children}</Text></View>;
+}
 
-const styles = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   header: { paddingHorizontal: S.lg, paddingBottom: S.xs, borderBottomWidth: 1, borderBottomColor: C.border },
   chip: { backgroundColor: C.surface2, borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 13, paddingVertical: 7, flexShrink: 0 },
   chipActive: { backgroundColor: C.brand, borderColor: C.brand },
@@ -91,7 +98,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: S.md },
   card: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, overflow: "hidden", marginBottom: S.md },
   cardTop: { height: 92, justifyContent: "center", paddingHorizontal: S.lg },
-  iconBox: { width: 46, height: 46, borderRadius: R.md, backgroundColor: "rgba(197,160,89,0.15)", alignItems: "center", justifyContent: "center" },
+  iconBox: { width: 46, height: 46, borderRadius: R.md, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
   catTag: { position: "absolute", top: S.md, right: S.md, color: C.onBrandTint, fontFamily: F.text, fontSize: 11, letterSpacing: 1, textTransform: "uppercase" },
   title: { color: C.onSurface, fontFamily: F.display, fontSize: 22 },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: S.md },

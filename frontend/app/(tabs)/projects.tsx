@@ -5,7 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
-import { C, S, R, F, MAX_W } from "@/src/theme";
+import { S, R, F, MAX_W, Palette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { H1, Body, Btn, Badge, AnimIn, Skeleton, EmptyState } from "@/src/components";
 
 const FILTERS = ["All", "Favorites", "Drafts", "Generated", "Archived"];
@@ -19,6 +20,8 @@ function rel(s?: string) {
 export default function Projects() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -159,6 +162,8 @@ export default function Projects() {
 }
 
 function Act({ icon, label, onPress, color, testID }: any) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   return (
     <Pressable style={styles.action} onPress={onPress} testID={testID}>
       <Ionicons name={icon} size={18} color={color || C.onSurface} />
@@ -167,7 +172,7 @@ function Act({ icon, label, onPress, color, testID }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   header: { paddingHorizontal: S.lg, paddingBottom: S.xs, borderBottomWidth: 1, borderBottomColor: C.border },
   searchBox: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, paddingHorizontal: S.md, marginTop: S.md, gap: S.sm },
   searchInput: { flex: 1, color: C.onSurface, fontFamily: F.text, fontSize: 14, paddingVertical: 11 },
@@ -183,7 +188,7 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: "row", alignItems: "center", gap: S.sm, marginTop: S.sm },
   meta: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5 },
   menuBtn: { padding: S.sm },
-  modalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", padding: S.xl },
+  modalBg: { flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: S.xl },
   sheet: { backgroundColor: C.surface2, borderRadius: R.lg, padding: S.lg, borderWidth: 1, borderColor: C.borderStrong, maxWidth: 420, width: "100%", alignSelf: "center" },
   centerSheet: { backgroundColor: C.surface2, borderRadius: R.lg, padding: S.lg, borderWidth: 1, borderColor: C.borderStrong, maxWidth: 420, width: "100%", alignSelf: "center" },
   sheetTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 21, marginBottom: S.md },

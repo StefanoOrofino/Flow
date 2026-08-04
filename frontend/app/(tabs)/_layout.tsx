@@ -3,10 +3,12 @@ import { Tabs, useRouter } from "expo-router";
 import { View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/src/auth";
-import { C, F } from "@/src/theme";
+import { F } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 
 export default function TabsLayout() {
   const { user, loading } = useAuth();
+  const { C } = useTheme();
   const router = useRouter();
 
   useEffect(() => {

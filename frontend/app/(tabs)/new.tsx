@@ -1,12 +1,12 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, KeyboardAvoidingView, Platform, Modal } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
-import { C, S, R, F, MAX_W } from "@/src/theme";
+import { S, R, F, MAX_W, Palette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { Field, Picker, Btn, H1, H2, Body } from "@/src/components";
 import * as O from "@/src/options";
 
@@ -15,6 +15,8 @@ const STEPS = ["Project", "Video", "Creative", "Advanced", "Review"];
 export default function NewProject() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const params = useLocalSearchParams<any>();
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -132,7 +134,6 @@ export default function NewProject() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <LinearGradient colors={["rgba(10,10,10,0)", "rgba(10,10,10,0.95)"]} style={StyleSheet.absoluteFill} />
         <View style={{ padding: S.lg, paddingBottom: insets.bottom + S.md, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
           {step < 4
             ? <Btn title="Continue" icon="arrow-forward" onPress={next} testID="wizard-continue" />
@@ -151,19 +152,19 @@ export default function NewProject() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: S.xl, paddingBottom: S.md },
   stepLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 13 },
   progress: { flexDirection: "row", paddingHorizontal: S.xl, gap: 6, marginBottom: S.sm },
   pBar: { flex: 1, height: 3, borderRadius: 2 },
-  errBox: { backgroundColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.lg },
-  errText: { color: "#fff", fontFamily: F.text, fontSize: 13 },
-  footer: { position: "absolute", bottom: 0, left: 0, right: 0 },
+  errBox: { backgroundColor: C.errorTint, borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.lg },
+  errText: { color: C.onErrorTint, fontFamily: F.text, fontSize: 13 },
+  footer: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: C.surface2, borderTopWidth: 1, borderTopColor: C.border },
   reviewCard: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.md },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: S.sm },
   edit: { color: C.brand, fontFamily: F.text, fontSize: 14 },
   reviewRow: { flexDirection: "row", paddingVertical: 6, borderTopWidth: 1, borderTopColor: C.border },
   rLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, width: 120 },
   rVal: { color: C.onSurface, fontFamily: F.text, fontSize: 13, flex: 1 },
-  genOverlay: { flex: 1, backgroundColor: "rgba(10,10,10,0.96)", alignItems: "center", justifyContent: "center", padding: S.xxl },
+  genOverlay: { flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center", padding: S.xxl },
 });

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, ActivityIndicator, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { C, S, R, F } from "@/src/theme";
+import { S, R, F, Palette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { api } from "@/src/api";
 
 const SCOPES: [string, string][] = [
@@ -24,6 +25,8 @@ const QUICK: [string, string, string][] = [
 ];
 
 export default function AIDirector({ visible, onClose, projectId, onApplied }: any) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const { width } = useWindowDimensions();
   const wide = width > 900;
   const [scope, setScope] = useState("project");
@@ -189,9 +192,9 @@ export default function AIDirector({ visible, onClose, projectId, onApplied }: a
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, flexDirection: "row", justifyContent: "flex-end", zIndex: 50 },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.55)" },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: C.overlay },
   panel: { height: "100%", backgroundColor: C.surface, borderLeftWidth: 1, borderLeftColor: C.borderStrong },
   head: { flexDirection: "row", alignItems: "center", gap: S.sm, padding: S.lg, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface2 },
   headIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
@@ -207,7 +210,7 @@ const styles = StyleSheet.create({
   askText: { color: C.onBrand, fontFamily: F.text, fontSize: 14.5, fontWeight: "600" },
   quick: { borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: C.surface2 },
   quickText: { color: C.onSurface, fontFamily: F.text, fontSize: 12 },
-  errBox: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(139,43,43,0.12)", borderWidth: 1, borderColor: C.error, borderRadius: R.sm, padding: 10, marginTop: S.md },
+  errBox: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.errorTint, borderWidth: 1, borderColor: C.error, borderRadius: R.sm, padding: 10, marginTop: S.md },
   errText: { color: C.error, fontFamily: F.text, fontSize: 12.5, flex: 1 },
   result: { marginTop: S.lg, borderWidth: 1, borderColor: C.borderStrong, borderRadius: R.md, padding: S.md, backgroundColor: C.surface2 },
   resultTitle: { color: C.brand, fontFamily: F.text, fontSize: 10.5, letterSpacing: 1.2, marginBottom: 4 },

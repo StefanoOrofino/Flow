@@ -1,13 +1,16 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/src/auth";
-import { C, S, F } from "@/src/theme";
+import { S, F, Palette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { Field, Btn } from "@/src/components";
 import AuthShell from "@/src/AuthShell";
 
 export default function Login() {
   const { login, loginWithGoogle } = useAuth();
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,15 +64,15 @@ export default function Login() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   link: { color: C.brand, fontFamily: F.text, fontSize: 14, marginTop: 4 },
   muted: { color: C.onSurface2, fontFamily: F.text, fontSize: 14 },
   divider: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: S.lg },
   line: { flex: 1, height: 1, backgroundColor: C.border },
   dividerText: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, letterSpacing: 2 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: S.xl },
-  errBox: { backgroundColor: "rgba(139,43,43,0.18)", borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.md },
-  errText: { color: "#F2C9C9", fontFamily: F.text, fontSize: 13 },
-  noticeBox: { backgroundColor: C.brandTint, borderWidth: 1, borderColor: "rgba(197,160,89,0.4)", borderRadius: 10, padding: S.md, marginBottom: S.md },
+  errBox: { backgroundColor: C.errorTint, borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.md },
+  errText: { color: C.onErrorTint, fontFamily: F.text, fontSize: 13 },
+  noticeBox: { backgroundColor: C.brandTint, borderWidth: 1, borderColor: C.focus, borderRadius: 10, padding: S.md, marginBottom: S.md },
   noticeText: { color: C.onBrandTint, fontFamily: F.text, fontSize: 13 },
 });

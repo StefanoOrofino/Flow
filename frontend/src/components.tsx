@@ -1,20 +1,27 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet, Modal, ScrollView, ActivityIndicator, ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
-import { C, S, R, F } from "./theme";
+import { S, R, F, Palette } from "./theme";
+import { useTheme } from "./ThemeProvider";
 
 export function Label({ children }: { children: React.ReactNode }) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   return <Text style={styles.label}>{children}</Text>;
 }
 
 export function AnimIn({ children, delay = 0, style }: any) {
+  const { reduceMotion } = useTheme();
+  if (reduceMotion) return <Animated.View style={style}>{children}</Animated.View>;
   return <Animated.View entering={FadeInDown.delay(delay).duration(360).springify()} style={style}>{children}</Animated.View>;
 }
 
 export function Field({ label, value, onChangeText, placeholder, multiline, keyboardType, secureTextEntry, testID }: any) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   return (
     <View style={{ marginBottom: S.lg }}>
       {label ? <Label>{label}</Label> : null}
@@ -34,6 +41,8 @@ export function Field({ label, value, onChangeText, placeholder, multiline, keyb
 }
 
 export function Picker({ label, value, options, onSelect, testID }: any) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const [open, setOpen] = useState(false);
   return (
     <View style={{ marginBottom: S.lg }}>
@@ -64,6 +73,8 @@ export function Picker({ label, value, options, onSelect, testID }: any) {
 }
 
 export function Btn({ title, onPress, variant = "primary", icon, loading, disabled, testID, style, small }: any) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const bg = variant === "primary" ? C.brand : variant === "ghost" ? "transparent" : C.surface3;
   const fg = variant === "primary" ? C.onBrand : C.onSurface;
   return (
@@ -90,6 +101,8 @@ export function Btn({ title, onPress, variant = "primary", icon, loading, disabl
 }
 
 export function Segmented({ options, value, onChange, testID }: any) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   return (
     <View style={styles.segment} testID={testID}>
       {options.map((o: string) => {
@@ -104,23 +117,39 @@ export function Segmented({ options, value, onChange, testID }: any) {
   );
 }
 
-export function H1({ children, style }: any) { return <Text style={[styles.h1, style]}>{children}</Text>; }
-export function H2({ children, style }: any) { return <Text style={[styles.h2, style]}>{children}</Text>; }
+export function H1({ children, style }: any) {
+  const { C, scale } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
+  return <Text style={[styles.h1, { fontSize: 34 * scale, lineHeight: 40 * scale }, style]}>{children}</Text>;
+}
+export function H2({ children, style }: any) {
+  const { C, scale } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
+  return <Text style={[styles.h2, { fontSize: 23 * scale }, style]}>{children}</Text>;
+}
 export function Body({ children, style, muted, numberOfLines }: any) {
-  return <Text numberOfLines={numberOfLines} style={[styles.body, muted && { color: C.onSurface2 }, style]}>{children}</Text>;
+  const { C, scale } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
+  return <Text numberOfLines={numberOfLines} style={[styles.body, { fontSize: 14 * scale, lineHeight: 22 * scale }, muted && { color: C.onSurface2 }, style]}>{children}</Text>;
 }
 
 export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
 export function Badge({ label, tone = "default" }: { label: string; tone?: "default" | "success" | "brand" }) {
-  const bg = tone === "success" ? "rgba(62,102,70,0.22)" : tone === "brand" ? C.brandTint : C.surface3;
-  const fg = tone === "success" ? "#8FCf9c" : tone === "brand" ? C.onBrandTint : C.onSurface2;
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
+  const bg = tone === "success" ? C.successTint : tone === "brand" ? C.brandTint : C.surface3;
+  const fg = tone === "success" ? C.onSuccessTint : tone === "brand" ? C.onBrandTint : C.onSurface2;
   return <View style={[styles.badge, { backgroundColor: bg }]}><Text style={[styles.badgeText, { color: fg }]}>{label}</Text></View>;
 }
 
 export function StatCard({ icon, value, label, delay }: any) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   return (
     <AnimIn delay={delay} style={styles.statCard}>
       <View style={styles.statIcon}><Ionicons name={icon} size={16} color={C.brand} /></View>
@@ -131,10 +160,13 @@ export function StatCard({ icon, value, label, delay }: any) {
 }
 
 export function Skeleton({ height = 16, width = "100%", radius = 8, style }: any) {
+  const { C } = useTheme();
   return <Animated.View entering={FadeIn} style={[{ height, width, borderRadius: radius, backgroundColor: C.surface3 }, style]} />;
 }
 
 export function EmptyState({ icon, title, subtitle, actionLabel, onAction, testID }: any) {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   return (
     <AnimIn style={styles.empty} >
       <View testID={testID} style={styles.emptyInner}>
@@ -148,6 +180,8 @@ export function EmptyState({ icon, title, subtitle, actionLabel, onAction, testI
 }
 
 export function MockBadge() {
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   return (
     <View style={styles.mockBadge}>
       <Ionicons name="flask-outline" size={12} color={C.onBrandTint} />
@@ -156,12 +190,12 @@ export function MockBadge() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   label: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, marginBottom: S.sm, letterSpacing: 0.6, textTransform: "uppercase" },
   input: { backgroundColor: C.surface2, borderRadius: R.md, paddingHorizontal: S.lg, paddingVertical: S.md, color: C.onSurface, fontFamily: F.text, fontSize: 15, borderWidth: 1, borderColor: C.border, minHeight: 50, justifyContent: "center" },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   rowCenter: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
-  modalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", padding: S.xl },
+  modalBg: { flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: S.xl },
   centerSheet: { backgroundColor: C.surface2, borderRadius: R.lg, padding: S.lg, borderWidth: 1, borderColor: C.borderStrong, maxWidth: 440, width: "100%", alignSelf: "center" },
   sheetTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 15, fontWeight: "600", marginBottom: S.md },
   optRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: S.md, borderBottomWidth: 1, borderBottomColor: C.border },

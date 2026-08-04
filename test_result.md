@@ -101,3 +101,58 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+user_problem_statement: "Design System & Light/Dark Mode sprint + first-class mobile responsiveness. Refactor theme.ts into semantic light/dark tokens, add ThemeProvider/useTheme (light/dark/system) with AsyncStorage persistence (key frameflow.theme.mode, default dark), convert all screens to live createStyles(tokens) so theme switches instantly with no reload, add Workspace Density (compact/comfortable/large; compact disabled on phones) + Accessibility (reduce motion, high contrast), and a fully redesigned Settings screen. Fixed gold #C5A059 accent."
+
+frontend:
+  - task: "Dynamic theme engine (light/dark/system) with instant live switching"
+    implemented: true
+    working: "NA"
+    file: "src/theme.ts, src/ThemeProvider.tsx, app/_layout.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Added ThemeTokens interface + lightTokens/darkTokens + flat Palette projection. ThemeProvider persists mode to AsyncStorage (frameflow.theme.mode), resolves system via useColorScheme, default dark. All screens converted to createStyles(C) via useTheme."
+  - task: "Redesigned Settings screen (Theme, Workspace Density, Accessibility, sections)"
+    implemented: true
+    working: "NA"
+    file: "app/(tabs)/settings.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Theme tiles (System/Light/Dark), Workspace density radios (Compact disabled on phone), Accessibility switches (Reduce motion, High contrast), Accent (fixed gold, locked), plus Notifications/AI/Export/Keyboard shortcuts/About sections + Log out."
+  - task: "Editor project/[id].tsx themed live (Overview, Storyboard, Shot List, Script, AI Director, dialogs)"
+    implemented: true
+    working: "NA"
+    file: "app/project/[id].tsx, src/ShotList.tsx, src/AIDirector.tsx, src/components.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Editor uses module-scoped active palette + createStyles(C); root View keyed by resolvedTheme so memoized SceneCards remount and re-theme on toggle. ShotList/AIDirector/shared components converted to useTheme."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.1"
+  test_sequence: 8
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Dynamic theme engine (light/dark/system) with instant live switching"
+    - "Redesigned Settings screen (Theme, Workspace Density, Accessibility, sections)"
+    - "Editor project/[id].tsx themed live (Overview, Storyboard, Shot List, Script, AI Director, dialogs)"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+      message: "Frontend-only regression for the Design System sprint. Login with seeded account (see /app/memory/test_credentials.md: sb_1785767871@studio.com / secret123). Verify: (1) Settings > Appearance > Theme tiles switch the WHOLE app instantly between Dark and Light with no reload/flash and persist across navigation; System follows device. (2) Workspace density radios change readability (Large bigger); Compact is disabled on phone width. (3) Accessibility Reduce motion + High contrast toggles work. (4) Open seeded project c73286507b42 editor and confirm Overview, Storyboard scene cards, Shot List cards, Script and the AI Director panel all render correctly in BOTH light and dark (no dark residual in light, no white flashes in dark). (5) No regressions to existing flows (dashboard, projects, templates, new project wizard). Do NOT trigger real AI image generation (uses credits) — just confirm the confirm-modal + panels theme correctly. Test at mobile width (390) and desktop width."

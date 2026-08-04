@@ -1,13 +1,16 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { api } from "@/src/api";
-import { C, S, F } from "@/src/theme";
+import { S, F, Palette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { Field, Btn } from "@/src/components";
 import AuthShell from "@/src/AuthShell";
 
 export default function Reset() {
   const router = useRouter();
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
@@ -69,10 +72,10 @@ export default function Reset() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   link: { color: C.brand, fontFamily: F.text, fontSize: 14 },
-  errBox: { backgroundColor: "rgba(139,43,43,0.18)", borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.md },
-  errText: { color: "#F2C9C9", fontFamily: F.text, fontSize: 13 },
-  okBox: { backgroundColor: "rgba(62,102,70,0.2)", borderWidth: 1, borderColor: C.success, borderRadius: 10, padding: S.md, marginBottom: S.md },
-  okText: { color: "#BFE3C7", fontFamily: F.text, fontSize: 13 },
+  errBox: { backgroundColor: C.errorTint, borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.md },
+  errText: { color: C.onErrorTint, fontFamily: F.text, fontSize: 13 },
+  okBox: { backgroundColor: C.successTint, borderWidth: 1, borderColor: C.success, borderRadius: 10, padding: S.md, marginBottom: S.md },
+  okText: { color: C.onSuccessTint, fontFamily: F.text, fontSize: 13 },
 });

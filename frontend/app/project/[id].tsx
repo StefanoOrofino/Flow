@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Modal, TextInput, useWindowDimensions,
 } from "react-native";
@@ -14,10 +14,27 @@ import { api } from "@/src/api";
 import { useProjectStore } from "@/src/useProjectStore";
 import AIDirector from "@/src/AIDirector";
 import { useAuth } from "@/src/auth";
-import { C, S, R, F, MAX_W } from "@/src/theme";
+import { S, R, F, MAX_W, Palette, darkPalette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { Btn, H2, Body, Badge, MockBadge, AnimIn } from "@/src/components";
 import { exportPdf, exportCsv, printProject } from "@/src/exporter";
 import ShotList from "@/src/ShotList";
+
+// Active palette + styles for this screen. Updated at the top of the Editor
+// render from useTheme(); the root view is keyed by theme so the whole subtree
+// (including memoized SceneCards) remounts and re-reads these on theme change.
+let C: Palette = darkPalette;
+let styles: any = createStyles(darkPalette);
+const statusTone = (st: string): string => ({
+  "Draft": C.onSurface2, "Needs Review": C.warning, "Approved": C.brand, "Completed": C.success,
+} as Record<string, string>)[st] || C.onSurface2;
+const frameStatusMeta = (status: string): { c: string; i: string } => ({
+  "Not Generated": { c: C.onSurface2, i: "ellipse-outline" },
+  "Queued": { c: C.warning, i: "time-outline" },
+  "Generating": { c: C.warning, i: "sync-outline" },
+  "Completed": { c: C.success, i: "checkmark-circle-outline" },
+  "Failed": { c: C.error, i: "alert-circle-outline" },
+} as Record<string, { c: string; i: string }>)[status] || { c: C.onSurface2, i: "ellipse-outline" };
 
 const TABS = ["Overview", "Storyboard", "Script", "Shot List", "Equipment", "Crew", "Schedule", "Budget", "Exports", "Settings"];
 
@@ -33,6 +50,9 @@ export default function Editor() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
+  C = theme.C;
+  styles = useMemo(() => createStyles(C), [C]);
   const { user } = useAuth();
   const author = user?.name || user?.email || "You";
   const store = useProjectStore(id);
@@ -153,7 +173,7 @@ export default function Editor() {
   const notGenerated = project.status !== "generated";
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.surface }}>
+    <View key={theme.resolvedTheme} style={{ flex: 1, backgroundColor: C.surface }}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + S.md }]}>
         <Pressable onPress={() => router.back()} testID="editor-back" hitSlop={8}><Ionicons name="arrow-back" size={22} color={C.onSurface} /></Pressable>
@@ -343,7 +363,6 @@ function ProgStat({ label, value }: any) {
 
 const CINE_FRAME = "https://images.unsplash.com/photo-1485846234645-a62644f84728?crop=entropy&cs=srgb&fm=jpg&q=80&w=1200";
 const STATUSES = ["Draft", "Needs Review", "Approved", "Completed"];
-const STATUS_TONE: Record<string, string> = { "Draft": C.onSurface2, "Needs Review": C.warning, "Approved": C.brand, "Completed": C.success };
 
 const GROUPS: { title: string; fields: [string, string, boolean?][] }[] = [
   { title: "CREATIVE", fields: [["title", "Scene Title"], ["visual_description", "Visual Description", true], ["subject_action", "Action", true], ["dialogue", "Dialogue", true], ["voice_over", "Voice Over", true], ["on_screen_text", "On Screen Text"]] },
@@ -373,20 +392,12 @@ function EditableField({ label, value, onCommit, multiline, testID }: any) {
   );
 }
 
-const FRAME_STATUS_META: Record<string, { c: string; i: string }> = {
-  "Not Generated": { c: C.onSurface2, i: "ellipse-outline" },
-  "Queued": { c: C.warning, i: "time-outline" },
-  "Generating": { c: C.warning, i: "sync-outline" },
-  "Completed": { c: C.success, i: "checkmark-circle-outline" },
-  "Failed": { c: C.error, i: "alert-circle-outline" },
-};
-
 function StoryboardFrame({ scene, promptValue, aspect, busy, frameActions, onEditPrompt }: any) {
   const frames = scene.frames || [];
   const active = frames.find((x: any) => x.id === scene.active_frame_id) || frames[frames.length - 1] || null;
   const url = active?.image_url || "";
   const status = active?.generation_status || "Not Generated";
-  const meta = FRAME_STATUS_META[status] || FRAME_STATUS_META["Not Generated"];
+  const meta = frameStatusMeta(status);
   const [editing, setEditing] = useState(false);
   const ar = active?.aspect_ratio || aspect || "16:9";
   const opts = () => ({ prompt: promptValue, aspect_ratio: aspect || "16:9" });
@@ -549,9 +560,9 @@ const SceneCard = React.memo(function SceneCard({ scene, index, open, version, b
             <Text style={styles.sbTitle} numberOfLines={1}>{f.title || "Untitled scene"}</Text>
             <View style={styles.sbMetaRow}>
               <Chip>{f.duration || "—"}</Chip><Chip>{f.shot_size || "—"}</Chip><Chip>{f.location || "—"}</Chip>
-              <View style={[styles.statusBadge, { borderColor: STATUS_TONE[f.status] || C.onSurface2 }]}>
-                <View style={[styles.statusDot, { backgroundColor: STATUS_TONE[f.status] || C.onSurface2 }]} />
-                <Text style={[styles.statusText, { color: STATUS_TONE[f.status] || C.onSurface2 }]}>{f.status || "Draft"}</Text>
+              <View style={[styles.statusBadge, { borderColor: statusTone(f.status) }]}>
+                <View style={[styles.statusDot, { backgroundColor: statusTone(f.status) }]} />
+                <Text style={[styles.statusText, { color: statusTone(f.status) }]}>{f.status || "Draft"}</Text>
               </View>
             </View>
           </Pressable>
@@ -567,8 +578,8 @@ const SceneCard = React.memo(function SceneCard({ scene, index, open, version, b
             <View style={styles.statusRow}>
               {STATUSES.map((st) => (
                 <Pressable key={st} onPress={() => setStatus(scene, st)}
-                  style={[styles.statusChip, f.status === st && { borderColor: STATUS_TONE[st], backgroundColor: "rgba(197,160,89,0.12)" }]} testID={`status-${index}-${st}`}>
-                  <Text style={[styles.statusChipText, f.status === st && { color: STATUS_TONE[st] }]}>{st}</Text>
+                  style={[styles.statusChip, f.status === st && { borderColor: statusTone(st), backgroundColor: C.brandTint }]} testID={`status-${index}-${st}`}>
+                  <Text style={[styles.statusChipText, f.status === st && { color: statusTone(st) }]}>{st}</Text>
                 </Pressable>
               ))}
             </View>
@@ -757,7 +768,7 @@ function SettingsTab({ p, persist, onRegen, regenBusy, router, id }: any) {
 }
 function SetRow({ label, value }: any) { return <View style={styles.dRow}><Text style={styles.dLabel}>{label}</Text><Text style={styles.dVal}>{value}</Text></View>; }
 
-const styles = StyleSheet.create({
+function createStyles(C: Palette) { return StyleSheet.create({
   center: { flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: S.lg, paddingBottom: S.md, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface2 },
   hTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 20, flex: 1 },
@@ -828,7 +839,7 @@ const styles = StyleSheet.create({
   exportCard: { flexDirection: "row", alignItems: "center", backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.lg, marginBottom: S.md, gap: S.md },
   exportIcon: { width: 44, height: 44, borderRadius: R.md, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
   exportTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 15, fontWeight: "500" },
-  modalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", justifyContent: "center", padding: S.xl },
+  modalBg: { flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: S.xl },
   centerSheet: { backgroundColor: C.surface2, borderRadius: R.lg, padding: S.lg, borderWidth: 1, borderColor: C.borderStrong, maxWidth: 420, width: "100%", alignSelf: "center" },
   sheetTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 21, marginBottom: S.md },
 
@@ -849,7 +860,7 @@ const styles = StyleSheet.create({
 
   // Storyboard frame
   frameWrap: { marginBottom: S.md },
-  frameBig: { width: "100%", aspectRatio: 16 / 9, borderRadius: R.md, overflow: "hidden", backgroundColor: "#0b0b0b", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border },
+  frameBig: { width: "100%", aspectRatio: 16 / 9, borderRadius: R.md, overflow: "hidden", backgroundColor: C.surface3, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border },
   frameHint: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, marginTop: 6 },
   framePill: { position: "absolute", top: 8, left: 8, flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(0,0,0,0.6)", borderWidth: 1, borderRadius: R.pill, paddingHorizontal: 8, paddingVertical: 3 },
   framePillText: { fontFamily: F.text, fontSize: 10.5 },
@@ -908,7 +919,7 @@ const styles = StyleSheet.create({
   viewerClose: { position: "absolute", right: S.lg, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
 
   // Confirm generation modal
-  confirmBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)", alignItems: "center", justifyContent: "center", padding: S.xl },
+  confirmBg: { flex: 1, backgroundColor: C.overlay, alignItems: "center", justifyContent: "center", padding: S.xl },
   confirmCard: { width: "100%", maxWidth: 380, backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.borderStrong, padding: S.xl, alignItems: "center" },
   confirmIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginBottom: S.md },
   confirmTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 19, marginBottom: 6, textAlign: "center" },
@@ -921,9 +932,9 @@ const styles = StyleSheet.create({
   confirmOkText: { color: C.onBrand, fontFamily: F.text, fontSize: 14, fontWeight: "600" },
 
   // Frame error + quota
-  frameError: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(139,43,43,0.12)", borderWidth: 1, borderColor: C.error, borderRadius: R.sm, padding: 8, marginTop: 8 },
+  frameError: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.errorTint, borderWidth: 1, borderColor: C.error, borderRadius: R.sm, padding: 8, marginTop: 8 },
   frameErrorText: { color: C.error, fontFamily: F.text, fontSize: 12, flex: 1 },
   frameQuota: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, marginTop: 8 },
   soonPill: { backgroundColor: C.surface3, borderRadius: R.pill, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 },
   soonText: { color: C.onSurface2, fontFamily: F.text, fontSize: 8.5, letterSpacing: 0.5 },
-});
+}); }

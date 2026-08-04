@@ -1,13 +1,16 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/src/auth";
-import { C, S, F } from "@/src/theme";
+import { S, F, Palette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { Field, Btn } from "@/src/components";
 import AuthShell from "@/src/AuthShell";
 
 export default function Signup() {
   const { register, loginWithGoogle } = useAuth();
+  const { C } = useTheme();
+  const styles = useMemo(() => createStyles(C), [C]);
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -55,13 +58,13 @@ export default function Signup() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   link: { color: C.brand, fontFamily: F.text, fontSize: 14 },
   muted: { color: C.onSurface2, fontFamily: F.text, fontSize: 14 },
   divider: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: S.lg },
   line: { flex: 1, height: 1, backgroundColor: C.border },
   dividerText: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, letterSpacing: 2 },
   footer: { flexDirection: "row", justifyContent: "center", marginTop: S.xl },
-  errBox: { backgroundColor: "rgba(139,43,43,0.18)", borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.md },
-  errText: { color: "#F2C9C9", fontFamily: F.text, fontSize: 13 },
+  errBox: { backgroundColor: C.errorTint, borderWidth: 1, borderColor: C.error, borderRadius: 10, padding: S.md, marginBottom: S.md },
+  errText: { color: C.onErrorTint, fontFamily: F.text, fontSize: 13 },
 });

@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { C, S, R, F, MAX_W } from "@/src/theme";
+import { S, R, F, MAX_W, Palette } from "@/src/theme";
+import { useTheme } from "@/src/ThemeProvider";
 import { exportShotListPdf, exportShotListCsv, exportShotListExcel, printShotList } from "@/src/exporter";
 
 // Shared fields = single source of truth living on the SCENE (two-way sync with Storyboard).
-// Editing the PRIMARY shot writes straight to the scene; editing a secondary shot stores a
-// shot-level value (a genuinely different shot of the same scene — not duplicated data).
 const SHARED: Record<string, string> = {
   description: "visual_description", location: "location", day_night: "time_of_day",
   shot_type: "shot_size", camera_angle: "camera_angle", camera_height: "camera_height",
@@ -17,9 +16,10 @@ const SHARED: Record<string, string> = {
 };
 
 export const SHOT_STATUSES = ["Draft", "Ready", "Approved", "Shot", "Needs Review"];
-const STATUS_COLOR: Record<string, string> = {
+const statusColor = (C: Palette, st: string): string => ({
   "Draft": C.onSurface2, "Ready": C.warning, "Approved": C.brand, "Shot": C.success, "Needs Review": C.error,
-};
+} as Record<string, string>)[st] || C.onSurface2;
+
 const CHECKLIST = [
   ["camera", "Camera"], ["lens", "Lens"], ["lighting", "Lighting"], ["audio", "Audio"],
   ["talent", "Talent"], ["location", "Location"], ["props", "Props"],
@@ -41,6 +41,8 @@ function ensureShots(scene: any): any[] {
 
 // ---------------------------------------------------------------------------
 export default function ShotList({ project, commitScene, onEditInStoryboard }: any) {
+  const { C } = useTheme();
+  const s = useMemo(() => createStyles(C), [C]);
   const scenes = project.scenes || [];
   const { width } = useWindowDimensions();
   const wide = width > 900;
@@ -72,23 +74,22 @@ export default function ShotList({ project, commitScene, onEditInStoryboard }: a
 
   const setVal = useCallback((scene: any, shot: any, key: string, value: string) => {
     if (SHARED[key] && shot.is_primary) {
-      // Also materialize scene.shots so the primary shot metadata persists
       const shots = ensureShots(scene);
       commitScene(scene.id, { [SHARED[key]]: value, shots });
       return;
     }
-    const shots = ensureShots(scene).map((s: any) => {
-      if (s.id !== shot.id) return s;
-      if (SHARED[key]) return { ...s, data: { ...(s.data || {}), [key]: value } };
-      if (key === "shooting_order") return { ...s, shooting_order: parseInt(value, 10) || 0 };
-      return { ...s, [key]: value };
+    const shots = ensureShots(scene).map((sh: any) => {
+      if (sh.id !== shot.id) return sh;
+      if (SHARED[key]) return { ...sh, data: { ...(sh.data || {}), [key]: value } };
+      if (key === "shooting_order") return { ...sh, shooting_order: parseInt(value, 10) || 0 };
+      return { ...sh, [key]: value };
     });
     setShots(scene.id, shots);
   }, [commitScene, setShots]);
 
   const toggleCheck = (scene: any, shot: any, item: string) => {
-    const shots = ensureShots(scene).map((s: any) => s.id === shot.id
-      ? { ...s, checklist: { ...(s.checklist || {}), [item]: !(s.checklist || {})[item] } } : s);
+    const shots = ensureShots(scene).map((sh: any) => sh.id === shot.id
+      ? { ...sh, checklist: { ...(sh.checklist || {}), [item]: !(sh.checklist || {})[item] } } : sh);
     setShots(scene.id, shots);
   };
   const addShot = (scene: any) => {
@@ -97,15 +98,14 @@ export default function ShotList({ project, commitScene, onEditInStoryboard }: a
   };
   const duplicateShot = (scene: any, shot: any) => {
     const cur = ensureShots(scene);
-    const idx = cur.findIndex((s: any) => s.id === shot.id);
+    const idx = cur.findIndex((sh: any) => sh.id === shot.id);
     const copy = { ...shot, id: rid(), label: letter(cur.length), is_primary: false, data: { ...(shot.data || {}) }, checklist: { ...(shot.checklist || {}) } };
-    // A duplicate of the primary must capture the scene's current shared values so it stays distinct
     if (shot.is_primary) { copy.data = {}; Object.keys(SHARED).forEach((k) => { copy.data[k] = getVal(scene, shot, k); }); }
     const next = [...cur]; next.splice(idx + 1, 0, copy);
     setShots(scene.id, next);
   };
   const deleteShot = (scene: any, shot: any) => {
-    const cur = ensureShots(scene).filter((s: any) => s.id !== shot.id);
+    const cur = ensureShots(scene).filter((sh: any) => sh.id !== shot.id);
     setShots(scene.id, cur.length ? cur : ensureShots({ ...scene, shots: [] }));
   };
 
@@ -210,6 +210,7 @@ export default function ShotList({ project, commitScene, onEditInStoryboard }: a
   }));
 
   const setFilter = (k: string, v: string) => setFilters((f) => ({ ...f, [k]: f[k] === v ? "" : v }));
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   return (
     <View style={{ flex: 1 }}>
@@ -222,6 +223,7 @@ export default function ShotList({ project, commitScene, onEditInStoryboard }: a
         </View>
         <Pressable style={[s.ctrlBtn, showControls && s.ctrlBtnOn]} onPress={() => setShowControls((v) => !v)} testID="shot-controls">
           <Ionicons name="options-outline" size={16} color={showControls ? C.onBrand : C.onSurface} />
+          {activeFilterCount > 0 && <View style={s.ctrlDot} />}
         </Pressable>
       </View>
 
@@ -248,7 +250,7 @@ export default function ShotList({ project, commitScene, onEditInStoryboard }: a
               </View>
             );
           })}
-          {Object.values(filters).some(Boolean) && (
+          {activeFilterCount > 0 && (
             <Pressable onPress={() => setFilters({})} style={s.clearBtn} testID="filter-clear"><Text style={s.clearText}>Clear filters</Text></Pressable>
           )}
         </View>
@@ -308,8 +310,10 @@ const GROUPS: { title: string; fields: [string, string, boolean?][] }[] = [
 ];
 
 const ShotRow = React.memo(function ShotRow({ row, wide, open, onToggle, setVal, toggleCheck, duplicateShot, deleteShot, onEditInStoryboard }: any) {
+  const { C } = useTheme();
+  const s = useMemo(() => createStyles(C), [C]);
   const { scene, shot } = row;
-  const color = STATUS_COLOR[row.status] || C.onSurface2;
+  const color = statusColor(C, row.status);
   const checkDone = CHECKLIST.filter(([k]) => row.checklist[k]).length;
   return (
     <View style={[s.card, open && s.cardOpen]} testID={`shot-${row.shot_code}`}>
@@ -344,8 +348,8 @@ const ShotRow = React.memo(function ShotRow({ row, wide, open, onToggle, setVal,
           <View style={s.statusPickRow}>
             {SHOT_STATUSES.map((st) => (
               <Pressable key={st} onPress={() => setVal(scene, shot, "status", st)}
-                style={[s.statusChip, row.status === st && { borderColor: STATUS_COLOR[st], backgroundColor: "rgba(197,160,89,0.12)" }]} testID={`shot-status-${row.shot_code}-${st}`}>
-                <Text style={[s.statusChipText, row.status === st && { color: STATUS_COLOR[st] }]}>{st}</Text>
+                style={[s.statusChip, row.status === st && { borderColor: statusColor(C, st), backgroundColor: C.brandTint }]} testID={`shot-status-${row.shot_code}-${st}`}>
+                <Text style={[s.statusChipText, row.status === st && { color: statusColor(C, st) }]}>{st}</Text>
               </Pressable>
             ))}
           </View>
@@ -393,6 +397,8 @@ const ShotRow = React.memo(function ShotRow({ row, wide, open, onToggle, setVal,
 
 // ---- small pieces ----
 function Field({ value, onCommit, multiline, keyboard, testID }: any) {
+  const { C } = useTheme();
+  const s = useMemo(() => createStyles(C), [C]);
   const [v, setV] = useState(value ?? "");
   const focused = useRef(false);
   const last = useRef(value ?? "");
@@ -408,6 +414,8 @@ function Field({ value, onCommit, multiline, keyboard, testID }: any) {
   );
 }
 function Seg({ options, value, onChange, idp }: any) {
+  const { C } = useTheme();
+  const s = useMemo(() => createStyles(C), [C]);
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 4 }}>
       {options.map(([val, label]: any) => (
@@ -418,15 +426,29 @@ function Seg({ options, value, onChange, idp }: any) {
     </ScrollView>
   );
 }
-function Meta({ children }: any) { return <View style={s.meta}><Text style={s.metaText}>{children}</Text></View>; }
+function Meta({ children }: any) {
+  const { C } = useTheme();
+  const s = useMemo(() => createStyles(C), [C]);
+  return <View style={s.meta}><Text style={s.metaText}>{children}</Text></View>;
+}
 function ActBtn({ icon, label, onPress, color, testID }: any) {
+  const { C } = useTheme();
+  const s = useMemo(() => createStyles(C), [C]);
   return <Pressable style={s.actBtn} onPress={onPress} testID={testID}><Ionicons name={icon} size={15} color={color || C.onSurface} /><Text style={[s.actText, color && { color }]}>{label}</Text></Pressable>;
 }
 function ExpBtn({ icon, label, onPress, testID }: any) {
+  const { C } = useTheme();
+  const s = useMemo(() => createStyles(C), [C]);
   return <Pressable style={s.expBtn} onPress={onPress} testID={testID}><Ionicons name={icon} size={15} color={C.brand} /><Text style={s.expText}>{label}</Text></Pressable>;
 }
-function StatRow({ label, value }: any) { return <View style={s.statRow}><Text style={s.statLabel}>{label}</Text><Text style={s.statVal}>{value}</Text></View>; }
+function StatRow({ label, value }: any) {
+  const { C } = useTheme();
+  const s = useMemo(() => createStyles(C), [C]);
+  return <View style={s.statRow}><Text style={s.statLabel}>{label}</Text><Text style={s.statVal}>{value}</Text></View>;
+}
 function StatsCard({ stats, mobile }: any) {
+  const { C } = useTheme();
+  const s = useMemo(() => createStyles(C), [C]);
   return (
     <View style={[s.stats, mobile && { marginBottom: S.md }]}>
       <Text style={s.statsTitle}>PRODUCTION SUMMARY</Text>
@@ -447,19 +469,20 @@ function StatsCard({ stats, mobile }: any) {
   );
 }
 
-const s = StyleSheet.create({
+const createStyles = (C: Palette) => StyleSheet.create({
   toolbar: { flexDirection: "row", alignItems: "center", gap: S.sm, paddingHorizontal: S.lg, paddingVertical: S.sm, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface2 },
-  searchWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.surface, borderRadius: R.pill, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, height: 40 },
-  search: { flex: 1, color: C.onSurface, fontFamily: F.text, fontSize: 13.5, height: 40 },
-  ctrlBtn: { width: 40, height: 40, borderRadius: R.sm, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
+  searchWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.surface, borderRadius: R.pill, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, height: 44 },
+  search: { flex: 1, color: C.onSurface, fontFamily: F.text, fontSize: 13.5, height: 44 },
+  ctrlBtn: { width: 44, height: 44, borderRadius: R.sm, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
   ctrlBtnOn: { backgroundColor: C.brand, borderColor: C.brand },
+  ctrlDot: { position: "absolute", top: 6, right: 6, width: 7, height: 7, borderRadius: 4, backgroundColor: C.brand },
   controls: { padding: S.lg, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface2 },
   ctrlLabel: { color: C.brand, fontFamily: F.text, fontSize: 10.5, letterSpacing: 1.2, marginTop: 8, marginBottom: 4 },
   filterName: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, marginBottom: 3 },
-  seg: { borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: C.surface },
+  seg: { borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: C.surface, minHeight: 36 },
   segOn: { backgroundColor: C.brand, borderColor: C.brand },
   segText: { color: C.onSurface2, fontFamily: F.text, fontSize: 12 },
-  fChip: { borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: C.surface, maxWidth: 160 },
+  fChip: { borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: C.surface, maxWidth: 160 },
   fChipOn: { borderColor: C.brand, backgroundColor: C.brandTint },
   fChipText: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5 },
   clearBtn: { marginTop: 8, alignSelf: "flex-start" },
@@ -468,17 +491,17 @@ const s = StyleSheet.create({
   syncNote: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.sm, marginBottom: S.sm },
   syncText: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, flex: 1 },
   exportRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: S.md },
-  expBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: C.surface2 },
+  expBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: C.surface2, minHeight: 40 },
   expText: { color: C.brand, fontFamily: F.text, fontSize: 12.5 },
   empty: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, textAlign: "center", marginTop: S.xl },
   groupHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6, marginTop: 4 },
   groupTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 16, flexShrink: 1 },
   groupCount: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, flex: 1 },
-  addShotBtn: { flexDirection: "row", alignItems: "center", gap: 3, borderWidth: 1, borderColor: C.brand, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 5 },
+  addShotBtn: { flexDirection: "row", alignItems: "center", gap: 3, borderWidth: 1, borderColor: C.brand, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 7, minHeight: 36 },
   addShotText: { color: C.brand, fontFamily: F.text, fontSize: 11.5 },
   card: { backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, marginBottom: S.sm, overflow: "hidden" },
   cardOpen: { borderColor: C.borderStrong },
-  rowHead: { flexDirection: "row", alignItems: "center", gap: S.sm, padding: S.md },
+  rowHead: { flexDirection: "row", alignItems: "center", gap: S.sm, padding: S.md, minHeight: 56 },
   codeBox: { minWidth: 40, height: 34, borderRadius: R.sm, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
   codeText: { color: C.brand, fontFamily: F.display, fontSize: 15 },
   rowName: { color: C.onSurface, fontFamily: F.text, fontSize: 14, fontWeight: "600" },
@@ -496,18 +519,18 @@ const s = StyleSheet.create({
   orderLockedText: { color: C.onSurface, fontFamily: F.text, fontSize: 14, fontWeight: "600" },
   orderHint: { color: C.onSurface2, fontFamily: F.text, fontSize: 10 },
   efLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 4, marginTop: 6 },
-  input: { backgroundColor: C.surface, borderRadius: R.sm, borderWidth: 1, borderColor: C.border, color: C.onSurface, fontFamily: F.text, fontSize: 13.5, paddingHorizontal: 10, paddingVertical: 8, minHeight: 40 },
+  input: { backgroundColor: C.surface, borderRadius: R.sm, borderWidth: 1, borderColor: C.border, color: C.onSurface, fontFamily: F.text, fontSize: 13.5, paddingHorizontal: 10, paddingVertical: 8, minHeight: 44 },
   statusPickRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
-  statusChip: { borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 6 },
+  statusChip: { borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 8, minHeight: 36 },
   statusChipText: { color: C.onSurface2, fontFamily: F.text, fontSize: 12 },
   group: { marginTop: S.md, paddingTop: S.sm, borderTopWidth: 1, borderTopColor: C.border },
   groupLabel: { color: C.brand, fontFamily: F.text, fontSize: 11, letterSpacing: 1.2, marginBottom: 2 },
   checkWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
-  checkItem: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: C.surface },
-  checkItemOn: { borderColor: C.success, backgroundColor: "rgba(62,102,70,0.15)" },
+  checkItem: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: C.surface, minHeight: 36 },
+  checkItemOn: { borderColor: C.success, backgroundColor: C.successTint },
   checkText: { color: C.onSurface2, fontFamily: F.text, fontSize: 12 },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: S.md },
-  actBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: C.border, borderRadius: R.sm, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: C.surface3 },
+  actBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderColor: C.border, borderRadius: R.sm, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: C.surface3, minHeight: 40 },
   actText: { color: C.onSurface, fontFamily: F.text, fontSize: 12.5 },
   stats: { backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.lg },
   statsTitle: { color: C.brand, fontFamily: F.text, fontSize: 11, letterSpacing: 1.4, marginBottom: 6 },
