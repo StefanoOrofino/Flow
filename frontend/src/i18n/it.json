@@ -334,7 +334,8 @@
     "back": "Indietro",
     "editAnalysis": "Modifica caricamenti",
     "expired": "Sessione di analisi scaduta. Ricarica i file.",
-    "genFailed": "Impossibile generare il progetto. Riprova."
+    "genFailed": "Impossibile generare il progetto. Riprova.",
+    "userEntered": "Inserito dall’utente"
   },
   "manualProject": {
     "title": "Crea da zero",

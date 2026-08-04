@@ -334,7 +334,8 @@
     "back": "Back",
     "editAnalysis": "Edit uploads",
     "expired": "This analysis session expired. Please upload again.",
-    "genFailed": "Could not generate the project. Please try again."
+    "genFailed": "Could not generate the project. Please try again.",
+    "userEntered": "User entered"
   },
   "manualProject": {
     "title": "Create from Scratch",

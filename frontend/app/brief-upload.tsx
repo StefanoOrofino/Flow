@@ -213,7 +213,9 @@ export default function BriefUpload() {
           <Ionicons name="create-outline" size={15} color={C.onSurface2} />
           <Text style={styles.manualTxt}>{t("manualLink")}</Text>
         </Pressable>
-      </ScrollView>      {/* Sticky footer CTA */}
+      </ScrollView>
+
+      {/* Sticky footer CTA */}
       <View style={styles.footer}>
         <View style={{ padding: S.lg, paddingBottom: insets.bottom + S.md, maxWidth: MAX_W, alignSelf: "center", width: "100%" }}>
           <Pressable onPress={analyze} disabled={!canAnalyze} testID="analyze-btn"
