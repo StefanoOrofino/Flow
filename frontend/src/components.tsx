@@ -86,8 +86,8 @@ export function Btn({ title, onPress, variant = "primary", icon, loading, disabl
       style={({ pressed }) => [
         styles.btn,
         small && { paddingVertical: 9, paddingHorizontal: S.md, minHeight: 38 },
-        { backgroundColor: bg, opacity: disabled ? 0.45 : pressed ? 0.85 : 1 },
-        variant === "ghost" && { borderWidth: 1, borderColor: C.borderStrong },
+        { backgroundColor: bg, opacity: disabled ? 0.4 : pressed ? 0.94 : 1, transform: [{ scale: pressed && !disabled ? 0.985 : 1 }] },
+        variant === "ghost" && { borderWidth: 1, borderColor: C.border },
         style,
       ]}
     >
@@ -121,12 +121,12 @@ export function Segmented({ options, value, onChange, testID }: any) {
 export function H1({ children, style }: any) {
   const { C, scale } = useTheme();
   const styles = useMemo(() => createStyles(C), [C]);
-  return <Text style={[styles.h1, { fontSize: 34 * scale, lineHeight: 40 * scale }, style]}>{children}</Text>;
+  return <Text style={[styles.h1, { fontSize: 33 * scale, lineHeight: 39 * scale, letterSpacing: -0.4 }, style]}>{children}</Text>;
 }
 export function H2({ children, style }: any) {
   const { C, scale } = useTheme();
   const styles = useMemo(() => createStyles(C), [C]);
-  return <Text style={[styles.h2, { fontSize: 23 * scale }, style]}>{children}</Text>;
+  return <Text style={[styles.h2, { fontSize: 22 * scale, letterSpacing: -0.2 }, style]}>{children}</Text>;
 }
 export function Body({ children, style, muted, numberOfLines }: any) {
   const { C, scale } = useTheme();
@@ -162,7 +162,7 @@ export function StatCard({ icon, value, label, delay }: any) {
 
 export function Skeleton({ height = 16, width = "100%", radius = 8, style }: any) {
   const { C } = useTheme();
-  return <Animated.View entering={FadeIn} style={[{ height, width, borderRadius: radius, backgroundColor: C.surface3 }, style]} />;
+  return <Animated.View entering={FadeIn.duration(300)} style={[{ height, width, borderRadius: radius, backgroundColor: C.surface3, opacity: 0.7 }, style]} />;
 }
 
 export function EmptyState({ icon, title, subtitle, actionLabel, onAction, testID }: any) {
@@ -171,9 +171,9 @@ export function EmptyState({ icon, title, subtitle, actionLabel, onAction, testI
   return (
     <AnimIn style={styles.empty} >
       <View testID={testID} style={styles.emptyInner}>
-        <View style={styles.emptyIcon}><Ionicons name={icon} size={30} color={C.brand} /></View>
+        <View style={styles.emptyIcon}><Ionicons name={icon} size={26} color={C.brand} /></View>
         <H2 style={{ marginTop: S.lg, textAlign: "center" }}>{title}</H2>
-        <Body muted style={{ textAlign: "center", marginTop: 6, marginBottom: S.lg, maxWidth: 320 }}>{subtitle}</Body>
+        <Body muted style={{ textAlign: "center", marginTop: 8, marginBottom: S.xl, maxWidth: 300 }}>{subtitle}</Body>
         {actionLabel ? <Btn title={actionLabel} icon="add" onPress={onAction} /> : null}
       </View>
     </AnimIn>
@@ -295,30 +295,30 @@ export function MultiSelect({ label, values = [], options = [], onChange, custom
 }
 
 const createStyles = (C: Palette) => StyleSheet.create({
-  label: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, marginBottom: S.sm, letterSpacing: 0.6, textTransform: "uppercase" },
-  input: { backgroundColor: C.surface2, borderRadius: R.md, paddingHorizontal: S.lg, paddingVertical: S.md, color: C.onSurface, fontFamily: F.text, fontSize: 15, borderWidth: 1, borderColor: C.border, minHeight: 50, justifyContent: "center" },
+  label: { color: C.onSurface2, fontFamily: F.text, fontSize: 11, marginBottom: S.sm, letterSpacing: 0.4, textTransform: "uppercase" },
+  input: { backgroundColor: C.surface3, borderRadius: R.md, paddingHorizontal: S.lg, paddingVertical: S.md, color: C.onSurface, fontFamily: F.text, fontSize: 15, borderWidth: 1, borderColor: C.border, minHeight: 50, justifyContent: "center" },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   rowCenter: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
   modalBg: { flex: 1, backgroundColor: C.overlay, justifyContent: "center", padding: S.xl },
-  centerSheet: { backgroundColor: C.surface2, borderRadius: R.lg, padding: S.lg, borderWidth: 1, borderColor: C.borderStrong, maxWidth: 440, width: "100%", alignSelf: "center" },
+  centerSheet: { backgroundColor: C.surface3, borderRadius: R.lg, padding: S.xl, borderWidth: 1, borderColor: C.border, maxWidth: 440, width: "100%", alignSelf: "center" },
   sheetTitle: { color: C.onSurface, fontFamily: F.text, fontSize: 15, fontWeight: "600", marginBottom: S.md },
   optRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: S.md, borderBottomWidth: 1, borderBottomColor: C.border },
   btn: { borderRadius: R.md, paddingVertical: 14, paddingHorizontal: S.lg, alignItems: "center", justifyContent: "center", minHeight: 50 },
-  segment: { flexDirection: "row", backgroundColor: C.surface2, borderRadius: R.md, padding: 4, borderWidth: 1, borderColor: C.border },
+  segment: { flexDirection: "row", backgroundColor: C.surface3, borderRadius: R.md, padding: 4 },
   segItem: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: R.sm },
-  h1: { color: C.onSurface, fontFamily: F.display, fontSize: 34, fontWeight: "500", lineHeight: 40 },
-  h2: { color: C.onSurface, fontFamily: F.display, fontSize: 23, fontWeight: "500" },
+  h1: { color: C.onSurface, fontFamily: F.display, fontSize: 33, fontWeight: "500", lineHeight: 39 },
+  h2: { color: C.onSurface, fontFamily: F.display, fontSize: 22, fontWeight: "500" },
   body: { color: C.onSurface, fontFamily: F.text, fontSize: 14, lineHeight: 22 },
-  card: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.lg },
+  card: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: 20 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: R.pill },
   badgeText: { fontFamily: F.text, fontSize: 11, fontWeight: "500" },
-  statCard: { flex: 1, minWidth: 100, backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md },
-  statIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginBottom: S.sm },
-  statValue: { color: C.onSurface, fontFamily: F.display, fontSize: 26 },
+  statCard: { flex: 1, minWidth: 100, backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.lg },
+  statIcon: { width: 30, height: 30, borderRadius: 9, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginBottom: S.md },
+  statValue: { color: C.onSurface, fontFamily: F.display, fontSize: 27, letterSpacing: -0.3 },
   statLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, marginTop: 2 },
   empty: { alignItems: "center", padding: S.xl },
-  emptyInner: { alignItems: "center", backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.xxl, width: "100%" },
-  emptyIcon: { width: 66, height: 66, borderRadius: R.lg, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
+  emptyInner: { alignItems: "center", backgroundColor: "transparent", padding: S.xl, width: "100%" },
+  emptyIcon: { width: 60, height: 60, borderRadius: R.lg, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
   mockBadge: { flexDirection: "row", alignItems: "center", backgroundColor: C.brandTint, paddingHorizontal: 10, paddingVertical: 5, borderRadius: R.pill, alignSelf: "flex-start" },
   msChipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, paddingVertical: 2 },
   msChip: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: C.brandTint, borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 6, maxWidth: "100%" },

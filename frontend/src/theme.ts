@@ -106,9 +106,9 @@ export const darkTokens: ThemeTokens = {
     hover: "#1E2025",
   },
   border: {
-    subtle: "#212226",
-    default: "#2A2C31",
-    strong: "#3A3D44",
+    subtle: "#1C1D21",
+    default: "#212327",
+    strong: "#33353B",
     focus: "#C5A059",
   },
   primary: {
@@ -184,9 +184,9 @@ export const lightTokens: ThemeTokens = {
     hover: "#FBFAF7",
   },
   border: {
-    subtle: "#EEEAE0",
-    default: "#E1DCD0",
-    strong: "#CFC9BA",
+    subtle: "#F1EDE4",
+    default: "#ECE8DF",
+    strong: "#D8D2C6",
     focus: "#C5A059",
   },
   primary: {
@@ -300,8 +300,8 @@ export const lightPalette = toPalette(lightTokens);
 export const darkPalette = toPalette(darkTokens);
 
 /* Static (theme-independent) design primitives */
-export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 };
-export const R = { sm: 6, md: 12, lg: 20, pill: 999 };
+export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 28, xxl: 44, xxxl: 64 };
+export const R = { sm: 8, md: 12, lg: 18, pill: 999 };
 
 export const F = {
   display: Platform.select({ web: "'Cormorant Garamond', Georgia, serif", default: "serif" }) as string,
