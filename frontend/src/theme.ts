@@ -308,7 +308,7 @@ export const F = {
   text: Platform.select({ web: "'Geist', system-ui, sans-serif", default: "System" }) as string,
 };
 
-export const MAX_W = 960;
+export const MAX_W = 1080;
 
 /* Fallback static palette (dark) for any non-hook context. Prefer useTheme(). */
 export const C: Palette = darkPalette;

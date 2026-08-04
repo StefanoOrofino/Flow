@@ -45,6 +45,10 @@ const TAB_ICONS: Record<string, string> = {
   Overview: "dashboard", Storyboard: "clapperboard", Script: "file-text", "Shot List": "list-checks",
   Equipment: "camera", Crew: "users", Schedule: "calendar", Budget: "wallet", Exports: "download", Settings: "settings",
 };
+const TAB_LABEL_KEYS: Record<string, string> = {
+  Overview: "tabOverview", Storyboard: "tabStoryboard", Script: "tabScript", "Shot List": "tabShotList",
+  Equipment: "tabEquipment", Crew: "tabCrew", Schedule: "tabSchedule", Budget: "tabBudget", Exports: "tabExports", Settings: "tabSettings",
+};
 
 const cap = (k: string) => k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -57,6 +61,7 @@ function totalDuration(scenes: any[]) {
 export default function Editor() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   C = theme.C;
@@ -198,16 +203,16 @@ export default function Editor() {
         <Text style={styles.hTitle} numberOfLines={2}>{project.title}</Text>
         <View style={styles.hMetaRow}>
           <Text style={styles.hMeta} numberOfLines={1}>
-            {[project.client, project.video_type].filter(Boolean).join("  ·  ") || "Untitled production"}
-            {"   ·   "}{project.scenes.length} scenes · {totalDuration(project.scenes)}
+            {[project.client, project.video_type].filter(Boolean).join("  ·  ") || t("editor:untitledProduction")}
+            {"   ·   "}{t("editor:sceneCount", { count: project.scenes.length })} · {totalDuration(project.scenes)}
           </Text>
           <View style={{ flex: 1 }} />
           <View style={styles.saveRow}>
-            {saveState === "saving" && <><ActivityIndicator size="small" color={C.onSurface2} /><Text style={styles.hSub}>Saving…</Text></>}
-            {saveState === "recovering" && <><ActivityIndicator size="small" color={C.warning} /><Text style={[styles.hSub, { color: C.warning }]}>Recovering…</Text></>}
-            {saveState === "saved" && <><View style={[styles.saveDot, { backgroundColor: C.success }]} /><Text style={[styles.hSub, { color: C.success }]}>Saved</Text></>}
-            {saveState === "unsaved" && <><View style={styles.saveDot} /><Text style={styles.hSub}>Unsaved</Text></>}
-            {saveState === "offline" && <><View style={[styles.saveDot, { backgroundColor: C.warning }]} /><Text style={[styles.hSub, { color: C.warning }]}>Offline · kept</Text></>}
+            {saveState === "saving" && <><ActivityIndicator size="small" color={C.onSurface2} /><Text style={styles.hSub}>{t("editor:saving")}</Text></>}
+            {saveState === "recovering" && <><ActivityIndicator size="small" color={C.warning} /><Text style={[styles.hSub, { color: C.warning }]}>{t("editor:recovering")}</Text></>}
+            {saveState === "saved" && <><View style={[styles.saveDot, { backgroundColor: C.success }]} /><Text style={[styles.hSub, { color: C.success }]}>{t("editor:saved")}</Text></>}
+            {saveState === "unsaved" && <><View style={styles.saveDot} /><Text style={styles.hSub}>{t("editor:unsaved")}</Text></>}
+            {saveState === "offline" && <><View style={[styles.saveDot, { backgroundColor: C.warning }]} /><Text style={[styles.hSub, { color: C.warning }]}>{t("editor:offline")}</Text></>}
           </View>
         </View>
       </View>
@@ -215,7 +220,7 @@ export default function Editor() {
       {/* Tabs — DS underline */}
       <View style={styles.tabsWrap}>
         <View style={styles.tabsInner}>
-          <DSTabs tabs={TABS.map((t) => ({ key: t, label: t, icon: TAB_ICONS[t] as any }))} value={tab} onChange={setTab} />
+          <DSTabs tabs={TABS.map((tk) => ({ key: tk, label: t(`editor:${TAB_LABEL_KEYS[tk]}`), icon: TAB_ICONS[tk] as any }))} value={tab} onChange={setTab} />
         </View>
       </View>
 
@@ -237,9 +242,9 @@ export default function Editor() {
           {notGenerated && tab !== "Settings" ? (
             <View style={styles.emptyGen}>
               <View style={styles.emptyIcon}><Icon name="clapperboard" size={30} color={C.brand} strokeWidth={1.75} /></View>
-              <Text style={styles.emptyTitle}>Bring this brief to life</Text>
-              <Body muted style={{ textAlign: "center", marginTop: 8, marginBottom: S.xl, maxWidth: 340, lineHeight: 22 }}>Generate a complete AI production package — concept, treatment, script, storyboard and shot list — from your brief.</Body>
-              <Btn title="Generate Storyboard" icon="sparkles" loading={regenAll} onPress={regenerateAll} testID="generate-now" />
+              <Text style={styles.emptyTitle}>{t("editor:emptyTitle")}</Text>
+              <Body muted style={{ textAlign: "center", marginTop: 8, marginBottom: S.xl, maxWidth: 340, lineHeight: 22 }}>{t("editor:emptyBody")}</Body>
+              <Btn title={t("editor:generate")} icon="sparkles" loading={regenAll} onPress={regenerateAll} testID="generate-now" />
             </View>
           ) : (
             <>
@@ -253,26 +258,26 @@ export default function Editor() {
                       <View style={styles.scriptScene}>
                         <View style={styles.scriptHead}>
                           <Text style={styles.scriptNum}>{String(s.scene_number).padStart(2, "0")}</Text>
-                          <Text style={styles.scriptTitle} numberOfLines={1}>{(s.title || "Untitled scene").toUpperCase()}</Text>
+                          <Text style={styles.scriptTitle} numberOfLines={1}>{(s.title || t("editor:untitledScene")).toUpperCase()}</Text>
                         </View>
                         {s.narrative ? <Body style={{ marginTop: S.sm, lineHeight: 23 }}>{s.narrative}</Body> : null}
-                        {s.dialogue ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>DIALOGUE</Text><Body style={{ flex: 1 }}>{s.dialogue}</Body></View> : null}
-                        {s.voice_over ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>V.O.</Text><Body style={{ flex: 1 }}>{s.voice_over}</Body></View> : null}
-                        {s.on_screen_text ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>ON SCREEN</Text><Body style={{ flex: 1 }}>{s.on_screen_text}</Body></View> : null}
+                        {s.dialogue ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>{t("editor:tagDialogue")}</Text><Body style={{ flex: 1 }}>{s.dialogue}</Body></View> : null}
+                        {s.voice_over ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>{t("editor:tagVO")}</Text><Body style={{ flex: 1 }}>{s.voice_over}</Body></View> : null}
+                        {s.on_screen_text ? <View style={styles.scriptLine}><Text style={styles.scriptTag}>{t("editor:tagOnScreen")}</Text><Body style={{ flex: 1 }}>{s.on_screen_text}</Body></View> : null}
                       </View>
                     </AnimIn>
                   ))}
                 </View>
               )}
-              {tab === "Equipment" && <DefCard label="RECOMMENDED EQUIPMENT" data={project.equipment}
+              {tab === "Equipment" && <DefCard label={t("editor:equipmentTitle")} data={project.equipment}
                 order={["camera", "lens", "drone", "gimbal", "tripod", "lighting", "audio", "accessories"]} icon="camera" />}
-              {tab === "Crew" && <DefCard label="SUGGESTED CREW" data={project.crew}
+              {tab === "Crew" && <DefCard label={t("editor:crewTitle")} data={project.crew}
                 order={["crew_size", "director", "producer", "dp", "camera_operator", "focus_puller", "gaffer", "sound", "drone_pilot", "production_assistant"]} icon="users" />}
-              {tab === "Schedule" && <DefCard label="SHOOTING SCHEDULE" data={project.schedule}
+              {tab === "Schedule" && <DefCard label={t("editor:scheduleTitle")} data={project.schedule}
                 order={["recommendation", "estimated_hours", "breakdown"]} icon="calendar" />}
               {tab === "Budget" && (
-                <Section label="ESTIMATED BUDGET" icon="dollar" hint="Ranges">
-                  {[["low", "Low Budget"], ["medium", "Medium Budget"], ["commercial", "Commercial"], ["premium", "Premium"]].map(([k, l], i) => (
+                <Section label={t("editor:budgetTitle")} icon="dollar" hint={t("editor:budgetRanges")}>
+                  {[["low", t("editor:budgetLow")], ["medium", t("editor:budgetMedium")], ["commercial", t("editor:budgetCommercial")], ["premium", t("editor:budgetPremium")]].map(([k, l], i) => (
                     <AnimIn key={k} delay={i * 50}>
                       <View style={[styles.budgetRow, i === 0 && { borderTopWidth: 0, marginTop: 0, paddingTop: 0 }]}>
                         <Text style={styles.budgetTier}>{l}</Text>
@@ -284,11 +289,11 @@ export default function Editor() {
                 </Section>
               )}
               {tab === "Exports" && (
-                <Section label="EXPORT PACKAGE" icon="download" hint={project.export_count ? `${project.export_count}× exported` : undefined}>
-                  <Body muted style={{ marginBottom: S.lg, lineHeight: 21 }}>Export a beautiful, production-ready package to share with clients and crew.</Body>
-                  <ExportCard icon="file-text" title="Export as PDF" sub="Cover, concept, script, storyboard & shot list" onPress={() => doExport(() => exportPdf(project))} testID="export-pdf" />
-                  <ExportCard icon="grid" title="Export shot list (CSV)" sub="Spreadsheet with all technical columns" onPress={() => doExport(() => exportCsv(project))} testID="export-csv" />
-                  <ExportCard icon="printer" title="Print project" sub="Open the print dialog" onPress={() => doExport(() => printProject(project))} testID="export-print" />
+                <Section label={t("exports:title")} icon="download" hint={project.export_count ? t("exports:exportedTimes", { count: project.export_count }) : undefined}>
+                  <Body muted style={{ marginBottom: S.lg, lineHeight: 21 }}>{t("exports:desc")}</Body>
+                  <ExportCard icon="file-text" title={t("exports:pdf")} sub={t("exports:pdfSub")} onPress={() => doExport(() => exportPdf(project))} testID="export-pdf" />
+                  <ExportCard icon="grid" title={t("exports:csv")} sub={t("exports:csvSub")} onPress={() => doExport(() => exportCsv(project))} testID="export-csv" />
+                  <ExportCard icon="printer" title={t("exports:print")} sub={t("exports:printSub")} onPress={() => doExport(() => printProject(project))} testID="export-print" />
                 </Section>
               )}
               {tab === "Settings" && <SettingsTab p={project} persist={persist} onRegen={regenerateAll} regenBusy={regenAll} router={router} id={id} />}
@@ -387,9 +392,9 @@ function Overview({ p, persist }: any) {
 
       <AnimIn delay={120}>
         <Text style={styles.refHeading}>{t("overview:referenceSection")}</Text>
-        <KVCard label="CREATIVE CONCEPT" icon="bulb" data={p.concept}
+        <KVCard label={t("editor:conceptLabel")} icon="bulb" data={p.concept}
           order={["title", "elevator_pitch", "main_message", "emotional_goal", "audience", "communication_objective"]} />
-        <KVCard label="DIRECTOR'S TREATMENT" icon="wand" data={p.treatment}
+        <KVCard label={t("editor:treatmentLabel")} icon="wand" data={p.treatment}
           order={["visual_style", "narrative_style", "camera_language", "editing_style", "lighting_style", "color_palette", "sound_design", "overall_mood"]} />
       </AnimIn>
     </View>
@@ -410,13 +415,14 @@ function Section({ label, icon, children, style, hint }: any) {
 }
 
 function KVCard({ label, data, order, icon }: any) {
+  const { t } = useTranslation();
   // Legacy string support
   if (typeof data === "string") {
     if (!data) return null;
     return <Section label={label} icon={icon}><Body style={{ lineHeight: 23 }}>{data}</Body></Section>;
   }
   const keys = (order || Object.keys(data || {})).filter((k: string) => data && data[k]);
-  if (keys.length === 0) return <Section label={label} icon={icon}><Body muted>Not generated yet.</Body></Section>;
+  if (keys.length === 0) return <Section label={label} icon={icon}><Body muted>{t("editor:notGenerated")}</Body></Section>;
   return (
     <Section label={label} icon={icon}>
       {keys.map((k: string, i: number) => (
@@ -827,27 +833,28 @@ function ExportCard({ icon, title, sub, onPress, testID }: any) {
 }
 function SettingsTab({ p, persist, onRegen, regenBusy, router, id }: any) {
   const [del, setDel] = useState(false);
+  const { t } = useTranslation();
   return (
     <View>
-      <Section label="PROJECT" icon="film">
-        <SetRow label="Status" value={p.status === "generated" ? "Generated" : "Draft"} first />
-        <SetRow label="Scenes" value={String(p.scenes?.length || 0)} />
-        <SetRow label="Exports" value={String(p.export_count || 0)} />
+      <Section label={t("editor:setProject")} icon="film">
+        <SetRow label={t("editor:setStatus")} value={p.status === "generated" ? t("editor:statusGenerated") : t("editor:statusDraft")} first />
+        <SetRow label={t("editor:setScenes")} value={String(p.scenes?.length || 0)} />
+        <SetRow label={t("editor:setExports")} value={String(p.export_count || 0)} />
       </Section>
-      <Section label="ACTIONS" icon="settings">
+      <Section label={t("editor:setActions")} icon="settings">
         <View style={{ gap: S.sm }}>
-          <Btn title={p.favorite ? "Remove from favorites" : "Add to favorites"} variant="ghost" icon={p.favorite ? "star" : "star-outline"} onPress={() => persist({ favorite: !p.favorite })} testID="set-fav" />
-          <Btn title={p.archived ? "Unarchive" : "Archive project"} variant="ghost" icon={p.archived ? "arrow-undo-outline" : "archive-outline"} onPress={() => persist({ archived: !p.archived })} testID="set-archive" />
-          <Btn title="Regenerate entire storyboard" variant="ghost" icon="sparkles-outline" loading={regenBusy} onPress={onRegen} testID="set-regen" />
-          <Btn title="Delete project" icon="trash-outline" onPress={() => setDel(true)} testID="set-delete" style={{ backgroundColor: C.error }} />
+          <Btn title={p.favorite ? t("editor:removeFav") : t("editor:addFav")} variant="ghost" icon={p.favorite ? "star" : "star-outline"} onPress={() => persist({ favorite: !p.favorite })} testID="set-fav" />
+          <Btn title={p.archived ? t("editor:unarchive") : t("editor:archive")} variant="ghost" icon={p.archived ? "arrow-undo-outline" : "archive-outline"} onPress={() => persist({ archived: !p.archived })} testID="set-archive" />
+          <Btn title={t("editor:regenAll")} variant="ghost" icon="sparkles-outline" loading={regenBusy} onPress={onRegen} testID="set-regen" />
+          <Btn title={t("editor:deleteProject")} icon="trash-outline" onPress={() => setDel(true)} testID="set-delete" style={{ backgroundColor: C.error }} />
         </View>
       </Section>
       <Modal visible={del} transparent animationType="fade" onRequestClose={() => setDel(false)}>
         <View style={styles.modalBg}><View style={styles.centerSheet}>
-          <Text style={styles.sheetTitle}>Delete project?</Text>
-          <Body muted style={{ marginBottom: S.lg }}>This cannot be undone.</Body>
-          <Btn title="Delete" style={{ backgroundColor: C.error, marginBottom: S.sm }} onPress={async () => { await api.deleteProject(id); router.replace("/projects"); }} testID="set-confirm-delete" />
-          <Btn title="Cancel" variant="ghost" onPress={() => setDel(false)} />
+          <Text style={styles.sheetTitle}>{t("editor:deleteTitle")}</Text>
+          <Body muted style={{ marginBottom: S.lg }}>{t("editor:deleteBody")}</Body>
+          <Btn title={t("common:delete")} style={{ backgroundColor: C.error, marginBottom: S.sm }} onPress={async () => { await api.deleteProject(id); router.replace("/projects"); }} testID="set-confirm-delete" />
+          <Btn title={t("common:cancel")} variant="ghost" onPress={() => setDel(false)} />
         </View></View>
       </Modal>
     </View>

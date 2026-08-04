@@ -1,0 +1,42 @@
+{
+  "summary": "Full backend + frontend validation of Admin Console (RBAC), configurable storage quotas in Billing, and the new STRICT evidence-grounded /api/briefs/analyze extraction. Backend pytest suite (17/17 PASS) covers: /api/admin/status returns {owner_exists:true, my_role, is_privileged, can_claim:false}; /api/admin/summary returns 200 for admin with users/projects/content/usage/storage(+quotas_gb free:5/pro:10/studio:15)/recent_users/health, and 403 for a fresh non-privileged user (also 403 on /admin/users, /admin/projects, /admin/audit); /api/admin/users lists users with role+projects+plan; /api/admin/projects returns cross-user projects (id/title/status/owner_email/scenes); /api/admin/audit returns entries; PATCH /api/admin/users/{uid}/role successfully changes a normal user to 'support' AND writes an audit entry with action='role_changed'; attempting to demote the owner (stefanoorofino@gmail.com) returns 403; POST /api/admin/claim-owner returns 403 for both admin and fresh users (owner already claimed); GET /api/billing/summary returns a storage object {label:'Cloud Storage Included', used_bytes, limit_bytes, used_label, limit_label:'5 GB', display:'0 MB / 5 GB', percent} and plans[] contain storage_gb 5/10/15 for free/pro/studio; POST /api/briefs/analyze with a 1-fact TXT ('The production budget is €25,000.') returns 200 with analysis.fields.budget.status='found' + sourceDocument='budget_only.txt' + non-empty evidenceSnippet, missing fields (e.g. deadline) return status='missing' with empty value, and NO 'found' field is missing evidence — the strict evidence gate is enforced. Response also contains a separate 'suggestions' array and a 'summary' with fieldsFound/fieldsMissing/fieldsAmbiguous/conflicts. Frontend E2E (mobile viewport 390x844, logged in as wsdesign@studio.com): /admin loads, Overview shows stat cards (Total Users 53, Projects 32, Generated 19, Scenes 115, AI Generations 7, Exports 0), ROLES row (Owner 1 · Admin 1 · Support 0 · User 51), SYSTEM HEALTH panel, and recent signups; Users tab renders the table (User/Role/Projects columns + 'Free Plan' subtext), tapping a non-owner row opens the role modal exposing testIDs role-user/role-support/role-admin; Projects tab renders cross-user rows; Audit tab (accessed by scrolling the tab strip — 'Audit' is truncated to 'Auc' on 390 width and needs scroll_into_view) renders the Role Changed / Owner Seeded entries. Settings screen shows the 'Admin Console — Manage platform' link with testID admin-link. Billing screen displays the Cloud Storage card with 'Cloud Storage Included · 0 MB / 5 GB', a progress bar and the storage note. Workspace regression (project 6fcd0548e5f3): all 10 DS tabs (Overview/Storyboard/Script/Shot List/Equipment/Crew/Schedule/Budget/Exports/Settings) render without crash and all header testIDs (editor-back, undo-btn, redo-btn, export-btn, director-open) are present. Only console noise is the pre-existing React 19 'element.ref was removed' warning from react-native-draggable-flatlist (already flagged in iteration_15) plus the pre-existing shadow*/pointerEvents deprecation warnings.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin (mobile 390)", "issues": ["The 4th DS tab label ('Audit') is truncated to 'Auc…' on 390px width — the tab strip is horizontally scrollable, but the truncation is visible on first paint and makes the Audit tab hard to discover. Consider shortening the label (e.g. 'Log') or reducing tab padding so all 4 labels fit on a 390 screen. Not a blocker — the tab still works when scrolled into view."]}
+    ],
+    "react_native_issues": [
+      {"component": "DraggableFlatList (react-native-draggable-flatlist) on Storyboard tab", "issue": "Pre-existing (iteration_15) React 19 console.error 'Accessing element.ref was removed in React 19. ref is now a regular prop.' fires whenever the Storyboard tab mounts. Non-blocking. Reference: /app/frontend/app/project/[id].tsx:780-800"},
+      {"component": "shadow* deprecated style props", "issue": "Pre-existing 'shadow* style props are deprecated. Use boxShadow' warnings across the admin + workspace screens."},
+      {"component": "props.pointerEvents deprecated", "issue": "Pre-existing 'props.pointerEvents is deprecated. Use style.pointerEvents' warning (ToastProvider). Reference: /app/frontend/src/ui/DS.tsx:135."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_billing_brief.py",
+    "/app/test_reports/pytest/iter16_admin_billing_brief.xml"
+  ],
+  "action_items": [
+    "MINOR/UX: On 390-width mobile the /admin DS tab strip truncates 'Audit' to 'Auc…'. Either shorten one of the labels, reduce tab padding, or add a right-edge fade indicator so users know the tab strip scrolls horizontally.",
+    "MINOR: Pre-existing i18n missing key '[i18n] Missing key: common:actions.open' still surfaces on dashboard (flagged in iteration_15).",
+    "MINOR: Pre-existing react-native-draggable-flatlist React-19 'element.ref' console.error still fires on the Storyboard tab (flagged in iteration_15).",
+    "MINOR: Migrate remaining shadow* -> boxShadow and pointerEvents prop -> style.pointerEvents (flagged in iteration_14/15)."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/admin.py owner protection is correctly enforced in change_role (owner->non-owner returns 403) AND non-owner cannot grant owner. Good defense-in-depth.",
+    "/app/backend/billing.py cleanly separates STORAGE_GB (env-configurable) from the plan catalog; public_plans() adds storage_gb + storage_bytes so the UI never has to hard-code quotas. Good.",
+    "/app/backend/brief_service.py _norm_field enforces the strict evidence gate: a value without sourceDocument+evidenceSnippet is downgraded from 'found' to 'ambiguous' and moved into possibleValues, and 'missing' fields have value cleared to ''. Exactly matches the requirement. Suggestions are kept in a separate top-level array so document facts and creative recommendations never mix.",
+    "/app/frontend/app/admin.tsx is well-structured (Table + DSTabs + role modal) with testIDs role-{user|support|admin|owner}, admin-back, claim-owner. Nice.",
+    "Non-blocking: consider adding testIDs for each DS tab (e.g. testID='admin-tab-audit') to make E2E navigation deterministic and avoid the truncated-label click issue documented above."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_billing_brief.py (new pytest file, 17 tests)"
+  ],
+  "success_rate": {"backend": "100% (17/17 pytest tests pass)", "frontend": "100% on core admin + billing + settings + workspace regression flows (all 10 workspace tabs, all admin tabs incl. role modal, billing storage card, settings admin-link)"},
+  "seed_data_creation": "Two fresh test users were auto-registered via /api/auth/register during the pytest run (emails fresh_<hex>@test.io). One of them was temporarily promoted to 'support' and then reset back to 'user' inside the same test — no residual role state. No owner or admin (wsdesign) records were modified. The audit collection now contains extra 'role_changed' entries for this fresh user (these are expected and intentional — they prove the audit path).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "iteration_16 fully validates the Admin RBAC + storage quotas + strict brief extraction changes. Backend test file /app/backend/tests/test_admin_billing_brief.py is idempotent (creates fresh users each run, resets role back to 'user') and can be re-run safely — it will however keep appending role_changed entries to db.audit_logs, which is by design. If /api/briefs/analyze is running under mock_mode the strict-evidence assertions are skipped (the test tolerates it and only enforces shape) — the live run for this iteration did NOT run in mock_mode (found budget with cited evidence). Owner claim is CLOSED (owner_bootstrap singleton exists for stefanoorofino@gmail.com). On mobile 390 the /admin Audit tab label is visually truncated; use scroll_into_view_if_needed() before clicking it in future scripts.",
+  "rca_of_issue": "N/A — no regressions or bugs found. The single UX nit (Audit label truncation on 390) is documented under design_issues but is not a functional defect."
+}
