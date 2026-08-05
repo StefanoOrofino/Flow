@@ -3,6 +3,7 @@ import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/src/auth";
 import { useTheme } from "@/src/ThemeProvider";
+import Landing from "./landing";
 
 export default function Index() {
   const { user, loading } = useAuth();
@@ -12,14 +13,19 @@ export default function Index() {
   useEffect(() => {
     if (loading) return;
     if (user) router.replace("/dashboard");
-    else router.replace("/login");
   }, [user, loading]);
 
-  return (
-    <View style={[styles.c, { backgroundColor: C.surface }]} testID="splash-screen">
-      <ActivityIndicator color={C.brand} size="large" />
-    </View>
-  );
+  // While auth is resolving, or once a user is present (redirecting to dashboard),
+  // show a splash. Logged-out visitors see the public marketing landing page.
+  if (loading || user) {
+    return (
+      <View style={[styles.c, { backgroundColor: C.surface }]} testID="splash-screen">
+        <ActivityIndicator color={C.brand} size="large" />
+      </View>
+    );
+  }
+
+  return <Landing />;
 }
 
 const styles = StyleSheet.create({

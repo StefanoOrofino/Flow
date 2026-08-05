@@ -4,57 +4,21 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
+import { useLanguage } from "@/src/LanguageProvider";
 import { Icon } from "@/src/ui/Icon";
-import { LogoMark } from "@/src/components";
+import { LogoMark } from "@/src/brand/FrameFlowLogo";
 
-/* ---------------- data ---------------- */
-const NAV = [
-  { key: "features", label: "Features" },
-  { key: "how", label: "How it Works" },
-  { key: "pricing", label: "Pricing" },
-  { key: "faq", label: "FAQ" },
-];
-
-const STEPS = [
-  { icon: "upload", title: "Upload Brief", desc: "Drop in the client brief — PDFs, docs and reference images." },
-  { icon: "wand", title: "AI Analysis", desc: "Our AI reads every document and extracts the facts, with sources." },
-  { icon: "eye", title: "Review", desc: "Confirm the extracted facts. Nothing is invented — every value is cited." },
-  { icon: "sparkles", title: "Generate", desc: "Produce concept, treatment, script, storyboard and shot list." },
-  { icon: "users", title: "Collaborate", desc: "Share client review links and iterate together in real time." },
-  { icon: "download", title: "Export", desc: "Deliver a beautiful, production-ready PDF package." },
-];
-
-const FEATURES = [
-  { icon: "wand", title: "AI Director", desc: "A creative co-pilot that refines any scene, tone or shot on command." },
-  { icon: "file-text", title: "Client Brief Import", desc: "Turn messy briefs into a structured, source-verified project." },
-  { icon: "clapperboard", title: "Storyboard", desc: "AI-generated frames with an inline, drag-and-drop editor." },
-  { icon: "file-text", title: "Script Writer", desc: "Screenplay-formatted narrative, dialogue and voice-over." },
-  { icon: "list-checks", title: "Shot List", desc: "Every shot, angle and movement in one production-ready table." },
-  { icon: "camera", title: "Equipment", desc: "Recommended camera, lenses, lighting and audio for the shoot." },
-  { icon: "users", title: "Crew", desc: "Suggested crew roles scaled to your production level." },
-  { icon: "calendar", title: "Schedule", desc: "A realistic shooting schedule and time breakdown." },
-  { icon: "wallet", title: "Budget", desc: "Estimated budget ranges from low to premium." },
-  { icon: "share", title: "Client Review", desc: "Elegant shareable links for feedback and approvals." },
-  { icon: "printer", title: "PDF Export", desc: "A polished package clients and crew will love." },
-];
-
-const PRICING = [
-  { id: "free", name: "Free", price: "€0", per: "forever", rec: false,
-    feats: ["3 active projects", "20 AI generations / mo", "10 storyboard images / mo", "5 PDF exports / mo", "5 GB cloud storage"] },
-  { id: "pro", name: "Pro", price: "€19", per: "/ month", rec: true,
-    feats: ["25 active projects", "500 AI generations / mo", "300 storyboard images / mo", "Unlimited PDF exports", "10 GB cloud storage", "Priority AI Director"] },
-  { id: "studio", name: "Studio", price: "€49", per: "/ month", rec: false,
-    feats: ["Unlimited projects", "Unlimited AI generations", "1500 storyboard images / mo", "Team seats & portals", "15 GB cloud storage"] },
-];
-
-const FAQ = [
-  { q: "How does the AI use my client brief?", a: "FrameFlow reads your uploaded documents and images and extracts only the facts that are explicitly stated — each with a cited source. It never invents information; missing details stay empty for you to confirm." },
-  { q: "Is my data private?", a: "Your briefs and projects are yours. We use your content only to generate your production package, never to train public models." },
-  { q: "Can I export and share with clients?", a: "Yes — export a beautiful PDF package or share an elegant client review link for feedback and approvals." },
-  { q: "Do I need creative or technical skills?", a: "No. Describe your project or drop a brief, and FrameFlow assembles a professional pre-production package you can refine." },
-  { q: "Can I cancel anytime?", a: "Absolutely. Plans are month-to-month and you can upgrade, downgrade or cancel whenever you like." },
+/* ---------------- structural metadata (icons/ids only; text via i18n) ---------------- */
+const NAV_KEYS = ["features", "how", "pricing", "faq"] as const;
+const STEP_ICONS = ["upload", "wand", "eye", "sparkles", "users", "download"];
+const FEATURE_ICONS = ["wand", "file-text", "clapperboard", "file-text", "list-checks", "camera", "users", "calendar", "wallet", "share", "printer"];
+const PRICING_META = [
+  { id: "free", rec: false },
+  { id: "pro", rec: true },
+  { id: "studio", rec: false },
 ];
 
 /* ---------------- mock product visual ---------------- */
@@ -107,6 +71,12 @@ export default function Landing() {
   const { width } = useWindowDimensions();
   const wide = width > 900;
   const mid = width > 620;
+  const { t } = useTranslation("landing");
+  const { currentLanguage, setLanguage } = useLanguage();
+
+  const steps = t("how.steps", { returnObjects: true }) as { title: string; desc: string }[];
+  const features = t("features.cards", { returnObjects: true }) as { title: string; desc: string }[];
+  const faqs = t("faq.items", { returnObjects: true }) as { q: string; a: string }[];
 
   const scrollRef = useRef<ScrollView>(null);
   const secY = useRef<Record<string, number>>({});
@@ -115,6 +85,7 @@ export default function Landing() {
 
   const startFree = () => router.push("/signup");
   const login = () => router.push("/login");
+  const toggleLang = () => setLanguage(currentLanguage === "it" ? "en" : "it");
 
   return (
     <View style={{ flex: 1, backgroundColor: C.surface }}>
@@ -127,15 +98,16 @@ export default function Landing() {
           </Pressable>
           {wide && (
             <View style={styles.navLinks}>
-              {NAV.map((n) => (
-                <Pressable key={n.key} onPress={() => goTo(n.key)}><Text style={styles.navLink}>{n.label}</Text></Pressable>
+              {NAV_KEYS.map((k) => (
+                <Pressable key={k} onPress={() => goTo(k)}><Text style={styles.navLink}>{t(`nav.${k}`)}</Text></Pressable>
               ))}
             </View>
           )}
           <View style={styles.navRight}>
+            <Pressable onPress={toggleLang} hitSlop={8} style={styles.langBtn}><Text style={styles.langTxt}>{currentLanguage.toUpperCase()}</Text></Pressable>
             <Pressable onPress={toggle} hitSlop={8} style={styles.navIcon}><Icon name={scheme === "dark" ? "sun" : "moon"} size={17} color={C.onSurface2} /></Pressable>
-            {mid && <Pressable onPress={login}><Text style={styles.navLink}>Login</Text></Pressable>}
-            <Pressable onPress={startFree} style={styles.navCta}><Text style={styles.navCtaTxt}>Start Free</Text></Pressable>
+            {mid && <Pressable onPress={login}><Text style={styles.navLink}>{t("nav.login")}</Text></Pressable>}
+            <Pressable onPress={startFree} style={styles.navCta}><Text style={styles.navCtaTxt}>{t("nav.startFree")}</Text></Pressable>
           </View>
         </View>
       </View>
@@ -147,12 +119,12 @@ export default function Landing() {
           <View style={styles.heroGlow} />
           <View style={[styles.section, { alignItems: "center", paddingTop: wide ? 96 : 64 }]}>
             <Animated.View entering={FadeInDown.duration(500)} style={{ alignItems: "center" }}>
-              <View style={styles.pill}><Icon name="sparkles" size={13} color={C.brand} /><Text style={styles.pillTxt}>AI pre-production, reinvented</Text></View>
-              <Text style={[styles.h1, { fontSize: wide ? 60 : mid ? 46 : 36, maxWidth: 900 }]}>The AI Production Suite for Filmmakers</Text>
-              <Text style={[styles.lead, { maxWidth: 620 }]}>Turn a client brief into a complete production package in minutes — concept, script, storyboard, shot list and more.</Text>
+              <View style={styles.pill}><Icon name="sparkles" size={13} color={C.brand} /><Text style={styles.pillTxt}>{t("hero.badge")}</Text></View>
+              <Text style={[styles.h1, { fontSize: wide ? 60 : mid ? 46 : 36, lineHeight: (wide ? 60 : mid ? 46 : 36) * 1.14, maxWidth: 900 }]}>{t("hero.title")}</Text>
+              <Text style={[styles.lead, { maxWidth: 620 }]}>{t("hero.subtitle")}</Text>
               <View style={styles.heroCtas}>
-                <Pressable onPress={startFree} style={styles.ctaPrimary}><Text style={styles.ctaPrimaryTxt}>Start Free</Text><Icon name="arrow-right" size={17} color={C.onBrand} strokeWidth={2.5} /></Pressable>
-                <Pressable onPress={() => goTo("how")} style={styles.ctaGhost}><Icon name="play" size={15} color={C.onSurface} /><Text style={styles.ctaGhostTxt}>Watch Demo</Text></Pressable>
+                <Pressable onPress={startFree} style={styles.ctaPrimary}><Text style={styles.ctaPrimaryTxt}>{t("nav.startFree")}</Text><Icon name="arrow-right" size={17} color={C.onBrand} strokeWidth={2.5} /></Pressable>
+                <Pressable onPress={() => goTo("how")} style={styles.ctaGhost}><Icon name="play" size={15} color={C.onSurface} /><Text style={styles.ctaGhostTxt}>{t("hero.watchDemo")}</Text></Pressable>
               </View>
             </Animated.View>
             <Animated.View entering={FadeInDown.duration(600).delay(150)} style={{ width: "100%", maxWidth: 960, marginTop: wide ? 56 : 36 }}>
@@ -163,7 +135,7 @@ export default function Landing() {
 
         {/* TRUST */}
         <View style={[styles.section, styles.trust]}>
-          <Text style={styles.trustLbl}>TRUSTED BY FILMMAKERS, AGENCIES & PRODUCTION COMPANIES</Text>
+          <Text style={styles.trustLbl}>{t("trust.label")}</Text>
           <View style={styles.trustRow}>
             {["Aurora Films", "Northlight", "Studio Vero", "Mira Agency", "Kinetic"].map((b) => (
               <Text key={b} style={styles.trustName}>{b}</Text>
@@ -173,17 +145,17 @@ export default function Landing() {
 
         {/* PROBLEM / SOLUTION */}
         <View style={styles.section} onLayout={onSec("features")}>
-          <SectionHead C={C} styles={styles} kicker="THE PROBLEM" title="Pre-production is scattered and slow" />
+          <SectionHead C={C} styles={styles} kicker={t("problem.kicker")} title={t("problem.title")} />
           <View style={[styles.twoCol, !mid && { flexDirection: "column" }]}>
             <View style={[styles.problemCard, { borderColor: C.border }]}>
-              <Text style={styles.problemLbl}>Without FrameFlow</Text>
-              {["Scattered briefs & email threads", "Disconnected tools", "Hours of manual planning", "Repeated, duplicated work"].map((x) => (
+              <Text style={styles.problemLbl}>{t("problem.withoutLabel")}</Text>
+              {(t("problem.without", { returnObjects: true }) as string[]).map((x) => (
                 <View key={x} style={styles.bullet}><Icon name="x" size={15} color={C.onSurface3} /><Text style={styles.bulletTxtMuted}>{x}</Text></View>
               ))}
             </View>
             <View style={[styles.problemCard, styles.problemCardGood]}>
-              <Text style={[styles.problemLbl, { color: C.brand }]}>With FrameFlow</Text>
-              {["One AI-powered production workspace", "Brief → package in minutes", "Source-verified, never invented", "Share, review and export beautifully"].map((x) => (
+              <Text style={[styles.problemLbl, { color: C.brand }]}>{t("problem.withLabel")}</Text>
+              {(t("problem.with", { returnObjects: true }) as string[]).map((x) => (
                 <View key={x} style={styles.bullet}><Icon name="check" size={15} color={C.brand} strokeWidth={2.5} /><Text style={styles.bulletTxt}>{x}</Text></View>
               ))}
             </View>
@@ -192,12 +164,12 @@ export default function Landing() {
 
         {/* HOW IT WORKS */}
         <View style={[styles.section, styles.altBg]} onLayout={onSec("how")}>
-          <SectionHead C={C} styles={styles} kicker="HOW IT WORKS" title="From brief to package in six steps" />
+          <SectionHead C={C} styles={styles} kicker={t("how.kicker")} title={t("how.title")} />
           <View style={styles.stepsGrid}>
-            {STEPS.map((s, i) => (
-              <Animated.View key={s.title} entering={FadeInDown.duration(400).delay(i * 60)} style={[styles.stepCard, wide ? { width: "31.5%" } : mid ? { width: "48%" } : { width: "100%" }]}>
+            {steps.map((s, i) => (
+              <Animated.View key={i} entering={FadeInDown.duration(400).delay(i * 60)} style={[styles.stepCard, wide ? { width: "31.5%" } : mid ? { width: "48%" } : { width: "100%" }]}>
                 <View style={styles.stepNum}><Text style={styles.stepNumTxt}>{i + 1}</Text></View>
-                <View style={styles.stepIcon}><Icon name={s.icon as any} size={18} color={C.brand} strokeWidth={2} /></View>
+                <View style={styles.stepIcon}><Icon name={STEP_ICONS[i] as any} size={18} color={C.brand} strokeWidth={2} /></View>
                 <Text style={styles.stepTitle}>{s.title}</Text>
                 <Text style={styles.stepDesc}>{s.desc}</Text>
               </Animated.View>
@@ -209,16 +181,16 @@ export default function Landing() {
         <View style={styles.section}>
           <View style={[styles.brief, !wide && { flexDirection: "column" }]}>
             <View style={{ flex: 1, justifyContent: "center" }}>
-              <Text style={styles.kicker}>THE CLIENT BRIEF WORKFLOW</Text>
-              <Text style={styles.h2}>Upload a brief. Get a project.</Text>
-              <Text style={styles.para}>Drop in a PDF and reference images. FrameFlow reads every page, extracts the facts with citations, auto-fills your project, and generates a complete production package — all in minutes.</Text>
-              {["Upload PDF & images", "AI reads the documents", "Extracts information (with sources)", "Auto-fills the project", "Generates the package"].map((x, i) => (
+              <Text style={styles.kicker}>{t("brief.kicker")}</Text>
+              <Text style={styles.h2}>{t("brief.title")}</Text>
+              <Text style={styles.para}>{t("brief.para")}</Text>
+              {(t("brief.steps", { returnObjects: true }) as string[]).map((x, i) => (
                 <View key={x} style={styles.flowRow}>
                   <View style={styles.flowNum}><Text style={styles.flowNumTxt}>{i + 1}</Text></View>
                   <Text style={styles.flowTxt}>{x}</Text>
                 </View>
               ))}
-              <Pressable onPress={startFree} style={[styles.ctaPrimary, { alignSelf: "flex-start", marginTop: S.lg }]}><Text style={styles.ctaPrimaryTxt}>Try it Free</Text><Icon name="arrow-right" size={16} color={C.onBrand} strokeWidth={2.5} /></Pressable>
+              <Pressable onPress={startFree} style={[styles.ctaPrimary, { alignSelf: "flex-start", marginTop: S.lg }]}><Text style={styles.ctaPrimaryTxt}>{t("brief.cta")}</Text><Icon name="arrow-right" size={16} color={C.onBrand} strokeWidth={2.5} /></Pressable>
             </View>
             <View style={{ flex: 1 }}><MockFrame C={C} styles={styles} tall /></View>
           </View>
@@ -226,11 +198,11 @@ export default function Landing() {
 
         {/* FEATURES GRID */}
         <View style={[styles.section, styles.altBg]}>
-          <SectionHead C={C} styles={styles} kicker="EVERYTHING YOU NEED" title="One workspace. The whole production." />
+          <SectionHead C={C} styles={styles} kicker={t("features.kicker")} title={t("features.title")} />
           <View style={styles.featGrid}>
-            {FEATURES.map((f, i) => (
-              <Animated.View key={f.title} entering={FadeInDown.duration(360).delay(i * 40)} style={[styles.featCard, wide ? { width: "31.5%" } : mid ? { width: "48%" } : { width: "100%" }]}>
-                <View style={styles.featIcon}><Icon name={f.icon as any} size={18} color={C.brand} strokeWidth={2} /></View>
+            {features.map((f, i) => (
+              <Animated.View key={i} entering={FadeInDown.duration(360).delay(i * 40)} style={[styles.featCard, wide ? { width: "31.5%" } : mid ? { width: "48%" } : { width: "100%" }]}>
+                <View style={styles.featIcon}><Icon name={FEATURE_ICONS[i] as any} size={18} color={C.brand} strokeWidth={2} /></View>
                 <Text style={styles.featTitle}>{f.title}</Text>
                 <Text style={styles.featDesc}>{f.desc}</Text>
               </Animated.View>
@@ -241,39 +213,43 @@ export default function Landing() {
         {/* STORYBOARD showcase */}
         <View style={styles.section}>
           <View style={{ alignItems: "center", marginBottom: S.xl }}>
-            <Text style={styles.kicker}>STORYBOARD</Text>
-            <Text style={[styles.h2, { textAlign: "center" }]}>See your film before you shoot it</Text>
+            <Text style={styles.kicker}>{t("storyboard.kicker")}</Text>
+            <Text style={[styles.h2, { textAlign: "center" }]}>{t("storyboard.title")}</Text>
           </View>
           <View style={{ maxWidth: 960, width: "100%", alignSelf: "center" }}><MockFrame C={C} styles={styles} /></View>
         </View>
 
         {/* PRICING */}
         <View style={[styles.section, styles.altBg]} onLayout={onSec("pricing")}>
-          <SectionHead C={C} styles={styles} kicker="PRICING" title="Simple, transparent pricing" />
+          <SectionHead C={C} styles={styles} kicker={t("pricing.kicker")} title={t("pricing.title")} />
           <View style={styles.priceGrid}>
-            {PRICING.map((p) => (
-              <View key={p.id} style={[styles.priceCard, p.rec && styles.priceCardRec]}>
-                {p.rec && <View style={styles.recBadge}><Text style={styles.recBadgeTxt}>MOST POPULAR</Text></View>}
-                <Text style={styles.priceName}>{p.name}</Text>
-                <View style={styles.priceRow}><Text style={styles.priceVal}>{p.price}</Text><Text style={styles.pricePer}>{p.per}</Text></View>
-                <Pressable onPress={startFree} style={[styles.priceCta, p.rec ? styles.priceCtaGold : styles.priceCtaGhost]}>
-                  <Text style={[styles.priceCtaTxt, p.rec ? { color: C.onBrand } : { color: C.onSurface }]}>{p.id === "free" ? "Start Free" : "Get " + p.name}</Text>
-                </Pressable>
-                <View style={{ marginTop: S.md, gap: 10 }}>
-                  {p.feats.map((f) => (
-                    <View key={f} style={styles.bullet}><Icon name="check" size={15} color={C.brand} strokeWidth={2.5} /><Text style={styles.bulletTxt}>{f}</Text></View>
-                  ))}
+            {PRICING_META.map((p) => {
+              const name = t(`pricing.plans.${p.id}.name`);
+              const feats = t(`pricing.plans.${p.id}.feats`, { returnObjects: true }) as string[];
+              return (
+                <View key={p.id} style={[styles.priceCard, p.rec && styles.priceCardRec]}>
+                  {p.rec && <View style={styles.recBadge}><Text style={styles.recBadgeTxt}>{t("pricing.mostPopular")}</Text></View>}
+                  <Text style={styles.priceName}>{name}</Text>
+                  <View style={styles.priceRow}><Text style={styles.priceVal}>{t(`pricing.plans.${p.id}.price`)}</Text><Text style={styles.pricePer}>{t(`pricing.plans.${p.id}.per`)}</Text></View>
+                  <Pressable onPress={startFree} style={[styles.priceCta, p.rec ? styles.priceCtaGold : styles.priceCtaGhost]}>
+                    <Text style={[styles.priceCtaTxt, p.rec ? { color: C.onBrand } : { color: C.onSurface }]}>{p.id === "free" ? t("pricing.startFree") : t("pricing.getPlan", { name })}</Text>
+                  </Pressable>
+                  <View style={{ marginTop: S.md, gap: 10 }}>
+                    {feats.map((f) => (
+                      <View key={f} style={styles.bullet}><Icon name="check" size={15} color={C.brand} strokeWidth={2.5} /><Text style={styles.bulletTxt}>{f}</Text></View>
+                    ))}
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
 
         {/* FAQ */}
         <View style={styles.section} onLayout={onSec("faq")}>
-          <SectionHead C={C} styles={styles} kicker="FAQ" title="Questions, answered" />
+          <SectionHead C={C} styles={styles} kicker={t("faq.kicker")} title={t("faq.title")} />
           <View style={{ maxWidth: 760, width: "100%", alignSelf: "center" }}>
-            {FAQ.map((f, i) => <FaqItem key={i} f={f} C={C} styles={styles} />)}
+            {faqs.map((f, i) => <FaqItem key={i} f={f} C={C} styles={styles} />)}
           </View>
         </View>
 
@@ -282,9 +258,9 @@ export default function Landing() {
           <View style={styles.finalCta}>
             <LinearGradient colors={["#241E13", "#15130E"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             <View style={styles.heroGlow} />
-            <Text style={[styles.h2, { color: "#F5F1E8", textAlign: "center" }]}>Ready to produce faster?</Text>
-            <Text style={[styles.lead, { color: "rgba(245,241,232,0.7)", textAlign: "center" }]}>Start free — no credit card required.</Text>
-            <Pressable onPress={startFree} style={[styles.ctaPrimary, { marginTop: S.lg }]}><Text style={styles.ctaPrimaryTxt}>Start Free</Text><Icon name="arrow-right" size={17} color={C.onBrand} strokeWidth={2.5} /></Pressable>
+            <Text style={[styles.h2, { color: "#F5F1E8", textAlign: "center" }]}>{t("finalCta.title")}</Text>
+            <Text style={[styles.lead, { color: "rgba(245,241,232,0.7)", textAlign: "center" }]}>{t("finalCta.subtitle")}</Text>
+            <Pressable onPress={startFree} style={[styles.ctaPrimary, { marginTop: S.lg }]}><Text style={styles.ctaPrimaryTxt}>{t("finalCta.cta")}</Text><Icon name="arrow-right" size={17} color={C.onBrand} strokeWidth={2.5} /></Pressable>
           </View>
         </View>
 
@@ -293,15 +269,15 @@ export default function Landing() {
           <View style={[styles.footerInner, !mid && { flexDirection: "column", gap: S.xl }]}>
             <View style={{ maxWidth: 280 }}>
               <View style={styles.brand}><LogoMark color={C.brand} size={20} /><Text style={styles.brandTxt}>FrameFlow</Text></View>
-              <Text style={styles.footNote}>The AI production suite for filmmakers, videographers and agencies.</Text>
+              <Text style={styles.footNote}>{t("footer.note")}</Text>
             </View>
             <View style={styles.footCols}>
-              <FootCol styles={styles} title="Company" items={["About", "Careers", "Contact"]} />
-              <FootCol styles={styles} title="Resources" items={["Blog", "Guides", "Support"]} />
-              <FootCol styles={styles} title="Legal" items={["Privacy", "Terms"]} />
+              <FootCol styles={styles} title={t("footer.companyTitle")} items={t("footer.company", { returnObjects: true }) as string[]} />
+              <FootCol styles={styles} title={t("footer.resourcesTitle")} items={t("footer.resources", { returnObjects: true }) as string[]} />
+              <FootCol styles={styles} title={t("footer.legalTitle")} items={t("footer.legal", { returnObjects: true }) as string[]} />
             </View>
           </View>
-          <Text style={styles.copyright}>© 2026 FrameFlow Studio. All rights reserved.</Text>
+          <Text style={styles.copyright}>{t("footer.copyright")}</Text>
         </View>
       </ScrollView>
     </View>
@@ -346,6 +322,8 @@ const createStyles = (C: Palette) => StyleSheet.create({
   navLink: { color: C.onSurface2, fontFamily: F.text, fontSize: 14, fontWeight: "500" },
   navRight: { flexDirection: "row", alignItems: "center", gap: S.md },
   navIcon: { width: 34, height: 34, borderRadius: R.md, alignItems: "center", justifyContent: "center" },
+  langBtn: { width: 34, height: 34, borderRadius: R.md, alignItems: "center", justifyContent: "center", borderWidth: StyleSheet.hairlineWidth, borderColor: C.border },
+  langTxt: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, fontWeight: "700", letterSpacing: 0.5 },
   navCta: { backgroundColor: C.brand, borderRadius: R.pill, paddingHorizontal: S.lg, paddingVertical: 9 },
   navCtaTxt: { color: C.onBrand, fontFamily: F.text, fontSize: 13.5, fontWeight: "700" },
 
@@ -386,7 +364,7 @@ const createStyles = (C: Palette) => StyleSheet.create({
   trustName: { color: C.onSurface2, fontFamily: F.display, fontSize: 20, fontWeight: "600" },
 
   kicker: { color: C.brand, fontFamily: F.text, fontSize: 12, letterSpacing: 2, fontWeight: "700", textAlign: "center", marginBottom: 10 },
-  h2: { color: C.onSurface, fontFamily: F.display, fontSize: 34, fontWeight: "500", letterSpacing: -0.5, alignSelf: "center" },
+  h2: { color: C.onSurface, fontFamily: F.display, fontSize: 34, lineHeight: 40, fontWeight: "500", letterSpacing: -0.5, alignSelf: "center" },
   para: { color: C.onSurface2, fontFamily: F.text, fontSize: 15.5, lineHeight: 25, marginTop: S.md, marginBottom: S.lg },
 
   twoCol: { flexDirection: "row", gap: S.lg },

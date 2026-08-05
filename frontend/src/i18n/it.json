@@ -564,5 +564,237 @@
     "deleteProject": "Elimina progetto",
     "deleteTitle": "Eliminare il progetto?",
     "deleteBody": "L’operazione non può essere annullata."
+  },
+  "landing": {
+    "nav": {
+      "features": "Funzionalità",
+      "how": "Come Funziona",
+      "pricing": "Prezzi",
+      "faq": "FAQ",
+      "login": "Accedi",
+      "startFree": "Inizia Gratis"
+    },
+    "hero": {
+      "badge": "La pre-produzione con l'AI, reinventata",
+      "title": "La Suite di Produzione AI per Filmmaker",
+      "subtitle": "Trasforma un brief del cliente in un pacchetto di produzione completo in pochi minuti — concept, sceneggiatura, storyboard, shot list e altro ancora.",
+      "watchDemo": "Guarda la Demo"
+    },
+    "trust": {
+      "label": "SCELTO DA FILMMAKER, AGENZIE E CASE DI PRODUZIONE"
+    },
+    "problem": {
+      "kicker": "IL PROBLEMA",
+      "title": "La pre-produzione è dispersiva e lenta",
+      "withoutLabel": "Senza FrameFlow",
+      "withLabel": "Con FrameFlow",
+      "without": [
+        "Brief sparsi e catene di email",
+        "Strumenti scollegati tra loro",
+        "Ore di pianificazione manuale",
+        "Lavoro ripetuto e duplicato"
+      ],
+      "with": [
+        "Un unico workspace di produzione con l'AI",
+        "Dal brief al pacchetto in pochi minuti",
+        "Verificato dalle fonti, mai inventato",
+        "Condividi, revisiona ed esporta con eleganza"
+      ]
+    },
+    "how": {
+      "kicker": "COME FUNZIONA",
+      "title": "Dal brief al pacchetto in sei passi",
+      "steps": [
+        {
+          "title": "Carica il Brief",
+          "desc": "Trascina il brief del cliente — PDF, documenti e immagini di riferimento."
+        },
+        {
+          "title": "Analisi AI",
+          "desc": "La nostra AI legge ogni documento ed estrae i dati, con le fonti."
+        },
+        {
+          "title": "Revisione",
+          "desc": "Conferma i dati estratti. Nulla è inventato — ogni valore è citato."
+        },
+        {
+          "title": "Genera",
+          "desc": "Crea concept, treatment, sceneggiatura, storyboard e shot list."
+        },
+        {
+          "title": "Collabora",
+          "desc": "Condividi link di revisione con il cliente e itera insieme in tempo reale."
+        },
+        {
+          "title": "Esporta",
+          "desc": "Consegna un pacchetto PDF elegante e pronto per la produzione."
+        }
+      ]
+    },
+    "brief": {
+      "kicker": "IL FLUSSO DEL BRIEF CLIENTE",
+      "title": "Carica un brief. Ottieni un progetto.",
+      "para": "Trascina un PDF e le immagini di riferimento. FrameFlow legge ogni pagina, estrae i dati con le citazioni, compila automaticamente il progetto e genera un pacchetto di produzione completo — tutto in pochi minuti.",
+      "steps": [
+        "Carica PDF e immagini",
+        "L'AI legge i documenti",
+        "Estrae le informazioni (con le fonti)",
+        "Compila automaticamente il progetto",
+        "Genera il pacchetto"
+      ],
+      "cta": "Provalo Gratis"
+    },
+    "features": {
+      "kicker": "TUTTO CIÒ CHE TI SERVE",
+      "title": "Un unico workspace. L'intera produzione.",
+      "cards": [
+        {
+          "title": "AI Director",
+          "desc": "Un co-pilota creativo che affina qualsiasi scena, tono o inquadratura a comando."
+        },
+        {
+          "title": "Import Brief Cliente",
+          "desc": "Trasforma brief caotici in un progetto strutturato e verificato dalle fonti."
+        },
+        {
+          "title": "Storyboard",
+          "desc": "Fotogrammi generati dall'AI con editor inline e drag-and-drop."
+        },
+        {
+          "title": "Sceneggiatura",
+          "desc": "Narrazione, dialoghi e voce fuori campo in formato copione."
+        },
+        {
+          "title": "Shot List",
+          "desc": "Ogni inquadratura, angolo e movimento in un'unica tabella pronta per la produzione."
+        },
+        {
+          "title": "Attrezzatura",
+          "desc": "Camera, ottiche, luci e audio consigliati per le riprese."
+        },
+        {
+          "title": "Troupe",
+          "desc": "Ruoli della troupe suggeriti in base al livello di produzione."
+        },
+        {
+          "title": "Programma",
+          "desc": "Un piano di riprese realistico con la suddivisione dei tempi."
+        },
+        {
+          "title": "Budget",
+          "desc": "Stime di budget dalla fascia base a quella premium."
+        },
+        {
+          "title": "Revisione Cliente",
+          "desc": "Link condivisibili ed eleganti per feedback e approvazioni."
+        },
+        {
+          "title": "Esportazione PDF",
+          "desc": "Un pacchetto curato che clienti e troupe adoreranno."
+        }
+      ]
+    },
+    "storyboard": {
+      "kicker": "STORYBOARD",
+      "title": "Vedi il tuo film prima di girarlo"
+    },
+    "pricing": {
+      "kicker": "PREZZI",
+      "title": "Prezzi semplici e trasparenti",
+      "startFree": "Inizia Gratis",
+      "getPlan": "Scegli {{name}}",
+      "mostPopular": "PIÙ POPOLARE",
+      "plans": {
+        "free": {
+          "name": "Free",
+          "price": "€0",
+          "per": "per sempre",
+          "feats": [
+            "3 progetti attivi",
+            "20 generazioni AI / mese",
+            "10 immagini storyboard / mese",
+            "5 esportazioni PDF / mese",
+            "5 GB di spazio cloud"
+          ]
+        },
+        "pro": {
+          "name": "Pro",
+          "price": "€19",
+          "per": "/ mese",
+          "feats": [
+            "25 progetti attivi",
+            "500 generazioni AI / mese",
+            "300 immagini storyboard / mese",
+            "Esportazioni PDF illimitate",
+            "10 GB di spazio cloud",
+            "AI Director prioritario"
+          ]
+        },
+        "studio": {
+          "name": "Studio",
+          "price": "€49",
+          "per": "/ mese",
+          "feats": [
+            "Progetti illimitati",
+            "Generazioni AI illimitate",
+            "1500 immagini storyboard / mese",
+            "Posti team e portali",
+            "15 GB di spazio cloud"
+          ]
+        }
+      }
+    },
+    "faq": {
+      "kicker": "FAQ",
+      "title": "Domande, con risposta",
+      "items": [
+        {
+          "q": "Come usa l'AI il brief del mio cliente?",
+          "a": "FrameFlow legge i documenti e le immagini che carichi ed estrae solo i dati dichiarati esplicitamente — ciascuno con una fonte citata. Non inventa mai informazioni; i dettagli mancanti restano vuoti in attesa della tua conferma."
+        },
+        {
+          "q": "I miei dati sono privati?",
+          "a": "I tuoi brief e progetti sono tuoi. Usiamo i tuoi contenuti solo per generare il tuo pacchetto di produzione, mai per addestrare modelli pubblici."
+        },
+        {
+          "q": "Posso esportare e condividere con i clienti?",
+          "a": "Sì — esporta un elegante pacchetto PDF o condividi un raffinato link di revisione con il cliente per feedback e approvazioni."
+        },
+        {
+          "q": "Servono competenze creative o tecniche?",
+          "a": "No. Descrivi il tuo progetto o carica un brief, e FrameFlow assembla un pacchetto professionale di pre-produzione che potrai affinare."
+        },
+        {
+          "q": "Posso disdire in qualsiasi momento?",
+          "a": "Assolutamente. I piani sono mensili e puoi effettuare upgrade, downgrade o disdire quando vuoi."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Pronto a produrre più velocemente?",
+      "subtitle": "Inizia gratis — nessuna carta di credito richiesta.",
+      "cta": "Inizia Gratis"
+    },
+    "footer": {
+      "note": "La suite di produzione AI per filmmaker, videomaker e agenzie.",
+      "companyTitle": "Azienda",
+      "company": [
+        "Chi siamo",
+        "Lavora con noi",
+        "Contatti"
+      ],
+      "resourcesTitle": "Risorse",
+      "resources": [
+        "Blog",
+        "Guide",
+        "Supporto"
+      ],
+      "legalTitle": "Legale",
+      "legal": [
+        "Privacy",
+        "Termini"
+      ],
+      "copyright": "© 2026 FrameFlow Studio. Tutti i diritti riservati."
+    }
   }
 }
