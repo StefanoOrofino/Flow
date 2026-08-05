@@ -10,6 +10,16 @@ import { useTheme } from "@/src/ThemeProvider";
 import { useLanguage } from "@/src/LanguageProvider";
 import { Icon } from "@/src/ui/Icon";
 import { LogoMark } from "@/src/brand/FrameFlowLogo";
+import { Image as ExpoImage } from "expo-image";
+
+const FRAMES = [
+  require("../assets/landing/frame1.jpg"),
+  require("../assets/landing/frame2.jpg"),
+  require("../assets/landing/frame3.jpg"),
+  require("../assets/landing/frame4.jpg"),
+  require("../assets/landing/frame5.jpg"),
+  require("../assets/landing/frame6.jpg"),
+];
 
 /* ---------------- structural metadata (icons/ids only; text via i18n) ---------------- */
 const NAV_KEYS = ["features", "how", "pricing", "faq"] as const;
@@ -91,8 +101,7 @@ function DemoReel({ C, styles, t, big }: any) {
               <View style={styles.demoBoardGrid}>
                 {[0, 1, 2, 3, 4, 5].map((i) => (
                   <View key={i} style={styles.demoFrame}>
-                    <LinearGradient colors={["#2A2416", "#141210"]} style={StyleSheet.absoluteFill} />
-                    <Icon name="clapperboard" size={14} color={C.brand} />
+                    <ExpoImage source={FRAMES[i]} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
                     <View style={styles.demoFrameNum}><Text style={styles.demoFrameNumTxt}>{i + 1}</Text></View>
                   </View>
                 ))}
@@ -142,8 +151,7 @@ function StoryboardMock({ C, styles }: any) {
         <View style={styles.demoBoardGrid}>
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <View key={i} style={styles.demoFrame}>
-              <LinearGradient colors={["#2A2416", "#141210"]} style={StyleSheet.absoluteFill} />
-              <Icon name="clapperboard" size={14} color={C.brand} />
+              <ExpoImage source={FRAMES[i]} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
               <View style={styles.demoFrameNum}><Text style={styles.demoFrameNumTxt}>{i + 1}</Text></View>
             </View>
           ))}
@@ -310,6 +318,25 @@ export default function Landing() {
             <Text style={[styles.h2, { textAlign: "center" }]}>{t("storyboard.title")}</Text>
           </View>
           <View style={{ maxWidth: 960, width: "100%", alignSelf: "center" }}><StoryboardMock C={C} styles={styles} /></View>
+        </View>
+
+        {/* GALLERY — AI-generated cinematic frames */}
+        <View style={[styles.section, styles.altBg]}>
+          <View style={{ alignItems: "center", marginBottom: S.xxl, paddingHorizontal: S.xl }}>
+            <Text style={styles.kicker}>{t("gallery.kicker")}</Text>
+            <Text style={[styles.h2, { textAlign: "center", maxWidth: 640 }]}>{t("gallery.title")}</Text>
+            <Text style={styles.gallerySub}>{t("gallery.subtitle")}</Text>
+          </View>
+          <View style={styles.galleryGrid}>
+            {FRAMES.map((src, i) => (
+              <Animated.View key={i} entering={FadeInDown.duration(400).delay(i * 60)} style={[styles.galleryCard, wide ? { width: "31.8%" } : mid ? { width: "48.5%" } : { width: "100%" }]}>
+                <ExpoImage source={src} style={styles.galleryImg} contentFit="cover" transition={250} />
+                <LinearGradient colors={["transparent", "rgba(0,0,0,0.78)"]} style={styles.galleryOverlay} pointerEvents="none" />
+                <View style={styles.galleryNum}><Text style={styles.galleryNumTxt}>{i + 1}</Text></View>
+                <Text style={styles.galleryCap}>{(t("gallery.captions", { returnObjects: true }) as string[])[i]}</Text>
+              </Animated.View>
+            ))}
+          </View>
         </View>
 
         {/* PRICING */}
@@ -523,6 +550,16 @@ const createStyles = (C: Palette) => StyleSheet.create({
   microtrust: { color: C.onSurface3, fontFamily: F.text, fontSize: 12.5, marginTop: S.md, textAlign: "center" },
   trustChip: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.surface2, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 14, paddingVertical: 8 },
   trustChipTxt: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5, fontWeight: "500" },
+
+  // gallery
+  gallerySub: { color: C.onSurface2, fontFamily: F.text, fontSize: 15, textAlign: "center", maxWidth: 620, lineHeight: 23, marginTop: S.md },
+  galleryGrid: { flexDirection: "row", flexWrap: "wrap", gap: S.md, justifyContent: "center", maxWidth: MAX_W, alignSelf: "center", width: "100%", paddingHorizontal: S.xl },
+  galleryCard: { aspectRatio: 16 / 9, borderRadius: R.lg, overflow: "hidden", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface3 },
+  galleryImg: { width: "100%", height: "100%" },
+  galleryOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, height: "55%" },
+  galleryNum: { position: "absolute", top: 10, left: 10, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: R.sm, minWidth: 24, height: 22, paddingHorizontal: 7, alignItems: "center", justifyContent: "center" },
+  galleryNumTxt: { color: "#F5F1E8", fontFamily: F.display, fontSize: 13, fontWeight: "600" },
+  galleryCap: { position: "absolute", left: 12, right: 12, bottom: 10, color: "#F5F1E8", fontFamily: F.text, fontSize: 12.5, fontWeight: "600" },
 
   trust: { alignItems: "center", paddingVertical: 40 },
   trustLbl: { color: C.onSurface3, fontFamily: F.text, fontSize: 11.5, letterSpacing: 1.5, marginBottom: S.lg },

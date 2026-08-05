@@ -832,6 +832,19 @@
         "platform": "Instagram"
       },
       "packageLabel": "6 scene · sceneggiatura · shot list"
+    },
+    "gallery": {
+      "kicker": "GALLERIA STORYBOARD",
+      "title": "Fotogrammi cinematografici, generati dall'AI",
+      "subtitle": "Fotogrammi storyboard reali che FrameFlow può generare per la tua produzione — da un solo brief.",
+      "captions": [
+        "Guida costiera · Ora d'oro",
+        "Interni · Luce ambientale",
+        "Notte in città · Neon",
+        "Dettaglio · Luce da studio",
+        "Lifestyle · Tramonto",
+        "Aerea · Autostrada nel deserto"
+      ]
     }
   }
 }
