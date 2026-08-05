@@ -183,3 +183,6 @@ Implemented in strict priority order per user request:
 - **6 workflow reference photos generated** (Gemini Nano Banana) for the How-it-Works steps: brief-on-desk, laptop AI analysis, tablet review, storyboard planning wall, editing-suite collaboration, printed package. Saved `/app/frontend/assets/landing/step1..6.jpg`. Script `scripts/gen_step_images.py`.
 - **Step cards restructured** (landing.tsx): now a premium cover-card — full-bleed 132px cinematic cover image (ExpoImage) + dark gradient + number badge overlay (top-right); gold icon badge overlaps the cover bottom-left (bordered); title (Fraunces) + desc (Inter) in a padded body. `stepCard` now `overflow:hidden`, added `stepCover/stepBody/stepNumBadge` styles; removed old `stepNum/stepNumTxt`. Verified desktop — all 6 cards render with photos.
 - Minor: generated images may contain small incidental text (e.g., a brief title) — acceptable as reference imagery.
+
+## Sprint 22 (2026-06) — Gallery captions more prominent (DONE)
+- Gallery captions redesigned per user ("più presenti"): caption string split on " · " → main title in large bold **Fraunces white (19px)** + subtitle in **gold uppercase (Inter)** on a new line, with a gold accent bar on the left. Stronger 3-stop bottom gradient (up to 0.9) + taller (68%) for legibility; number badge slightly larger. Verified mobile.

@@ -449,9 +449,15 @@ function GalleryCard({ src, i, caption, styles, cardW }: any) {
         <Animated.View style={[StyleSheet.absoluteFill, imgStyle]}>
           <ExpoImage source={src} style={styles.galleryImg} contentFit="cover" transition={250} />
         </Animated.View>
-        <LinearGradient colors={["transparent", "rgba(0,0,0,0.78)"]} style={styles.galleryOverlay} pointerEvents="none" />
+        <LinearGradient colors={["transparent", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.9)"]} locations={[0, 0.5, 1]} style={styles.galleryOverlay} pointerEvents="none" />
         <View style={styles.galleryNum}><Text style={styles.galleryNumTxt}>{i + 1}</Text></View>
-        <Text style={styles.galleryCap}>{caption}</Text>
+        <View style={styles.galleryCapWrap}>
+          <View style={styles.galleryCapAccent} />
+          <Text style={styles.galleryCap} numberOfLines={2}>
+            <Text style={styles.galleryCapMain}>{(caption || "").split(" · ")[0]}</Text>
+            {(caption || "").includes(" · ") ? <Text style={styles.galleryCapSub}>{"\n" + (caption || "").split(" · ")[1]}</Text> : null}
+          </Text>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -612,10 +618,14 @@ const createStyles = (C: Palette) => StyleSheet.create({
   galleryGrid: { flexDirection: "row", flexWrap: "wrap", gap: S.md, justifyContent: "center", maxWidth: MAX_W, alignSelf: "center", width: "100%", paddingHorizontal: S.xl },
   galleryCard: { aspectRatio: 16 / 9, borderRadius: R.lg, overflow: "hidden", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface3 },
   galleryImg: { width: "100%", height: "100%" },
-  galleryOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, height: "55%" },
-  galleryNum: { position: "absolute", top: 10, left: 10, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: R.sm, minWidth: 24, height: 22, paddingHorizontal: 7, alignItems: "center", justifyContent: "center" },
-  galleryNumTxt: { color: "#F5F1E8", fontFamily: F.display, fontSize: 13, fontWeight: "600" },
-  galleryCap: { position: "absolute", left: 12, right: 12, bottom: 10, color: "#F5F1E8", fontFamily: F.text, fontSize: 12.5, fontWeight: "600" },
+  galleryOverlay: { position: "absolute", left: 0, right: 0, bottom: 0, height: "68%" },
+  galleryNum: { position: "absolute", top: 12, left: 12, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: R.sm, minWidth: 26, height: 24, paddingHorizontal: 8, alignItems: "center", justifyContent: "center" },
+  galleryNumTxt: { color: "#F5F1E8", fontFamily: F.display, fontSize: 14, fontWeight: "600" },
+  galleryCapWrap: { position: "absolute", left: 16, right: 16, bottom: 16, flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  galleryCapAccent: { width: 3, alignSelf: "stretch", borderRadius: 2, backgroundColor: C.brand, marginTop: 2 },
+  galleryCap: { flex: 1 },
+  galleryCapMain: { color: "#FFFFFF", fontFamily: F.display, fontSize: 19, fontWeight: "600", letterSpacing: -0.2 },
+  galleryCapSub: { color: C.brand, fontFamily: F.text, fontSize: 12.5, fontWeight: "600", letterSpacing: 0.6, textTransform: "uppercase" },
 
   // stats
   statsSection: { paddingVertical: 40 },
