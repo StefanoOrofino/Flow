@@ -259,7 +259,7 @@ function StoryboardMock({ C, styles }: any) {
 export default function Landing() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { C, isDark, toggleTheme } = useTheme();
+  const { C, isDark } = useTheme();
   const styles = useMemo(() => createStyles(C), [C]);
   const { width } = useWindowDimensions();
   const wide = width > 900;
@@ -300,7 +300,6 @@ export default function Landing() {
           )}
           <View style={styles.navRight}>
             <Pressable onPress={toggleLang} hitSlop={8} style={styles.langBtn}><Text style={styles.langTxt}>{currentLanguage.toUpperCase()}</Text></Pressable>
-            <Pressable onPress={toggleTheme} hitSlop={8} style={styles.navIcon}><Icon name={isDark ? "sun" : "moon"} size={17} color={C.onSurface2} /></Pressable>
             {mid && <Pressable onPress={login}><Text style={styles.navLink}>{t("nav.login")}</Text></Pressable>}
             <Pressable onPress={startFree} style={styles.navCta}><Text style={styles.navCtaTxt}>{t("nav.startFree")}</Text></Pressable>
           </View>
