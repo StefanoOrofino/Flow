@@ -1,8 +1,8 @@
-import React, { useMemo, useRef, useState } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, useWindowDimensions } from "react-native";
+import React, { useMemo, useRef, useState, useEffect } from "react";
+import { View, Text, ScrollView, StyleSheet, Pressable, Modal, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeInDown, FadeIn, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
@@ -21,44 +21,135 @@ const PRICING_META = [
   { id: "studio", rec: false },
 ];
 
-/* ---------------- mock product visual ---------------- */
-function MockFrame({ C, styles, tall }: any) {
+/* ---------------- browser chrome wrapper ---------------- */
+function Chrome({ C, styles, big, children }: any) {
   return (
-    <View style={[styles.mock, tall && { aspectRatio: 4 / 3 }]}>
+    <View style={[styles.mock, big && styles.mockBig]}>
       <LinearGradient colors={["#241E13", "#15130E", "#0C0C0E"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
       <View style={styles.mockGlow} />
-      {/* window chrome */}
       <View style={styles.mockBar}>
         <View style={[styles.dot, { backgroundColor: "#E06C60" }]} />
         <View style={[styles.dot, { backgroundColor: "#E0B65C" }]} />
         <View style={[styles.dot, { backgroundColor: "#7CC08A" }]} />
         <View style={styles.mockUrl}><Text style={styles.mockUrlTxt}>app.frameflow.studio</Text></View>
       </View>
-      {/* faux workspace */}
-      <View style={styles.mockBody}>
-        <View style={styles.mockSide}>
-          {["dashboard", "clapperboard", "file-text", "list-checks", "wallet"].map((n, i) => (
-            <View key={i} style={[styles.mockNav, i === 1 && { backgroundColor: "rgba(197,160,89,0.16)" }]}>
-              <Icon name={n as any} size={14} color={i === 1 ? C.brand : "rgba(245,241,232,0.4)"} />
+      {children}
+    </View>
+  );
+}
+
+/* ---------------- animated product demo ---------------- */
+const DEMO_ICONS = ["upload", "wand", "check", "clapperboard"];
+function DemoReel({ C, styles, t, big }: any) {
+  const [step, setStep] = useState(0);
+  const captions = t("demo.steps", { returnObjects: true }) as string[];
+  useEffect(() => {
+    const id = setInterval(() => setStep((s) => (s + 1) % 4), 2600);
+    return () => clearInterval(id);
+  }, []);
+  // scanning line for the "analyze" step
+  const scan = useSharedValue(0);
+  useEffect(() => { scan.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.quad) }), -1, true); }, []);
+  const scanStyle = useAnimatedStyle(() => ({ top: `${8 + scan.value * 68}%` }));
+
+  return (
+    <Chrome C={C} styles={styles} big={big}>
+      <View style={styles.demoStage}>
+        <Animated.View key={step} entering={FadeIn.duration(450)} style={StyleSheet.absoluteFill}>
+          {step === 0 && (
+            <View style={styles.demoCenter}>
+              <View style={styles.demoDrop}>
+                <View style={styles.demoDocIcon}><Icon name="file-text" size={22} color={C.brand} /></View>
+                <Text style={styles.demoDocName}>{t("demo.upload")}</Text>
+                <View style={styles.demoThumbRow}>
+                  {[0, 1, 2].map((i) => <View key={i} style={styles.demoThumb}><Icon name="image" size={13} color="rgba(245,241,232,0.5)" /></View>)}
+                </View>
+                <Text style={styles.demoHint}>{t("demo.uploadHint")}</Text>
+              </View>
+            </View>
+          )}
+          {step === 1 && (
+            <View style={styles.demoDocView}>
+              <Animated.View style={[styles.demoScan, scanStyle]} />
+              {[92, 74, 84, 60, 78, 48].map((w, i) => <View key={i} style={[styles.demoDocLine, { width: `${w}%` }]} />)}
+              <View style={styles.demoAnalyzePill}><Icon name="wand" size={12} color={C.brand} /><Text style={styles.demoAnalyzeTxt}>{t("demo.analyzing")}</Text></View>
+            </View>
+          )}
+          {step === 2 && (
+            <View style={styles.demoFields}>
+              {["client", "goal", "duration", "platform"].map((k) => (
+                <View key={k} style={styles.demoFieldRow}>
+                  <Text style={styles.demoFieldLbl}>{t(`demo.fields.${k}`)}</Text>
+                  <Text style={styles.demoFieldVal} numberOfLines={1}>{t(`demo.fieldVals.${k}`)}</Text>
+                  <View style={styles.demoCheck}><Icon name="check" size={11} color="#0C0C0E" strokeWidth={3} /></View>
+                </View>
+              ))}
+            </View>
+          )}
+          {step === 3 && (
+            <View style={styles.demoBoard}>
+              <View style={styles.demoBoardGrid}>
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <View key={i} style={styles.demoFrame}>
+                    <LinearGradient colors={["#2A2416", "#141210"]} style={StyleSheet.absoluteFill} />
+                    <Icon name="clapperboard" size={14} color={C.brand} />
+                    <View style={styles.demoFrameNum}><Text style={styles.demoFrameNumTxt}>{i + 1}</Text></View>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.demoBoardLabel}>{t("demo.packageLabel")}</Text>
+            </View>
+          )}
+        </Animated.View>
+      </View>
+      <View style={styles.demoCaption}>
+        <View style={styles.demoStepIcon}><Icon name={DEMO_ICONS[step] as any} size={13} color={C.brand} strokeWidth={2.4} /></View>
+        <Text style={styles.demoCaptionTxt} numberOfLines={1}>{captions[step]}</Text>
+        <View style={styles.demoDots}>
+          {[0, 1, 2, 3].map((i) => <View key={i} style={[styles.demoDot, i === step && styles.demoDotActive]} />)}
+        </View>
+      </View>
+    </Chrome>
+  );
+}
+
+/* ---------------- static clarity mocks ---------------- */
+function BriefMock({ C, styles, t }: any) {
+  return (
+    <Chrome C={C} styles={styles}>
+      <View style={styles.briefMockBody}>
+        <View style={styles.briefDoc}>
+          <View style={styles.briefDocHead}><Icon name="file-text" size={13} color={C.brand} /><Text style={styles.briefDocName}>{t("brief.mockTitle")}</Text></View>
+          {[90, 70, 82, 58, 74].map((w, i) => <View key={i} style={[styles.demoDocLine, { width: `${w}%` }]} />)}
+        </View>
+        <View style={styles.briefFields}>
+          <Text style={styles.briefExtractedLbl}><Icon name="sparkles" size={11} color={C.brand} /> {t("brief.extracted")}</Text>
+          {["client", "goal", "duration", "platform"].map((k) => (
+            <View key={k} style={styles.demoFieldRow}>
+              <Text style={styles.demoFieldLbl}>{t(`demo.fields.${k}`)}</Text>
+              <View style={styles.demoCheck}><Icon name="check" size={11} color="#0C0C0E" strokeWidth={3} /></View>
             </View>
           ))}
         </View>
-        <View style={{ flex: 1, gap: 8 }}>
-          <View style={styles.mockGridRow}>
-            {[0, 1, 2].map((i) => (
-              <View key={i} style={styles.mockCard}>
-                <LinearGradient colors={["#2A2416", "#141210"]} style={StyleSheet.absoluteFill} />
-                <View style={styles.mockCardIcon}><Icon name="clapperboard" size={16} color={C.brand} /></View>
-              </View>
-            ))}
-          </View>
-          <View style={styles.mockLineWide} />
-          <View style={[styles.mockLine, { width: "60%" }]} />
-          <View style={[styles.mockLine, { width: "78%" }]} />
-          <View style={[styles.mockLine, { width: "45%" }]} />
+      </View>
+    </Chrome>
+  );
+}
+function StoryboardMock({ C, styles }: any) {
+  return (
+    <Chrome C={C} styles={styles}>
+      <View style={styles.demoBoard}>
+        <View style={styles.demoBoardGrid}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <View key={i} style={styles.demoFrame}>
+              <LinearGradient colors={["#2A2416", "#141210"]} style={StyleSheet.absoluteFill} />
+              <Icon name="clapperboard" size={14} color={C.brand} />
+              <View style={styles.demoFrameNum}><Text style={styles.demoFrameNumTxt}>{i + 1}</Text></View>
+            </View>
+          ))}
         </View>
       </View>
-    </View>
+    </Chrome>
   );
 }
 
@@ -86,6 +177,7 @@ export default function Landing() {
   const startFree = () => router.push("/signup");
   const login = () => router.push("/login");
   const toggleLang = () => setLanguage(currentLanguage === "it" ? "en" : "it");
+  const [demoOpen, setDemoOpen] = useState(false);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.surface }}>
@@ -124,11 +216,12 @@ export default function Landing() {
               <Text style={[styles.lead, { maxWidth: 620 }]}>{t("hero.subtitle")}</Text>
               <View style={styles.heroCtas}>
                 <Pressable onPress={startFree} style={styles.ctaPrimary}><Text style={styles.ctaPrimaryTxt}>{t("nav.startFree")}</Text><Icon name="arrow-right" size={17} color={C.onBrand} strokeWidth={2.5} /></Pressable>
-                <Pressable onPress={() => goTo("how")} style={styles.ctaGhost}><Icon name="play" size={15} color={C.onSurface} /><Text style={styles.ctaGhostTxt}>{t("hero.watchDemo")}</Text></Pressable>
+                <Pressable onPress={() => setDemoOpen(true)} style={styles.ctaGhost}><Icon name="play" size={15} color={C.onSurface} /><Text style={styles.ctaGhostTxt}>{t("hero.watchDemo")}</Text></Pressable>
               </View>
+              <Text style={styles.microtrust}>{t("hero.microtrust")}</Text>
             </Animated.View>
             <Animated.View entering={FadeInDown.duration(600).delay(150)} style={{ width: "100%", maxWidth: 960, marginTop: wide ? 56 : 36 }}>
-              <MockFrame C={C} styles={styles} />
+              <DemoReel C={C} styles={styles} t={t} />
             </Animated.View>
           </View>
         </View>
@@ -137,8 +230,8 @@ export default function Landing() {
         <View style={[styles.section, styles.trust]}>
           <Text style={styles.trustLbl}>{t("trust.label")}</Text>
           <View style={styles.trustRow}>
-            {["Aurora Films", "Northlight", "Studio Vero", "Mira Agency", "Kinetic"].map((b) => (
-              <Text key={b} style={styles.trustName}>{b}</Text>
+            {(t("trust.items", { returnObjects: true }) as string[]).map((b) => (
+              <View key={b} style={styles.trustChip}><Icon name="check" size={13} color={C.brand} strokeWidth={2.5} /><Text style={styles.trustChipTxt}>{b}</Text></View>
             ))}
           </View>
         </View>
@@ -192,7 +285,7 @@ export default function Landing() {
               ))}
               <Pressable onPress={startFree} style={[styles.ctaPrimary, { alignSelf: "flex-start", marginTop: S.lg }]}><Text style={styles.ctaPrimaryTxt}>{t("brief.cta")}</Text><Icon name="arrow-right" size={16} color={C.onBrand} strokeWidth={2.5} /></Pressable>
             </View>
-            <View style={{ flex: 1 }}><MockFrame C={C} styles={styles} tall /></View>
+            <View style={{ flex: 1 }}><BriefMock C={C} styles={styles} t={t} /></View>
           </View>
         </View>
 
@@ -216,7 +309,7 @@ export default function Landing() {
             <Text style={styles.kicker}>{t("storyboard.kicker")}</Text>
             <Text style={[styles.h2, { textAlign: "center" }]}>{t("storyboard.title")}</Text>
           </View>
-          <View style={{ maxWidth: 960, width: "100%", alignSelf: "center" }}><MockFrame C={C} styles={styles} /></View>
+          <View style={{ maxWidth: 960, width: "100%", alignSelf: "center" }}><StoryboardMock C={C} styles={styles} /></View>
         </View>
 
         {/* PRICING */}
@@ -280,6 +373,23 @@ export default function Landing() {
           <Text style={styles.copyright}>{t("footer.copyright")}</Text>
         </View>
       </ScrollView>
+
+      {/* DEMO POPUP */}
+      <Modal visible={demoOpen} transparent animationType="fade" onRequestClose={() => setDemoOpen(false)}>
+        <View style={styles.demoModalBg}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setDemoOpen(false)} />
+          <View style={[styles.demoModalCard, { maxWidth: wide ? 860 : 560 }]}>
+            <View style={styles.demoModalHead}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.demoModalTitle}>{t("demo.title")}</Text>
+                <Text style={styles.demoModalSub}>{t("demo.subtitle")}</Text>
+              </View>
+              <Pressable onPress={() => setDemoOpen(false)} hitSlop={10} style={styles.demoModalClose}><Icon name="x" size={20} color={C.onSurface} /></Pressable>
+            </View>
+            {demoOpen ? <DemoReel C={C} styles={styles} t={t} big /> : null}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -357,10 +467,66 @@ const createStyles = (C: Palette) => StyleSheet.create({
   mockCardIcon: { opacity: 0.5 },
   mockLineWide: { height: 10, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.1)", marginTop: 4 },
   mockLine: { height: 8, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.06)" },
+  mockBig: { borderColor: "rgba(197,160,89,0.4)" },
+
+  // animated demo
+  demoStage: { flex: 1, position: "relative", overflow: "hidden" },
+  demoCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: 16 },
+  demoDrop: { width: "74%", maxWidth: 320, borderRadius: R.md, borderWidth: 1.5, borderColor: "rgba(197,160,89,0.4)", borderStyle: "dashed", backgroundColor: "rgba(197,160,89,0.06)", alignItems: "center", padding: 16, gap: 8 },
+  demoDocIcon: { width: 44, height: 44, borderRadius: R.md, backgroundColor: "rgba(197,160,89,0.16)", alignItems: "center", justifyContent: "center" },
+  demoDocName: { color: "#F5F1E8", fontFamily: F.text, fontSize: 13, fontWeight: "600" },
+  demoThumbRow: { flexDirection: "row", gap: 6, marginTop: 2 },
+  demoThumb: { width: 34, height: 24, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.06)", alignItems: "center", justifyContent: "center" },
+  demoHint: { color: "rgba(245,241,232,0.5)", fontFamily: F.text, fontSize: 10.5 },
+
+  demoDocView: { flex: 1, padding: 20, gap: 9, justifyContent: "center" },
+  demoScan: { position: "absolute", left: "6%", right: "6%", height: 2, backgroundColor: C.brand, opacity: 0.85 },
+  demoDocLine: { height: 8, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.09)" },
+  demoAnalyzePill: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "center", marginTop: 10, backgroundColor: "rgba(197,160,89,0.16)", borderRadius: R.pill, paddingHorizontal: 10, paddingVertical: 5 },
+  demoAnalyzeTxt: { color: C.brand, fontFamily: F.text, fontSize: 11.5, fontWeight: "600" },
+
+  demoFields: { flex: 1, padding: 18, gap: 8, justifyContent: "center" },
+  demoFieldRow: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "rgba(255,255,255,0.04)", borderRadius: R.sm, borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(255,255,255,0.08)", paddingHorizontal: 10, paddingVertical: 8 },
+  demoFieldLbl: { color: "rgba(245,241,232,0.55)", fontFamily: F.text, fontSize: 11, letterSpacing: 0.4, textTransform: "uppercase", width: 74 },
+  demoFieldVal: { color: "#F5F1E8", fontFamily: F.text, fontSize: 12.5, fontWeight: "600", flex: 1 },
+  demoCheck: { width: 16, height: 16, borderRadius: 8, backgroundColor: "#7CC08A", alignItems: "center", justifyContent: "center" },
+
+  demoBoard: { flex: 1, padding: 14, justifyContent: "center", gap: 10 },
+  demoBoardGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+  demoFrame: { width: "30%", aspectRatio: 16 / 10, borderRadius: 8, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: StyleSheet.hairlineWidth, borderColor: "rgba(197,160,89,0.25)" },
+  demoFrameNum: { position: "absolute", top: 4, left: 4, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 4, minWidth: 16, height: 14, paddingHorizontal: 3, alignItems: "center", justifyContent: "center" },
+  demoFrameNumTxt: { color: "#F5F1E8", fontFamily: F.text, fontSize: 9, fontWeight: "700" },
+  demoBoardLabel: { color: "rgba(245,241,232,0.6)", fontFamily: F.text, fontSize: 11.5, textAlign: "center" },
+
+  demoCaption: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(255,255,255,0.08)", backgroundColor: "rgba(0,0,0,0.25)" },
+  demoStepIcon: { width: 24, height: 24, borderRadius: 12, backgroundColor: "rgba(197,160,89,0.16)", alignItems: "center", justifyContent: "center" },
+  demoCaptionTxt: { color: "#F5F1E8", fontFamily: F.text, fontSize: 12.5, fontWeight: "600", flex: 1 },
+  demoDots: { flexDirection: "row", gap: 5 },
+  demoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(245,241,232,0.25)" },
+  demoDotActive: { backgroundColor: C.brand, width: 16 },
+
+  // brief mock
+  briefMockBody: { flex: 1, flexDirection: "row", padding: 14, gap: 12 },
+  briefDoc: { flex: 1, backgroundColor: "rgba(255,255,255,0.04)", borderRadius: R.md, padding: 12, gap: 8 },
+  briefDocHead: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
+  briefDocName: { color: "#F5F1E8", fontFamily: F.text, fontSize: 11.5, fontWeight: "600" },
+  briefFields: { flex: 1, gap: 7, justifyContent: "center" },
+  briefExtractedLbl: { color: C.brand, fontFamily: F.text, fontSize: 11, letterSpacing: 0.6, fontWeight: "700", marginBottom: 2 },
+
+  // demo modal
+  demoModalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", alignItems: "center", justifyContent: "center", padding: S.xl },
+  demoModalCard: { width: "100%", backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.borderStrong, padding: S.lg },
+  demoModalHead: { flexDirection: "row", alignItems: "flex-start", gap: S.md, marginBottom: S.md },
+  demoModalTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 22, letterSpacing: -0.2 },
+  demoModalSub: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, marginTop: 2 },
+  demoModalClose: { width: 36, height: 36, borderRadius: R.md, backgroundColor: C.surface3, alignItems: "center", justifyContent: "center" },
+  microtrust: { color: C.onSurface3, fontFamily: F.text, fontSize: 12.5, marginTop: S.md, textAlign: "center" },
+  trustChip: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.surface2, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: 14, paddingVertical: 8 },
+  trustChipTxt: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5, fontWeight: "500" },
 
   trust: { alignItems: "center", paddingVertical: 40 },
   trustLbl: { color: C.onSurface3, fontFamily: F.text, fontSize: 11.5, letterSpacing: 1.5, marginBottom: S.lg },
-  trustRow: { flexDirection: "row", flexWrap: "wrap", gap: S.xl, justifyContent: "center", opacity: 0.7 },
+  trustRow: { flexDirection: "row", flexWrap: "wrap", gap: S.md, justifyContent: "center" },
   trustName: { color: C.onSurface2, fontFamily: F.display, fontSize: 20, fontWeight: "600" },
 
   kicker: { color: C.brand, fontFamily: F.text, fontSize: 12, letterSpacing: 2, fontWeight: "700", textAlign: "center", marginBottom: 10 },

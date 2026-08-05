@@ -578,10 +578,18 @@
       "badge": "La pre-produzione con l'AI, reinventata",
       "title": "La Suite di Produzione AI per Filmmaker",
       "subtitle": "Trasforma un brief del cliente in un pacchetto di produzione completo in pochi minuti — concept, sceneggiatura, storyboard, shot list e altro ancora.",
-      "watchDemo": "Guarda la Demo"
+      "watchDemo": "Guarda la Demo",
+      "microtrust": "Nessuna carta di credito · Piano gratuito per sempre · PDF pronti all'uso"
     },
     "trust": {
-      "label": "SCELTO DA FILMMAKER, AGENZIE E CASE DI PRODUZIONE"
+      "label": "PENSATO PER I TEAM VIDEO MODERNI",
+      "items": [
+        "Filmmaker",
+        "Videomaker",
+        "Agenzie pubblicitarie",
+        "Case di produzione",
+        "Content creator"
+      ]
     },
     "problem": {
       "kicker": "IL PROBLEMA",
@@ -642,7 +650,9 @@
         "Compila automaticamente il progetto",
         "Genera il pacchetto"
       ],
-      "cta": "Provalo Gratis"
+      "cta": "Provalo Gratis",
+      "mockTitle": "brief.pdf",
+      "extracted": "Estratto"
     },
     "features": {
       "kicker": "TUTTO CIÒ CHE TI SERVE",
@@ -795,6 +805,33 @@
         "Termini"
       ],
       "copyright": "© 2026 FrameFlow Studio. Tutti i diritti riservati."
+    },
+    "demo": {
+      "title": "Guarda FrameFlow in azione",
+      "subtitle": "Uno sguardo veloce a come un brief diventa un pacchetto di produzione completo.",
+      "close": "Chiudi",
+      "steps": [
+        "Carica il brief del cliente",
+        "L'AI legge ogni pagina",
+        "Dati estratti — con le fonti",
+        "Il tuo pacchetto di produzione, pronto"
+      ],
+      "upload": "brief.pdf",
+      "uploadHint": "Trascina PDF, documenti e immagini",
+      "analyzing": "Analisi dei documenti…",
+      "fields": {
+        "client": "Cliente",
+        "goal": "Obiettivo",
+        "duration": "Durata",
+        "platform": "Piattaforma"
+      },
+      "fieldVals": {
+        "client": "Aurelia Paris",
+        "goal": "Film di lancio",
+        "duration": "30s",
+        "platform": "Instagram"
+      },
+      "packageLabel": "6 scene · sceneggiatura · shot list"
     }
   }
 }

@@ -578,10 +578,18 @@
       "badge": "AI pre-production, reinvented",
       "title": "The AI Production Suite for Filmmakers",
       "subtitle": "Turn a client brief into a complete production package in minutes — concept, script, storyboard, shot list and more.",
-      "watchDemo": "Watch Demo"
+      "watchDemo": "Watch Demo",
+      "microtrust": "No credit card · Free forever plan · Export-ready PDFs"
     },
     "trust": {
-      "label": "TRUSTED BY FILMMAKERS, AGENCIES & PRODUCTION COMPANIES"
+      "label": "BUILT FOR MODERN VIDEO TEAMS",
+      "items": [
+        "Filmmakers",
+        "Videographers",
+        "Ad agencies",
+        "Production houses",
+        "Content creators"
+      ]
     },
     "problem": {
       "kicker": "THE PROBLEM",
@@ -642,7 +650,9 @@
         "Auto-fills the project",
         "Generates the package"
       ],
-      "cta": "Try it Free"
+      "cta": "Try it Free",
+      "mockTitle": "brief.pdf",
+      "extracted": "Extracted"
     },
     "features": {
       "kicker": "EVERYTHING YOU NEED",
@@ -795,6 +805,33 @@
         "Terms"
       ],
       "copyright": "© 2026 FrameFlow Studio. All rights reserved."
+    },
+    "demo": {
+      "title": "See FrameFlow in action",
+      "subtitle": "A quick look at how a brief becomes a full production package.",
+      "close": "Close",
+      "steps": [
+        "Upload your client brief",
+        "AI reads every page",
+        "Facts extracted — with sources",
+        "Your production package, ready"
+      ],
+      "upload": "brief.pdf",
+      "uploadHint": "Drop PDF, docs & reference images",
+      "analyzing": "Analyzing documents…",
+      "fields": {
+        "client": "Client",
+        "goal": "Goal",
+        "duration": "Duration",
+        "platform": "Platform"
+      },
+      "fieldVals": {
+        "client": "Aurelia Paris",
+        "goal": "Launch film",
+        "duration": "30s",
+        "platform": "Instagram"
+      },
+      "packageLabel": "6 scenes · script · shot list"
     }
   }
 }
