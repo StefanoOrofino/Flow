@@ -1,0 +1,44 @@
+{
+  "summary": "Tested 3-level image-model selection (global user / per-project / per-generation) on FrameFlow. Backend: 9/9 pytest cases passed including one REAL OpenAI GPT Image 1 generation that returned frame.provider=='openai' with a valid data:image/... URI (Completed). GET/PUT /api/settings (with invalid->fallback), GET /api/image-provider (models[] shape + default_model), 401 on unauth, and per-project PUT /projects/{pid} data.image_model persistence all verified. Frontend (mobile viewport 390x844): global Settings tab exposes imgmodel-gemini / imgmodel-openai tiles (both tappable, persist across reload); project 'Settings' tab exposes proj-model-default / proj-model-gemini / proj-model-openai (persist); Storyboard frame cards (after Expand All) show 'AI IMAGE MODEL' chip row with frame-model-default-*, frame-model-gemini-*, frame-model-openai-* for all 8 scenes and selection works without crash. DEV_IMAGE_LIMIT is enforced (project shows '1 AI generation left' after test run). Cascade end-to-end functionality confirmed via real generation + per-project/global persistence endpoints. Cleanup executed: global reset to 'gemini' and per-project image_model=null.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/projects/{pid}/scenes/{sid}/frames/generate", "issue": "bump_usage(user_id,'image_generations') is called for every generation including mock; not tied to real-cost provider only."},
+      {"endpoint": "internal", "issue": "_active_generations is a process-local set; safe today but will not serialize across multi-worker deployments."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "third-party (Reanimated/RN Web)", "issue": "Repeated console warnings: 'shadow*' props deprecated (use boxShadow), props.pointerEvents deprecated, useNativeDriver missing, [Reanimated] opacity layout-animation warning. Not blocking but noisy. Reference: browser console during any screen load."},
+      {"component": "React 19 compatibility", "issue": "Console error: 'Accessing element.ref was removed in React 19. ref is now a regular prop.' emitted on /project/[id] load — likely from a library still passing element.ref. Non-blocking but should be tracked."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_image_model_selection.py",
+    "/app/test_reports/pytest/iter18_image_model.xml"
+  ],
+  "action_items": [
+    "No functional fixes required for this feature — main agent can proceed.",
+    "Optional: only bump 'image_generations' usage for real providers (skip when provider is 'mock').",
+    "Optional: investigate React 19 element.ref console error source (likely a Reanimated / expo-router internal); watch upstream releases."
+  ],
+  "critical_code_review_comments": [
+    "server.py get_settings/put_settings correctly whitelist against REAL_MODELS and default to 'gemini' — matches spec.",
+    "_run_generation resolves effective model with correct precedence (body.model > project.image_model > user.settings.image_model > server default) — matches spec.",
+    "resolve_provider() only routes to real providers when model is in REAL_MODELS; unknown model falls back to server default cleanly.",
+    "generate_frame passes body.model through to image_service.generate_image — verified end-to-end with real OpenAI call returning provider 'openai'.",
+    "MongoDB _id is excluded from all reads via projection {'_id': 0} — good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_image_model_selection.py (new)"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (global tab tiles, project settings rows, storyboard chip rows for all 8 scenes)"},
+  "seed_data_creation": "None. Used seeded account sb_1785767871@studio.com and existing project c73286507b42. Consumed exactly 1 real image generation (OpenAI). After tests: global settings reset to 'gemini', project.image_model reset to null.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Project c73286507b42 image_gen_count is now at 2/3 (verified in UI: '1 AI generation left'). If more real generations are needed for future tests, either duplicate the project or use a different seeded project — this one will 429 after one more real gen. Frame model chips only render when the scene card is expanded (tap 'Expand All' first). Bottom tab labelled 'Account' in UI maps to /settings route (i18n title=account).",
+  "rca_of_issue": "N/A - feature working as specified across all three levels of cascade."
+}

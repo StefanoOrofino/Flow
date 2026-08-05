@@ -173,9 +173,15 @@ export default function Editor() {
   const frameSetActive = async (s: any, fid: string) => { try { store.applyServer(await api.setActiveFrame(id, s.id, fid)); } catch {} };
   const frameDelete = (s: any, fid: string) => runFrame(s.id, () => api.deleteFrame(id, s.id, fid));
   const remaining = Math.max(0, (imgInfo.dev_limit || 3) - (project?.image_gen_count || 0));
+  const models = imgInfo.models || [];
+  const globalModel = imgInfo.default_model || "gemini";
+  const effModel = (project?.image_model) || globalModel;
+  const labelFor = (mid: string) => (models.find((m: any) => m.id === mid) || {}).label || mid;
+  const isReal = (imgInfo.provider || "") !== "mock" && (imgInfo.provider || "") !== "none";
   const frameActions = {
     generate: frameGenerate, regenerate: frameRegenerate, setActive: frameSetActive, del: frameDelete, view: setViewer,
     busy: !!frameBusy, remaining, provider: imgInfo.provider, errorFor: (sid: string) => frameErrors[sid],
+    models, isReal, effModel, effModelLabel: labelFor(effModel),
   };
   const doExport = async (fn: () => Promise<void>) => { try { await fn(); api.markExported(id).catch(() => {}); } catch (e) { console.log(e); } };
 
@@ -296,7 +302,7 @@ export default function Editor() {
                   <ExportCard icon="printer" title={t("exports:print")} sub={t("exports:printSub")} onPress={() => doExport(() => printProject(project))} testID="export-print" />
                 </Section>
               )}
-              {tab === "Settings" && <SettingsTab p={project} persist={persist} onRegen={regenerateAll} regenBusy={regenAll} router={router} id={id} />}
+              {tab === "Settings" && <SettingsTab p={project} persist={persist} onRegen={regenerateAll} regenBusy={regenAll} router={router} id={id} models={models} globalModelLabel={labelFor(globalModel)} />}
             </>
           )}
         </Animated.View>
@@ -492,10 +498,12 @@ function StoryboardFrame({ scene, promptValue, aspect, busy, frameActions, onEdi
   const status = active?.generation_status || "Not Generated";
   const meta = frameStatusMeta(status);
   const [editing, setEditing] = useState(false);
+  const [model, setModel] = useState<string | undefined>(undefined); // undefined = inherit project/global default
   const ar = active?.aspect_ratio || aspect || "16:9";
-  const opts = () => ({ prompt: promptValue, aspect_ratio: aspect || "16:9" });
+  const opts = () => ({ prompt: promptValue, aspect_ratio: aspect || "16:9", ...(model ? { model } : {}) });
   const errMsg = frameActions.errorFor ? frameActions.errorFor(scene.id) : "";
-  const realProvider = frameActions.provider === "gemini";
+  const models = frameActions.models || [];
+  const realProvider = !!frameActions.isReal;
   const genDisabled = frameActions.busy || (realProvider && frameActions.remaining <= 0);
   return (
     <View style={styles.frameWrap}>
@@ -545,6 +553,27 @@ function StoryboardFrame({ scene, promptValue, aspect, busy, frameActions, onEdi
       <View style={styles.rowBetween}>
         <Text style={styles.frameQuota}>{realProvider ? `${frameActions.remaining} AI generation${frameActions.remaining === 1 ? "" : "s"} left` : "Simulated (mock) mode"}</Text>
       </View>
+
+      {models.length > 1 ? (
+        <View style={styles.modelPicker}>
+          <Text style={styles.modelPickerLabel}>AI IMAGE MODEL</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+            <Pressable onPress={() => setModel(undefined)} style={[styles.modelChip, !model && styles.modelChipActive]} testID={`frame-model-default-${scene.scene_number}`}>
+              <Ionicons name="git-branch-outline" size={13} color={!model ? C.brand : C.onSurface2} />
+              <Text style={[styles.modelChipText, !model && { color: C.brand }]}>Default · {frameActions.effModelLabel}</Text>
+            </Pressable>
+            {models.map((m: any) => {
+              const on = model === m.id;
+              return (
+                <Pressable key={m.id} onPress={() => setModel(m.id)} style={[styles.modelChip, on && styles.modelChipActive]} testID={`frame-model-${m.id}-${scene.scene_number}`}>
+                  <Ionicons name={m.id === "openai" ? "aperture-outline" : "sparkles-outline"} size={13} color={on ? C.brand : C.onSurface2} />
+                  <Text style={[styles.modelChipText, on && { color: C.brand }]}>{m.label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingTop: 6 }}>
         <RegenChip icon="sparkles-outline" label={frames.length ? "New Version" : "Generate Frame"} busy={busy} disabled={genDisabled} onPress={() => frameActions.generate(scene, opts())} testID={`frame-generate-${scene.scene_number}`} />
@@ -856,9 +885,10 @@ function ExportCard({ icon, title, sub, onPress, testID }: any) {
     </Pressable>
   );
 }
-function SettingsTab({ p, persist, onRegen, regenBusy, router, id }: any) {
+function SettingsTab({ p, persist, onRegen, regenBusy, router, id, models = [], globalModelLabel = "" }: any) {
   const [del, setDel] = useState(false);
   const { t } = useTranslation();
+  const projModel = p.image_model || null; // null = inherit global
   return (
     <View>
       <Section label={t("editor:setProject")} icon="film">
@@ -866,6 +896,32 @@ function SettingsTab({ p, persist, onRegen, regenBusy, router, id }: any) {
         <SetRow label={t("editor:setScenes")} value={String(p.scenes?.length || 0)} />
         <SetRow label={t("editor:setExports")} value={String(p.export_count || 0)} />
       </Section>
+      {models.length > 1 ? (
+        <Section label={t("editor:imageModel")} icon="image">
+          <Body muted style={{ fontSize: 12.5, marginBottom: S.md }}>{t("editor:imageModelHint")}</Body>
+          <View style={{ gap: S.sm }}>
+            <Pressable onPress={() => persist({ image_model: null })} style={[styles.pmRow, !projModel && styles.pmRowActive]} testID="proj-model-default">
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.pmLabel, !projModel && { color: C.onSurface }]}>{t("editor:imageModelInherit")}</Text>
+                <Text style={styles.pmSub}>{globalModelLabel}</Text>
+              </View>
+              <Ionicons name={!projModel ? "radio-button-on" : "radio-button-off"} size={20} color={!projModel ? C.brand : C.onSurface2} />
+            </Pressable>
+            {models.map((m: any) => {
+              const on = projModel === m.id;
+              return (
+                <Pressable key={m.id} onPress={() => persist({ image_model: m.id })} style={[styles.pmRow, on && styles.pmRowActive]} testID={`proj-model-${m.id}`}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.pmLabel, on && { color: C.onSurface }]}>{m.label}</Text>
+                    <Text style={styles.pmSub}>{m.hint}</Text>
+                  </View>
+                  <Ionicons name={on ? "radio-button-on" : "radio-button-off"} size={20} color={on ? C.brand : C.onSurface2} />
+                </Pressable>
+              );
+            })}
+          </View>
+        </Section>
+      ) : null}
       <Section label={t("editor:setActions")} icon="settings">
         <View style={{ gap: S.sm }}>
           <Btn title={p.favorite ? t("editor:removeFav") : t("editor:addFav")} variant="ghost" icon={p.favorite ? "star" : "star-outline"} onPress={() => persist({ favorite: !p.favorite })} testID="set-fav" />
@@ -888,6 +944,15 @@ function SettingsTab({ p, persist, onRegen, regenBusy, router, id }: any) {
 function SetRow({ label, value, first }: any) { return <View style={[styles.dRow, first && { borderTopWidth: 0 }]}><Text style={styles.dLabel}>{label}</Text><Text style={styles.dVal}>{value}</Text></View>; }
 
 function createStyles(C: Palette) { return StyleSheet.create({
+  modelPicker: { marginTop: S.sm, gap: 6 },
+  modelPickerLabel: { color: C.onSurface3, fontFamily: F.text, fontSize: 10, letterSpacing: 1.5, fontWeight: "600" },
+  modelChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: R.pill, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface3, minHeight: 36 },
+  modelChipActive: { borderColor: C.brand, backgroundColor: C.brandTint },
+  modelChipText: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, fontWeight: "500" },
+  pmRow: { flexDirection: "row", alignItems: "center", paddingVertical: S.md, paddingHorizontal: S.md, borderRadius: R.md, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface3, minHeight: 56 },
+  pmRowActive: { borderColor: C.brand, backgroundColor: C.brandTint },
+  pmLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 14, fontWeight: "500" },
+  pmSub: { color: C.onSurface3, fontFamily: F.text, fontSize: 12, marginTop: 2 },
   center: { flex: 1, backgroundColor: C.surface, alignItems: "center", justifyContent: "center" },
   header: { paddingHorizontal: S.xl, paddingBottom: S.lg, backgroundColor: C.surface },
   hTopRow: { flexDirection: "row", alignItems: "center", gap: S.sm, marginBottom: S.lg },

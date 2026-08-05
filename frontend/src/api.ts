@@ -69,6 +69,8 @@ export const api = {
     req(`/projects/${id}/scenes/${sid}/regenerate-lighting`, "POST"),
   // Storyboard image frames (provider-agnostic; mock/none until a real provider is wired)
   imageProvider: () => req("/image-provider"),
+  getSettings: () => req("/settings"),
+  updateSettings: (image_model: string) => req("/settings", "PUT", { image_model }),
   generateFrame: (id: string, sid: string, body: any = {}) =>
     req(`/projects/${id}/scenes/${sid}/frames/generate`, "POST", body),
   regenerateFrame: (id: string, sid: string, fid: string, body: any = {}) =>

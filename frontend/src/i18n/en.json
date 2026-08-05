@@ -574,7 +574,10 @@
     "regenAll": "Regenerate entire storyboard",
     "deleteProject": "Delete project",
     "deleteTitle": "Delete project?",
-    "deleteBody": "This cannot be undone."
+    "deleteBody": "This cannot be undone.",
+    "imageModel": "AI Image Model",
+    "imageModelHint": "Choose which AI model renders this project’s storyboard frames. Overrides your global default.",
+    "imageModelInherit": "Use global default"
   },
   "landing": {
     "nav": {

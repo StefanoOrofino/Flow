@@ -117,6 +117,50 @@ class GeminiProvider(ImageProvider):
 PROVIDERS = {"none": NoneProvider(), "mock": MockProvider(), "gemini": GeminiProvider()}
 
 
+class OpenAIImageProvider(ImageProvider):
+    """Real OpenAI GPT Image 1 generation via the Emergent Universal Key (server-side only)."""
+    name = "openai"
+    model = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
+
+    async def generate(self, prompt: str, opts: dict) -> dict:
+        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        if not api_key:
+            return {"status": STATUS_FAILED, "error_message": "EMERGENT_LLM_KEY not configured on the server.",
+                    "image_url": "", "thumbnail_url": "", "provider": "openai", "provider_job_id": ""}
+        try:
+            from emergentintegrations.llm.openai.image_generation import OpenAIImageGeneration
+            gen = OpenAIImageGeneration(api_key=api_key)
+            images = await gen.generate_images(prompt=prompt, model=self.model, number_of_images=1)
+            if not images:
+                return {"status": STATUS_FAILED, "error_message": "The model did not return an image. Please adjust the prompt and retry.",
+                        "image_url": "", "thumbnail_url": "", "provider": "openai", "provider_job_id": ""}
+            b64 = base64.b64encode(images[0]).decode("utf-8")
+            data_uri = f"data:image/png;base64,{b64}"
+            return {"status": STATUS_COMPLETED, "error_message": "", "image_url": data_uri, "thumbnail_url": data_uri,
+                    "provider": "openai", "provider_job_id": "oai_" + uuid.uuid4().hex[:8]}
+        except Exception as e:  # never create a broken version — surface the error, keep the prompt
+            return {"status": STATUS_FAILED, "error_message": f"Image generation failed: {str(e)[:180]}",
+                    "image_url": "", "thumbnail_url": "", "provider": "openai", "provider_job_id": ""}
+
+
+PROVIDERS["openai"] = OpenAIImageProvider()
+
+# User-selectable real models (surfaced in the UI). Order = display order.
+REAL_MODELS = ["gemini", "openai"]
+MODEL_META = {
+    "gemini": {"id": "gemini", "label": "Gemini Nano Banana", "hint": "Fast, cinematic, painterly"},
+    "openai": {"id": "openai", "label": "OpenAI GPT Image 1", "hint": "Photoreal, great for product & stills"},
+}
+
+
+def resolve_provider(model: str | None = None) -> ImageProvider:
+    """Pick a concrete provider by user-chosen model, else fall back to the
+    server default (IMAGE_PROVIDER). Only the real models can be user-selected."""
+    if model in REAL_MODELS:
+        return PROVIDERS[model]
+    return get_provider()
+
+
 def get_provider() -> ImageProvider:
     name = os.environ.get("IMAGE_PROVIDER", "mock").lower()
     return PROVIDERS.get(name, PROVIDERS["mock"])
@@ -126,12 +170,12 @@ def provider_configured() -> bool:
     return get_provider().name not in ("none",)
 
 
-async def generate_image(prompt: str, opts: dict) -> dict:
-    return await get_provider().generate(prompt, opts)
+async def generate_image(prompt: str, opts: dict, model: str | None = None) -> dict:
+    return await resolve_provider(model).generate(prompt, opts)
 
 
-async def regenerate_image(prompt: str, opts: dict) -> dict:
-    return await get_provider().generate(prompt, opts)
+async def regenerate_image(prompt: str, opts: dict, model: str | None = None) -> dict:
+    return await resolve_provider(model).generate(prompt, opts)
 
 
 def get_generation_status(frame: dict) -> str:

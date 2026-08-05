@@ -574,7 +574,10 @@
     "regenAll": "Rigenera l’intero storyboard",
     "deleteProject": "Elimina progetto",
     "deleteTitle": "Eliminare il progetto?",
-    "deleteBody": "L’operazione non può essere annullata."
+    "deleteBody": "L’operazione non può essere annullata.",
+    "imageModel": "Modello immagini AI",
+    "imageModelHint": "Scegli quale modello AI genera i frame dello storyboard di questo progetto. Ha priorità sul default globale.",
+    "imageModelInherit": "Usa default globale"
   },
   "landing": {
     "nav": {

@@ -39,6 +39,11 @@ export default function Settings() {
   useEffect(() => { api.adminStatus().then((s: any) => setAdminInfo({ is_privileged: !!s.is_privileged, can_claim: !!s.can_claim })).catch(() => {}); }, []);
   const showAdmin = adminInfo && (adminInfo.is_privileged || adminInfo.can_claim);
 
+  const [imgModel, setImgModel] = useState<string>("gemini");
+  const [imgModels, setImgModels] = useState<any[]>([]);
+  useEffect(() => { api.getSettings().then((s: any) => { setImgModel(s.image_model || "gemini"); setImgModels(s.models || []); }).catch(() => {}); }, []);
+  const selectImageModel = (mid: string) => { setImgModel(mid); api.updateSettings(mid).catch(() => {}); };
+
   const SHORTCUTS: [string, string][] = [
     [t("shortcutUndo"), "⌘ / Ctrl + Z"],
     [t("shortcutRedo"), "⌘ / Ctrl + Shift + Z"],
@@ -184,7 +189,24 @@ export default function Settings() {
         <Card style={{ marginBottom: S.lg }}>
           <Row C={C} styles={styles} icon="sparkles-outline" label={t("aiEngine")} value={t("aiEngineValue")} />
           <View style={styles.divider} />
-          <Row C={C} styles={styles} icon="image-outline" label={t("imageGeneration")} value={t("imageGenerationValue")} />
+          <Text style={styles.fieldLabel}>{t("imageGeneration")}</Text>
+          {imgModels.length > 1 ? (
+            <View style={styles.tileRow}>
+              {imgModels.map((m) => {
+                const active = imgModel === m.id;
+                return (
+                  <Pressable key={m.id} testID={`imgmodel-${m.id}`} onPress={() => selectImageModel(m.id)} style={[styles.tile, active && styles.tileActive]}>
+                    <Ionicons name={m.id === "openai" ? "aperture-outline" : "sparkles-outline"} size={20} color={active ? C.brand : C.onSurface2} />
+                    <Text style={[styles.tileLabel, active && { color: C.onSurface }]}>{m.label}</Text>
+                    {active && <Ionicons name="checkmark-circle" size={15} color={C.brand} />}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <Row C={C} styles={styles} icon="image-outline" label={t("imageGeneration")} value={t("imageGenerationValue")} />
+          )}
+          <Text style={[styles.rowValue, { marginTop: S.sm }]}>{(imgModels.find((m) => m.id === imgModel) || {}).hint || t("imageGenerationValue")}</Text>
         </Card>
 
         {/* Export */}

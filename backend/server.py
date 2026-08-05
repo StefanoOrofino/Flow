@@ -129,6 +129,7 @@ class FrameIn(BaseModel):
     style_preset: Optional[str] = ""
     aspect_ratio: Optional[str] = "16:9"
     negative_prompt: Optional[str] = ""
+    model: Optional[str] = None  # per-generation override: "gemini" | "openai" | None(inherit)
 
 
 def hash_pw(pw: str) -> str:
@@ -720,16 +721,19 @@ def _build_frame_prompt(project: dict, scene: dict, base_desc: str, aspect: str)
     return prompt
 
 
-async def _run_generation(pid: str, sid: str, user: dict, base_desc: str, aspect: str, style_preset: str):
+async def _run_generation(pid: str, sid: str, user: dict, base_desc: str, aspect: str, style_preset: str, model: Optional[str] = None):
     doc = await _get_owned(pid, user)
     scene = _find_scene(doc, sid)
-    provider = image_service.get_provider().name
+    # Effective model: per-generation override > per-project setting > global user setting > server default.
+    effective = model or doc.get("image_model") or ((user.get("settings") or {}).get("image_model"))
+    provider = image_service.resolve_provider(effective).name
+    is_real = provider in ("gemini", "openai")
 
     # 1 active generation per project at a time (prevents duplicate/concurrent spend)
     if pid in _active_generations:
         raise HTTPException(status_code=409, detail="A generation is already in progress for this project.")
     # Development cap on REAL generations
-    if provider == "gemini" and doc.get("image_gen_count", 0) >= DEV_IMAGE_LIMIT:
+    if is_real and doc.get("image_gen_count", 0) >= DEV_IMAGE_LIMIT:
         raise HTTPException(status_code=429, detail=f"Development limit reached: {DEV_IMAGE_LIMIT} real image generations per project.")
 
     prompt = _build_frame_prompt(doc, scene, base_desc, aspect)
@@ -737,7 +741,7 @@ async def _run_generation(pid: str, sid: str, user: dict, base_desc: str, aspect
 
     _active_generations.add(pid)
     try:
-        result = await image_service.generate_image(prompt, opts)
+        result = await image_service.generate_image(prompt, opts, model=effective)
     finally:
         _active_generations.discard(pid)
 
@@ -752,7 +756,7 @@ async def _run_generation(pid: str, sid: str, user: dict, base_desc: str, aspect
     updated = {**scene, "frames": frames, "image_prompt": base_desc or scene.get("image_prompt", ""),
                "active_frame_id": frame["id"], "image_url": frame["image_url"]}
     await bump_usage(user["user_id"], "image_generations")
-    return await _save_scene(pid, user, doc, sid, updated, inc_gen=(provider == "gemini"))
+    return await _save_scene(pid, user, doc, sid, updated, inc_gen=is_real)
 
 
 @api_router.post("/projects/{pid}/scenes/{sid}/frames/generate")
@@ -760,7 +764,7 @@ async def generate_frame(pid: str, sid: str, body: FrameIn, user=Depends(get_cur
     doc = await _get_owned(pid, user)
     scene = _find_scene(doc, sid)
     base_desc = (body.prompt or scene.get("image_prompt") or scene.get("visual_description") or "").strip()
-    return await _run_generation(pid, sid, user, base_desc, body.aspect_ratio or "16:9", body.style_preset or "")
+    return await _run_generation(pid, sid, user, base_desc, body.aspect_ratio or "16:9", body.style_preset or "", model=body.model)
 
 
 @api_router.post("/projects/{pid}/scenes/{sid}/frames/{fid}/regenerate")
@@ -771,7 +775,7 @@ async def regenerate_frame(pid: str, sid: str, fid: str, body: FrameIn, user=Dep
     if not old:
         raise HTTPException(status_code=404, detail="Frame not found")
     base_desc = (body.prompt or old.get("prompt") or scene.get("image_prompt") or scene.get("visual_description") or "").strip()
-    return await _run_generation(pid, sid, user, base_desc, body.aspect_ratio or old.get("aspect_ratio", "16:9"), body.style_preset or old.get("style_preset", ""))
+    return await _run_generation(pid, sid, user, base_desc, body.aspect_ratio or old.get("aspect_ratio", "16:9"), body.style_preset or old.get("style_preset", ""), model=body.model)
 
 
 @api_router.post("/projects/{pid}/scenes/{sid}/frames/{fid}/active")
@@ -815,7 +819,28 @@ async def frame_status(pid: str, sid: str, fid: str, user=Depends(get_current_us
 async def image_provider(user=Depends(get_current_user)):
     return {"provider": image_service.get_provider().name,
             "configured": image_service.provider_configured(),
-            "dev_limit": DEV_IMAGE_LIMIT}
+            "dev_limit": DEV_IMAGE_LIMIT,
+            "models": [image_service.MODEL_META[m] for m in image_service.REAL_MODELS],
+            "default_model": (user.get("settings") or {}).get("image_model") or "gemini"}
+
+
+class SettingsIn(BaseModel):
+    image_model: Optional[str] = None
+
+
+@api_router.get("/settings")
+async def get_settings(user=Depends(get_current_user)):
+    s = user.get("settings") or {}
+    return {"image_model": s.get("image_model") or "gemini",
+            "models": [image_service.MODEL_META[m] for m in image_service.REAL_MODELS]}
+
+
+@api_router.put("/settings")
+async def put_settings(body: SettingsIn, user=Depends(get_current_user)):
+    model = body.image_model if body.image_model in image_service.REAL_MODELS else "gemini"
+    await db.users.update_one({"user_id": user["user_id"]},
+                              {"$set": {"settings.image_model": model, "updated_at": now_iso()}})
+    return {"image_model": model}
 
 
 # ---------------------------------------------------------------------------
