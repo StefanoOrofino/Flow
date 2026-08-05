@@ -234,6 +234,9 @@ export default function Landing() {
           </View>
         </View>
 
+        {/* GALLERY (mobile) — show the cinematic output immediately after the hero */}
+        {!mid ? <GallerySection C={C} styles={styles} t={t} wide={wide} mid={mid} /> : null}
+
         {/* TRUST */}
         <View style={[styles.section, styles.trust]}>
           <Text style={styles.trustLbl}>{t("trust.label")}</Text>
@@ -320,24 +323,8 @@ export default function Landing() {
           <View style={{ maxWidth: 960, width: "100%", alignSelf: "center" }}><StoryboardMock C={C} styles={styles} /></View>
         </View>
 
-        {/* GALLERY — AI-generated cinematic frames */}
-        <View style={[styles.section, styles.altBg]}>
-          <View style={{ alignItems: "center", marginBottom: S.xxl, paddingHorizontal: S.xl }}>
-            <Text style={styles.kicker}>{t("gallery.kicker")}</Text>
-            <Text style={[styles.h2, { textAlign: "center", maxWidth: 640 }]}>{t("gallery.title")}</Text>
-            <Text style={styles.gallerySub}>{t("gallery.subtitle")}</Text>
-          </View>
-          <View style={styles.galleryGrid}>
-            {FRAMES.map((src, i) => (
-              <Animated.View key={i} entering={FadeInDown.duration(400).delay(i * 60)} style={[styles.galleryCard, wide ? { width: "31.8%" } : mid ? { width: "48.5%" } : { width: "100%" }]}>
-                <ExpoImage source={src} style={styles.galleryImg} contentFit="cover" transition={250} />
-                <LinearGradient colors={["transparent", "rgba(0,0,0,0.78)"]} style={styles.galleryOverlay} pointerEvents="none" />
-                <View style={styles.galleryNum}><Text style={styles.galleryNumTxt}>{i + 1}</Text></View>
-                <Text style={styles.galleryCap}>{(t("gallery.captions", { returnObjects: true }) as string[])[i]}</Text>
-              </Animated.View>
-            ))}
-          </View>
-        </View>
+        {/* GALLERY — desktop/tablet: keep after the storyboard showcase */}
+        {mid ? <GallerySection C={C} styles={styles} t={t} wide={wide} mid={mid} /> : null}
 
         {/* PRICING */}
         <View style={[styles.section, styles.altBg]} onLayout={onSec("pricing")}>
@@ -417,6 +404,29 @@ export default function Landing() {
           </View>
         </View>
       </Modal>
+    </View>
+  );
+}
+
+function GallerySection({ C, styles, t, wide, mid }: any) {
+  const caps = t("gallery.captions", { returnObjects: true }) as string[];
+  return (
+    <View style={[styles.section, styles.altBg]}>
+      <View style={{ alignItems: "center", marginBottom: S.xxl, paddingHorizontal: S.xl }}>
+        <Text style={styles.kicker}>{t("gallery.kicker")}</Text>
+        <Text style={[styles.h2, { textAlign: "center", maxWidth: 640 }]}>{t("gallery.title")}</Text>
+        <Text style={styles.gallerySub}>{t("gallery.subtitle")}</Text>
+      </View>
+      <View style={styles.galleryGrid}>
+        {FRAMES.map((src, i) => (
+          <Animated.View key={i} entering={FadeInDown.duration(400).delay(i * 60)} style={[styles.galleryCard, wide ? { width: "31.8%" } : mid ? { width: "48.5%" } : { width: "100%" }]}>
+            <ExpoImage source={src} style={styles.galleryImg} contentFit="cover" transition={250} />
+            <LinearGradient colors={["transparent", "rgba(0,0,0,0.78)"]} style={styles.galleryOverlay} pointerEvents="none" />
+            <View style={styles.galleryNum}><Text style={styles.galleryNumTxt}>{i + 1}</Text></View>
+            <Text style={styles.galleryCap}>{caps[i]}</Text>
+          </Animated.View>
+        ))}
+      </View>
     </View>
   );
 }
