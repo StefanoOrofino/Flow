@@ -288,7 +288,7 @@ export default function Landing() {
       <View style={[styles.nav, scrolled && styles.navScrolled, { paddingTop: insets.top + 10 }]}>
         <View style={styles.navInner}>
           <Pressable style={styles.brand} onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}>
-            <LogoMark color={C.brand} size={22} />
+            <LogoMark color={C.brand} size={26} gradient />
             <Text style={styles.brandTxt}>FrameFlow</Text>
           </Pressable>
           {wide && (
@@ -315,6 +315,9 @@ export default function Landing() {
           <View style={styles.heroGlow} />
           <View style={[styles.section, { alignItems: "center", paddingTop: wide ? 96 : 64 }]}>
             <Animated.View entering={FadeInDown.duration(500)} style={{ alignItems: "center" }}>
+              <View style={styles.heroLogoTile}>
+                <LogoMark color={C.brand} size={64} gradient />
+              </View>
               <View style={styles.pill}><Icon name="sparkles" size={13} color={C.brand} /><Text style={styles.pillTxt}>{t("hero.badge")}</Text></View>
               <Text style={[styles.h1, { fontSize: wide ? 60 : mid ? 46 : 36, lineHeight: (wide ? 60 : mid ? 46 : 36) * 1.14, maxWidth: 900 }]}>{t("hero.title")}</Text>
               <Text style={[styles.lead, { maxWidth: 620 }]}>{t("hero.subtitle")}</Text>
@@ -659,6 +662,7 @@ const createStyles = (C: Palette) => StyleSheet.create({
   heroGlow: { position: "absolute", top: -120, alignSelf: "center", width: 520, height: 520, borderRadius: 260, backgroundColor: "rgba(197,160,89,0.14)" },
 
   pill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.brandTint, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 6, marginBottom: S.lg },
+  heroLogoTile: { width: 104, height: 104, borderRadius: 26, backgroundColor: "#171310", alignItems: "center", justifyContent: "center", marginBottom: S.lg, borderWidth: 1, borderColor: "rgba(197,160,89,0.45)", shadowColor: C.brand, shadowOpacity: 0.4, shadowRadius: 28, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
   pillTxt: { color: C.brand, fontFamily: F.text, fontSize: 12.5, fontWeight: "600" },
   h1: { color: C.onSurface, fontFamily: F.display, fontWeight: "600", letterSpacing: -1, textAlign: "center", lineHeight: undefined },
   lead: { color: C.onSurface2, fontFamily: F.text, fontSize: 17, lineHeight: 26, textAlign: "center", marginTop: S.lg },
