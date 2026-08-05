@@ -20,6 +20,14 @@ const FRAMES = [
   require("../assets/landing/frame5.jpg"),
   require("../assets/landing/frame6.jpg"),
 ];
+const STEP_IMAGES = [
+  require("../assets/landing/step1.jpg"),
+  require("../assets/landing/step2.jpg"),
+  require("../assets/landing/step3.jpg"),
+  require("../assets/landing/step4.jpg"),
+  require("../assets/landing/step5.jpg"),
+  require("../assets/landing/step6.jpg"),
+];
 
 /* ---------------- structural metadata (icons/ids only; text via i18n) ---------------- */
 const NAV_KEYS = ["features", "how", "pricing", "faq"] as const;
@@ -274,10 +282,16 @@ export default function Landing() {
           <View style={styles.stepsGrid}>
             {steps.map((s, i) => (
               <Animated.View key={i} entering={FadeInDown.duration(400).delay(i * 60)} style={[styles.stepCard, wide ? { width: "31.5%" } : mid ? { width: "48%" } : { width: "100%" }]}>
-                <View style={styles.stepNum}><Text style={styles.stepNumTxt}>{i + 1}</Text></View>
-                <View style={styles.stepIcon}><Icon name={STEP_ICONS[i] as any} size={18} color={C.brand} strokeWidth={2} /></View>
-                <Text style={styles.stepTitle}>{s.title}</Text>
-                <Text style={styles.stepDesc}>{s.desc}</Text>
+                <View style={styles.stepCover}>
+                  <ExpoImage source={STEP_IMAGES[i]} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+                  <LinearGradient colors={["transparent", "rgba(0,0,0,0.45)"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                  <View style={styles.stepNumBadge}><Text style={styles.stepNumBadgeTxt}>{i + 1}</Text></View>
+                </View>
+                <View style={styles.stepBody}>
+                  <View style={styles.stepIcon}><Icon name={STEP_ICONS[i] as any} size={18} color={C.brand} strokeWidth={2} /></View>
+                  <Text style={styles.stepTitle}>{s.title}</Text>
+                  <Text style={styles.stepDesc}>{s.desc}</Text>
+                </View>
               </Animated.View>
             ))}
           </View>
@@ -629,10 +643,12 @@ const createStyles = (C: Palette) => StyleSheet.create({
   bulletTxtMuted: { color: C.onSurface2, fontFamily: F.text, fontSize: 14.5, flex: 1, lineHeight: 21 },
 
   stepsGrid: { flexDirection: "row", flexWrap: "wrap", gap: S.lg, justifyContent: "center", maxWidth: MAX_W, alignSelf: "center", paddingHorizontal: S.xl },
-  stepCard: { backgroundColor: C.surface, borderRadius: R.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, padding: S.xl },
-  stepNum: { position: "absolute", top: 16, right: 16, color: C.onSurface3 },
-  stepNumTxt: { color: C.onSurface3, fontFamily: F.display, fontSize: 22, opacity: 0.4 },
-  stepIcon: { width: 44, height: 44, borderRadius: R.md, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginBottom: S.md },
+  stepCard: { backgroundColor: C.surface, borderRadius: R.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, overflow: "hidden" },
+  stepCover: { height: 132, backgroundColor: C.surface3 },
+  stepBody: { padding: S.xl, paddingTop: 0 },
+  stepNumBadge: { position: "absolute", top: 12, right: 12, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: R.sm, minWidth: 28, height: 26, paddingHorizontal: 8, alignItems: "center", justifyContent: "center" },
+  stepNumBadgeTxt: { color: "#F5F1E8", fontFamily: F.display, fontSize: 16, fontWeight: "600" },
+  stepIcon: { width: 48, height: 48, borderRadius: R.md, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginTop: -24, marginBottom: S.md, borderWidth: 2, borderColor: C.surface },
   stepTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 20 },
   stepDesc: { color: C.onSurface2, fontFamily: F.text, fontSize: 13.5, lineHeight: 20, marginTop: 6 },
 
