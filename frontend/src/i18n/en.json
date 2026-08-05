@@ -299,7 +299,16 @@
     "viewPlans": "View plans",
     "cloudStorage": "Cloud Storage",
     "cloudStorageIncluded": "Cloud Storage Included",
-    "storageNote": "Storage is for your project assets — briefs, storyboards, exports and reference materials. FrameFlow is a production management tool, not a cloud storage service."
+    "storageNote": "Storage is for your project assets — briefs, storyboards, exports and reference materials. FrameFlow is a production management tool, not a cloud storage service.",
+    "managePlan": "Manage plan",
+    "cancelPlan": "Cancel subscription",
+    "cancelConfirmTitle": "Cancel subscription?",
+    "cancelConfirmBody": "You'll switch back to the Free plan immediately.",
+    "keepPlan": "Keep plan",
+    "checkoutProcessing": "Confirming your payment…",
+    "checkoutSuccess": "Payment successful — your plan is now active!",
+    "checkoutFailed": "We couldn't confirm your payment yet. Pull to refresh in a moment.",
+    "upgradeNote": "Unlock more projects, AI generations and unlimited exports with a paid plan."
   },
   "createProject": {
     "title": "Create Project",
@@ -461,7 +470,9 @@
     "seats": "seats",
     "linkSharing": "Link sharing",
     "brandedPortals": "Branded portals",
-    "perMo": "/ mo"
+    "perMo": "/ mo",
+    "checkoutError": "Couldn't start checkout. Please try again.",
+    "checkoutStarting": "Redirecting to secure checkout…"
   },
   "admin": {
     "platform": "PLATFORM",

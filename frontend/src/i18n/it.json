@@ -299,7 +299,16 @@
     "viewPlans": "Vedi i piani",
     "cloudStorage": "Spazio di archiviazione cloud",
     "cloudStorageIncluded": "Spazio di archiviazione cloud incluso",
-    "storageNote": "Lo spazio di archiviazione è destinato agli asset dei tuoi progetti — brief, storyboard, esportazioni e materiali di riferimento. FrameFlow è uno strumento di gestione della produzione, non un servizio di archiviazione cloud."
+    "storageNote": "Lo spazio di archiviazione è destinato agli asset dei tuoi progetti — brief, storyboard, esportazioni e materiali di riferimento. FrameFlow è uno strumento di gestione della produzione, non un servizio di archiviazione cloud.",
+    "managePlan": "Gestisci piano",
+    "cancelPlan": "Annulla abbonamento",
+    "cancelConfirmTitle": "Annullare l'abbonamento?",
+    "cancelConfirmBody": "Tornerai subito al piano Free.",
+    "keepPlan": "Mantieni piano",
+    "checkoutProcessing": "Conferma del pagamento in corso…",
+    "checkoutSuccess": "Pagamento riuscito — il tuo piano è ora attivo!",
+    "checkoutFailed": "Non abbiamo ancora confermato il pagamento. Trascina per aggiornare tra poco.",
+    "upgradeNote": "Sblocca più progetti, generazioni AI ed export illimitati con un piano a pagamento."
   },
   "createProject": {
     "title": "Crea progetto",
@@ -461,7 +470,9 @@
     "seats": "postazioni",
     "linkSharing": "Condivisione link",
     "brandedPortals": "Portali brandizzati",
-    "perMo": "/ mese"
+    "perMo": "/ mese",
+    "checkoutError": "Impossibile avviare il pagamento. Riprova.",
+    "checkoutStarting": "Reindirizzamento al pagamento sicuro…"
   },
   "admin": {
     "platform": "PIATTAFORMA",

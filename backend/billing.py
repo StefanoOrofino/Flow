@@ -183,6 +183,6 @@ def build_summary(subscription: dict, usage_counts: dict, storage_used_bytes: in
         "usage": metrics,
         "storage": build_storage(plan, storage_used_bytes),
         "plans": public_plans(),
-        "stripeEnabled": False,
+        "stripeEnabled": True,
     }
 

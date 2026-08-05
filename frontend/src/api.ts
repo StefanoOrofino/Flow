@@ -87,8 +87,11 @@ export const api = {
   restoreVersion: (id: string, vid: string) => req(`/projects/${id}/versions/${vid}/restore`, "POST"),
   renameVersion: (id: string, vid: string, name: string) => req(`/projects/${id}/versions/${vid}`, "PUT", { name }),
   deleteVersion: (id: string, vid: string) => req(`/projects/${id}/versions/${vid}`, "DELETE"),
-  // Billing (read-only, Run 1)
+  // Billing (Stripe checkout — Emergent test key)
   billingSummary: () => req("/billing/summary"),
+  startCheckout: (plan: string, origin_url: string) => req("/billing/checkout", "POST", { plan, origin_url }),
+  checkoutStatus: (sid: string) => req(`/billing/checkout/status/${sid}`),
+  cancelPlan: () => req("/billing/cancel", "POST"),
   // Create Project from Client Brief (Run 1)
   analyzeBrief: (body: { documents: any[]; images: any[] }) => req("/briefs/analyze", "POST", body),
   createProjectFromBrief: (body: any) => req("/briefs/create-project", "POST", body),

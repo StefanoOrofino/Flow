@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, RefreshControl, Platform, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -63,6 +63,8 @@ export default function Billing() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState("");
+  const [checkoutMsg, setCheckoutMsg] = useState("");
+  const [canceling, setCanceling] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -78,6 +80,57 @@ export default function Billing() {
   }, [t]);
 
   useEffect(() => { load(); }, [load]);
+
+  // After returning from Stripe Checkout (web), confirm the payment by polling.
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("session_id");
+    if (!sid) return;
+    // Clean the URL so a refresh doesn't re-trigger.
+    window.history.replaceState({}, "", window.location.pathname);
+    let cancelled = false;
+    (async () => {
+      setCheckoutMsg(t("checkoutProcessing"));
+      for (let i = 0; i < 6; i++) {
+        try {
+          const r = await api.checkoutStatus(sid);
+          if (r.paid) {
+            if (cancelled) return;
+            setCheckoutMsg(t("checkoutSuccess"));
+            await load();
+            return;
+          }
+        } catch { /* keep polling */ }
+        await new Promise((res) => setTimeout(res, 1500));
+      }
+      if (!cancelled) setCheckoutMsg(t("checkoutFailed"));
+    })();
+    return () => { cancelled = true; };
+  }, [t, load]);
+
+  const doCancel = useCallback(async () => {
+    try {
+      setCanceling(true);
+      await api.cancelPlan();
+      await load();
+    } catch (e: any) {
+      setErr(e.message || t("loadError"));
+    } finally {
+      setCanceling(false);
+    }
+  }, [load, t]);
+
+  const onCancelPress = useCallback(() => {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined" && window.confirm(`${t("cancelConfirmTitle")}\n${t("cancelConfirmBody")}`)) doCancel();
+      return;
+    }
+    Alert.alert(t("cancelConfirmTitle"), t("cancelConfirmBody"), [
+      { text: t("keepPlan"), style: "cancel" },
+      { text: t("cancelPlan"), style: "destructive", onPress: doCancel },
+    ]);
+  }, [doCancel, t]);
 
   const statusKey = data ? (data.status === "past_due" ? "statusPast_due" : data.status === "canceled" ? "statusCanceled" : "statusActive") : "statusActive";
   const statusTone: any = data?.status === "active" ? "success" : "default";
@@ -107,6 +160,14 @@ export default function Billing() {
         >
           <H1 style={{ marginBottom: 2 }}>{t("title")}</H1>
           <Body muted style={{ marginBottom: S.lg }}>{t("subtitle")}</Body>
+
+          {/* Checkout confirmation banner (after returning from Stripe) */}
+          {checkoutMsg ? (
+            <View style={styles.checkoutBanner} testID="checkout-banner">
+              <Ionicons name="checkmark-circle" size={20} color={C.brand} />
+              <Text style={styles.checkoutBannerTxt}>{checkoutMsg}</Text>
+            </View>
+          ) : null}
 
           {/* Current plan — cinematic hero */}
           <View style={styles.hero}>
@@ -191,9 +252,14 @@ export default function Billing() {
           <Card style={{ marginBottom: S.lg }}>
             <View style={styles.rowCenterGap}>
               <Ionicons name="sparkles-outline" size={18} color={C.brand} />
-              <Text style={styles.upgradeNote}>{t("upgradeSoon")}</Text>
+              <Text style={styles.upgradeNote}>{t("upgradeNote")}</Text>
             </View>
             <Btn title={t("comparePlans")} icon="arrow-up-circle-outline" style={{ marginTop: S.md }} testID="upgrade-btn" onPress={() => router.push("/pricing")} />
+            {data.plan.id !== "free" ? (
+              <Pressable onPress={onCancelPress} disabled={canceling} testID="cancel-plan-btn" style={styles.cancelBtn}>
+                {canceling ? <ActivityIndicator color={C.error} /> : <Text style={styles.cancelBtnTxt}>{t("cancelPlan")}</Text>}
+              </Pressable>
+            ) : null}
           </Card>
 
           {/* Available plans */}
@@ -256,6 +322,10 @@ const createStyles = (C: Palette) => StyleSheet.create({
   limitValue: { color: C.onSurface, fontFamily: F.text, fontSize: 14, fontWeight: "600" },
 
   upgradeNote: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, flex: 1 },
+  checkoutBanner: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: C.brandTint, borderRadius: R.md, padding: S.md, marginBottom: S.lg },
+  checkoutBannerTxt: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5, fontWeight: "600", flex: 1 },
+  cancelBtn: { alignItems: "center", justifyContent: "center", paddingVertical: 12, marginTop: S.sm, borderRadius: R.md, borderWidth: 1, borderColor: C.border, minHeight: 44 },
+  cancelBtnTxt: { color: C.error, fontFamily: F.text, fontSize: 13.5, fontWeight: "600" },
 
   planCard: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.lg },
   planHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

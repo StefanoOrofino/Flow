@@ -9,7 +9,7 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, UploadFile, File, Request
 from typing import List
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -20,6 +20,7 @@ import bcrypt
 import httpx
 
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
 
 import image_service
 import ai_director
@@ -1023,6 +1024,21 @@ async def get_or_create_subscription(user_id: str) -> dict:
                "current_period_end": None, "cancel_at_period_end": False,
                "created_at": now_iso(), "updated_at": now_iso()}
         await db.subscriptions.insert_one(dict(sub))
+        return sub
+    # Auto-expire paid plans whose 30-day period has ended -> revert to Free.
+    end = sub.get("current_period_end")
+    if sub.get("plan_id") != billing.DEFAULT_PLAN and end:
+        try:
+            dt = datetime.fromisoformat(str(end))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            if dt < datetime.now(timezone.utc):
+                await db.subscriptions.update_one({"user_id": user_id},
+                    {"$set": {"plan_id": billing.DEFAULT_PLAN, "status": "active",
+                              "current_period_end": None, "provider": None, "updated_at": now_iso()}})
+                sub = await db.subscriptions.find_one({"user_id": user_id}, {"_id": 0})
+        except Exception:
+            pass
     return sub
 
 
@@ -1044,6 +1060,114 @@ async def billing_summary(user=Depends(get_current_user)):
     usage["projects"] = await db.projects.count_documents({"user_id": uid})
     storage_bytes = await compute_storage_bytes(uid)
     return billing.build_summary(sub, usage, storage_bytes)
+
+
+# ---------------------------------------------------------------------------
+# Stripe payments (Emergent-managed test key via proxy). The wrapper supports
+# one-time payment Checkout only, so a successful payment activates the chosen
+# plan for a 30-day period. Amounts are SERVER-controlled (never from client).
+# ---------------------------------------------------------------------------
+STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
+PLAN_PRICES = {"pro": 19.0, "studio": 49.0}   # EUR — source of truth
+PLAN_PERIOD_DAYS = 30
+
+
+class CheckoutIn(BaseModel):
+    plan: str
+    origin_url: str
+
+
+def _stripe_client(webhook_url: Optional[str] = None) -> StripeCheckout:
+    return StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
+
+
+async def _activate_plan(user_id: str, plan: str):
+    end = (datetime.now(timezone.utc) + timedelta(days=PLAN_PERIOD_DAYS)).isoformat()
+    await db.subscriptions.update_one(
+        {"user_id": user_id},
+        {"$set": {"plan_id": plan, "status": "active", "current_period_end": end,
+                  "cancel_at_period_end": False, "provider": "stripe", "updated_at": now_iso()}},
+        upsert=True,
+    )
+
+
+@api_router.post("/billing/checkout")
+async def billing_checkout(body: CheckoutIn, user=Depends(get_current_user)):
+    if body.plan not in PLAN_PRICES:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    if not STRIPE_API_KEY:
+        raise HTTPException(status_code=503, detail="Payments not configured")
+    origin = body.origin_url.rstrip("/")
+    success_url = f"{origin}/billing?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{origin}/pricing"
+    webhook_url = f"{origin}/api/billing/webhook"
+    sc = _stripe_client(webhook_url=webhook_url)
+    req = CheckoutSessionRequest(
+        amount=float(PLAN_PRICES[body.plan]), currency="eur",
+        success_url=success_url, cancel_url=cancel_url,
+        metadata={"user_id": user["user_id"], "plan": body.plan, "kind": "subscription"},
+    )
+    try:
+        session = await sc.create_checkout_session(req)
+    except Exception as e:
+        logger.error(f"stripe checkout failed: {e}")
+        raise HTTPException(status_code=502, detail="Unable to start checkout")
+    await db.payment_transactions.insert_one({
+        "session_id": session.session_id, "user_id": user["user_id"],
+        "plan": body.plan, "amount": float(PLAN_PRICES[body.plan]), "currency": "eur",
+        "payment_status": "initiated", "processed": False,
+        "created_at": now_iso(), "updated_at": now_iso(),
+    })
+    return {"url": session.url, "session_id": session.session_id}
+
+
+@api_router.get("/billing/checkout/status/{session_id}")
+async def billing_checkout_status(session_id: str, user=Depends(get_current_user)):
+    tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+    if not tx or tx.get("user_id") != user["user_id"]:
+        raise HTTPException(status_code=404, detail="Session not found")
+    sc = _stripe_client()
+    try:
+        status = await sc.get_checkout_status(session_id)
+    except Exception as e:
+        logger.error(f"stripe status failed: {e}")
+        raise HTTPException(status_code=502, detail="Unable to fetch payment status")
+    if status.payment_status == "paid" and not tx.get("processed"):
+        await db.payment_transactions.update_one({"session_id": session_id},
+            {"$set": {"payment_status": "paid", "processed": True, "updated_at": now_iso()}})
+        await _activate_plan(user["user_id"], tx["plan"])
+    return {"status": status.status, "payment_status": status.payment_status,
+            "plan": tx["plan"], "paid": (status.payment_status == "paid")}
+
+
+@api_router.post("/billing/webhook")
+async def billing_webhook(request: Request):
+    payload = await request.body()
+    sig = request.headers.get("Stripe-Signature")
+    sc = _stripe_client()
+    try:
+        event = await sc.handle_webhook(payload, sig)
+    except Exception as e:
+        logger.error(f"stripe webhook error: {e}")
+        raise HTTPException(status_code=400, detail="Invalid webhook")
+    if event.event_type == "checkout.session.completed" and event.session_id:
+        tx = await db.payment_transactions.find_one({"session_id": event.session_id})
+        if tx and not tx.get("processed") and event.payment_status == "paid":
+            await db.payment_transactions.update_one({"session_id": event.session_id},
+                {"$set": {"payment_status": "paid", "processed": True, "updated_at": now_iso()}})
+            await _activate_plan(tx["user_id"], tx["plan"])
+    return {"received": True}
+
+
+@api_router.post("/billing/cancel")
+async def billing_cancel(user=Depends(get_current_user)):
+    await db.subscriptions.update_one(
+        {"user_id": user["user_id"]},
+        {"$set": {"plan_id": "free", "status": "active", "current_period_end": None,
+                  "cancel_at_period_end": False, "provider": None, "updated_at": now_iso()}},
+        upsert=True,
+    )
+    return {"ok": True, "plan": "free"}
 
 
 async def compute_storage_bytes(user_id: str = None) -> int:

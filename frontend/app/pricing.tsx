@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions, Platform, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -37,6 +37,7 @@ export default function Pricing() {
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState<string>("");
 
   useEffect(() => {
     api.billingSummary()
@@ -47,9 +48,26 @@ export default function Pricing() {
 
   const rows = matrix(t as any);
 
-  const onUpgrade = (planId: string) => {
-    if (planId === currentPlan) return;
-    setNotice(t("checkoutSoon"));
+  const onUpgrade = async (planId: string) => {
+    if (planId === currentPlan || planId === "free" || busy) return;
+    try {
+      setNotice(t("checkoutStarting"));
+      setBusy(planId);
+      const origin = Platform.OS === "web" && typeof window !== "undefined"
+        ? window.location.origin
+        : (process.env.EXPO_PUBLIC_BACKEND_URL || "");
+      const { url } = await api.startCheckout(planId, origin);
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.location.assign(url);
+      } else {
+        await Linking.openURL(url);
+        setNotice("");
+      }
+    } catch (e: any) {
+      setNotice(e.message || t("checkoutError"));
+    } finally {
+      setBusy("");
+    }
   };
 
   const Card = ({ plan }: { plan: any }) => {
@@ -68,13 +86,17 @@ export default function Pricing() {
 
         <Pressable
           onPress={() => onUpgrade(plan.id)}
-          disabled={isCurrent}
+          disabled={isCurrent || !!busy}
           testID={`upgrade-${plan.id}`}
           style={({ pressed }) => [styles.cta, rec && styles.ctaRec, isCurrent && styles.ctaCurrent, { opacity: isCurrent ? 0.6 : pressed ? 0.9 : 1 }]}
         >
-          <Text style={[styles.ctaTxt, rec && styles.ctaTxtRec, isCurrent && styles.ctaTxtCurrent]}>
-            {isCurrent ? t("currentBtn") : plan.id === "free" ? t("getStarted") : t("upgradeBtn")}
-          </Text>
+          {busy === plan.id ? (
+            <ActivityIndicator color={rec ? C.onBrand : C.onSurface} />
+          ) : (
+            <Text style={[styles.ctaTxt, rec && styles.ctaTxtRec, isCurrent && styles.ctaTxtCurrent]}>
+              {isCurrent ? t("currentBtn") : plan.id === "free" ? t("getStarted") : t("upgradeBtn")}
+            </Text>
+          )}
         </Pressable>
 
         <View style={styles.featureList}>
