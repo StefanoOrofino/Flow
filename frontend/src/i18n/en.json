@@ -160,7 +160,11 @@
     "adminSection": "ADMIN",
     "adminConsole": "Admin Console",
     "adminManage": "Manage platform ›",
-    "adminSetup": "Set up ›"
+    "adminSetup": "Set up ›",
+    "aiAssistant": "AI Assistant",
+    "aiAssistantValue": "Chat for help ›",
+    "viewTutorial": "View tutorial",
+    "viewTutorialValue": "Replay intro ›"
   },
   "dashboard": {
     "welcome": "Welcome back, {{name}}",
@@ -883,6 +887,54 @@
       {
         "value": "100%",
         "label": "Source-verified, never invented"
+      }
+    ]
+  },
+  "assistant": {
+    "title": "FrameFlow Assistant",
+    "subtitle": "Your AI guide to the app",
+    "subtitleProject": "Ask about this project",
+    "greeting": "How can I help?",
+    "greetingBody": "Ask me anything about FrameFlow — creating projects, the storyboard, AI image models, exports or plans.",
+    "placeholder": "Ask the assistant…",
+    "thinking": "Thinking…",
+    "error": "Sorry, I could not answer right now. Please try again.",
+    "suggestions": [
+      "How do I create a project from a client brief?",
+      "How do I generate storyboard frames?",
+      "How do I choose the AI image model?",
+      "How do I export a PDF?"
+    ]
+  },
+  "onboarding": {
+    "skip": "Skip",
+    "next": "Next",
+    "start": "Get started",
+    "slides": [
+      {
+        "icon": "sparkles",
+        "title": "Welcome to FrameFlow",
+        "body": "Turn a creative brief into a complete production package — concept, script, storyboard and shot list — in minutes."
+      },
+      {
+        "icon": "document-text-outline",
+        "title": "Start from a brief",
+        "body": "Upload a client brief (documents + images) and let AI build the package, or use the guided wizard in the New tab."
+      },
+      {
+        "icon": "images-outline",
+        "title": "Craft your storyboard",
+        "body": "Edit every scene, regenerate description, dialogue, camera and lighting with one tap, and generate frame images with versions."
+      },
+      {
+        "icon": "color-wand-outline",
+        "title": "Choose your AI model",
+        "body": "Pick Gemini Nano Banana or OpenAI GPT Image 1 — globally, per project, or per single frame. You are always in control."
+      },
+      {
+        "icon": "download-outline",
+        "title": "Export & get help",
+        "body": "Export polished PDFs and CSVs, manage your plan, and tap the chat button anytime for the AI assistant."
       }
     ]
   }

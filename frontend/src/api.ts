@@ -71,6 +71,8 @@ export const api = {
   imageProvider: () => req("/image-provider"),
   getSettings: () => req("/settings"),
   updateSettings: (image_model: string) => req("/settings", "PUT", { image_model }),
+  assistantChat: (body: { messages: any[]; project_id?: string | null; language?: string }) =>
+    req("/assistant/chat", "POST", body),
   generateFrame: (id: string, sid: string, body: any = {}) =>
     req(`/projects/${id}/scenes/${sid}/frames/generate`, "POST", body),
   regenerateFrame: (id: string, sid: string, fid: string, body: any = {}) =>

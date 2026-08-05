@@ -844,6 +844,76 @@ async def put_settings(body: SettingsIn, user=Depends(get_current_user)):
 
 
 # ---------------------------------------------------------------------------
+# In-app AI Assistant (GPT-5.4 via Emergent Universal Key). General help +
+# optional current-project context. Stateless: client sends recent transcript.
+# ---------------------------------------------------------------------------
+ASSISTANT_SYSTEM = (
+    "You are FrameFlow Assistant, the friendly in-app guide for FrameFlow Studio — an AI "
+    "pre-production suite for filmmakers, videographers and agencies. Help users understand and "
+    "use the app. Be warm, concise and concrete: point to the exact screen/tab/button.\n\n"
+    "WHAT THE APP DOES & HOW TO USE IT:\n"
+    "• Create a project two ways: (1) the 'New' tab opens a guided manual wizard (project, video, "
+    "creative direction), or (2) upload a Client Brief (documents + images) which the AI analyses "
+    "to auto-build a full production package.\n"
+    "• After generation a project has tabs: Overview, Storyboard, Exports, Settings.\n"
+    "• Storyboard: each scene has description, dialogue, camera, lighting and voiceover — each can be "
+    "re-generated individually with the AI buttons. You can generate storyboard frame IMAGES per scene "
+    "and keep multiple versions.\n"
+    "• AI image model: choose Gemini Nano Banana or OpenAI GPT Image 1 at three levels — globally in "
+    "Account→Settings, per-project in the project's Settings tab, or per single generation via the "
+    "'AI IMAGE MODEL' chips on a storyboard frame (frame overrides project overrides global).\n"
+    "• Exports: PDF, CSV and Print from the Exports tab.\n"
+    "• Plans & billing: Free, Pro (€19/mo) and Studio (€49/mo). Upgrade from the Pricing screen; "
+    "manage or cancel from Billing.\n"
+    "• Settings: theme (dark default), language (Italian/English) and default AI image model.\n\n"
+    "RULES: Only describe features that exist above. If you are unsure, say so briefly. Keep answers "
+    "short (2–6 sentences or a tight bullet list). Never invent pricing, keys or features."
+)
+
+
+class AssistantIn(BaseModel):
+    messages: list[dict] = []
+    project_id: Optional[str] = None
+    language: Optional[str] = "en"
+
+
+@api_router.post("/assistant/chat")
+async def assistant_chat(body: AssistantIn, user=Depends(get_current_user)):
+    if not EMERGENT_LLM_KEY:
+        return {"reply": "The assistant is not available right now. Please try again later."}
+    lang = "Italian" if str(body.language or "").lower().startswith("it") else "English"
+    system = ASSISTANT_SYSTEM + f"\n\nAlways reply in {lang}."
+
+    if body.project_id:
+        doc = await db.projects.find_one({"id": body.project_id, "user_id": user["user_id"]}, {"_id": 0})
+        if doc:
+            tr = doc.get("treatment") or {}
+            scenes = doc.get("scenes") or []
+            system += (
+                "\n\nCURRENT PROJECT CONTEXT (the user is viewing this project — you may answer "
+                "questions about it):\n"
+                f"Title: {doc.get('title')}\nStatus: {doc.get('status')}\n"
+                f"Video: {doc.get('video_type')} · {doc.get('platform')} · {doc.get('duration')} · {doc.get('aspect_ratio')}\n"
+                f"Goal: {doc.get('goal') or ''}\nScenes: {len(scenes)}\n"
+                f"Visual style: {tr.get('visual_style') or doc.get('visual_style') or ''}\n"
+            )
+
+    history = [m for m in (body.messages or []) if m.get("content")][-10:]
+    transcript = "\n".join(
+        f"{'User' if m.get('role') == 'user' else 'Assistant'}: {m.get('content', '')}" for m in history
+    ) or "Hello"
+
+    try:
+        chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id="asst_" + uuid.uuid4().hex[:8],
+                       system_message=system).with_model(AI_PROVIDER, AI_MODEL)
+        reply = await chat.send_message(UserMessage(text=transcript))
+    except Exception as e:
+        logger.error(f"assistant chat failed: {e}")
+        raise HTTPException(status_code=502, detail="Assistant is temporarily unavailable. Please retry.")
+    return {"reply": (reply or "").strip()}
+
+
+# ---------------------------------------------------------------------------
 # AI Director — iterative, provider-agnostic project revision (preview → apply)
 # ---------------------------------------------------------------------------
 class DirectorIn(BaseModel):

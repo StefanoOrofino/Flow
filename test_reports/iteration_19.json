@@ -1,0 +1,36 @@
+{
+  "summary": "Tested new AI Assistant (GPT-5.4) + first-launch onboarding tutorial end-to-end. Backend pytest 3/3 passing (test_assistant_chat.py): POST /api/assistant/chat returns 401 without auth; returns non-empty English reply for 'How do I export a PDF?'; returns Italian reply that includes project context (title/scene count of c73286507b42) when project_id + language:'it' provided. Frontend (mobile 390x844): fresh login to sb_1785767871@studio.com correctly redirects to /onboarding (client gate via ff_onboarding_done_v1 in AsyncStorage). Slide 1 shows 'Welcome to FrameFlow'; onboarding-next advances slides; dots update; onboarding-skip finishes and navigates to /dashboard. On re-navigation the gate does NOT re-trigger. AssistantFab (testID='assistant-fab') is present on /dashboard, /settings and /project/c73286507b42. Tapping it opens a bottom-sheet with assistant-input, assistant-send, and suggestion chips assistant-sugg-0..N. Sending 'How do I export a PDF?' produced a real GPT-5.4 assistant reply mentioning the Exports tab and PDF option (verified visually + in DOM). Settings 'Account' tab exposes assistant-link that navigates to /assistant (dedicated screen with assistant-input + assistant-back), and tutorial-link that navigates to /onboarding?replay=1 and returns to /settings on Skip (replay mode router.back(), NOT to dashboard). Regressions confirmed: theme-dark, lang-it, imgmodel-gemini all still render in settings; project storyboard/overview loads normally.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_assistant_chat.py",
+    "/app/test_reports/pytest/iter19_assistant.xml"
+  ],
+  "action_items": [
+    "No fixes required. Both features are functioning as spec'd."
+  ],
+  "critical_code_review_comments": [
+    "server.py assistant_chat correctly: gates on auth via Depends(get_current_user), returns 502 on LLM failure (not 500), enforces IT/EN via system-prompt suffix, injects project context ONLY when the requesting user owns the project (find_one is scoped to user_id), and trims history to last 10 messages to keep prompt size bounded.",
+    "AssistantFab: single global instance mounted in (tabs)/_layout.tsx and per-project instance in project/[id].tsx — no double-mount when the tabs render.",
+    "Onboarding gate is client-side (AsyncStorage flag ONBOARDING_KEY='ff_onboarding_done_v1') — correct for cost-free first-launch UX. Replay mode uses router.back() instead of router.replace('/dashboard'), preserving Settings context.",
+    "AssistantChat sends messages array + project_id + language via api.assistantChat and gracefully falls back to t('error') on catch — good UX."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_assistant_chat.py (new)",
+    "/app/test_reports/iteration_19.json (new)"
+  ],
+  "success_rate": {"backend": "100% (3/3)", "frontend": "100% (all onboarding, FAB, chat, links, project, regression flows verified)"},
+  "seed_data_creation": "None. Used existing seeded account sb_1785767871@studio.com and project c73286507b42. Consumed 2 real LLM calls total (1 backend English + 1 backend Italian+context) plus 1 UI-driven English call — within the 'keep to 1-2' budget suggested by main agent.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Login testIDs on FrameFlow: [data-testid=login-email], [data-testid=login-password], [data-testid=login-submit]. Onboarding flag key: 'ff_onboarding_done_v1' (localStorage on web). To force a fresh-onboarding test, evaluate 'localStorage.removeItem(\"ff_onboarding_done_v1\")' or 'localStorage.clear()' BEFORE navigating to /dashboard. AssistantFab appears in (tabs)/_layout.tsx so it renders on dashboard/projects/new/templates/settings; a separate instance renders on /project/[id] with projectId prop for context-aware replies. Dedicated screen: /assistant with optional ?projectId=<id>. Replay tutorial: /onboarding?replay=1 (returns via router.back()).",
+  "rca_of_issue": "N/A — both features working as specified. No bugs or regressions detected."
+}

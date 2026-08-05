@@ -209,6 +209,18 @@ export default function Settings() {
           <Text style={[styles.rowValue, { marginTop: S.sm }]}>{(imgModels.find((m) => m.id === imgModel) || {}).hint || t("imageGenerationValue")}</Text>
         </Card>
 
+        {/* Help */}
+        <Text style={styles.sectionLabel}>{t("about")}</Text>
+        <Card style={{ marginBottom: S.lg }}>
+          <Pressable onPress={() => router.push("/assistant")} testID="assistant-link">
+            <Row C={C} styles={styles} icon="chatbubbles-outline" label={t("aiAssistant")} value={t("aiAssistantValue")} />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable onPress={() => router.push("/onboarding?replay=1")} testID="tutorial-link">
+            <Row C={C} styles={styles} icon="play-circle-outline" label={t("viewTutorial")} value={t("viewTutorialValue")} />
+          </Pressable>
+        </Card>
+
         {/* Export */}
         <Text style={styles.sectionLabel}>{t("export")}</Text>
         <Card style={{ marginBottom: S.lg }}>

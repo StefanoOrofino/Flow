@@ -160,7 +160,11 @@
     "adminSection": "AMMINISTRAZIONE",
     "adminConsole": "Console di amministrazione",
     "adminManage": "Gestisci la piattaforma ›",
-    "adminSetup": "Configura ›"
+    "adminSetup": "Configura ›",
+    "aiAssistant": "Assistente AI",
+    "aiAssistantValue": "Chatta per aiuto ›",
+    "viewTutorial": "Guarda il tutorial",
+    "viewTutorialValue": "Rivedi introduzione ›"
   },
   "dashboard": {
     "welcome": "Bentornato, {{name}}",
@@ -883,6 +887,54 @@
       {
         "value": "100%",
         "label": "Verificato dalle fonti, mai inventato"
+      }
+    ]
+  },
+  "assistant": {
+    "title": "Assistente FrameFlow",
+    "subtitle": "La tua guida AI all’app",
+    "subtitleProject": "Chiedi su questo progetto",
+    "greeting": "Come posso aiutarti?",
+    "greetingBody": "Chiedimi qualsiasi cosa su FrameFlow — creare progetti, lo storyboard, i modelli immagini AI, gli export o i piani.",
+    "placeholder": "Scrivi all’assistente…",
+    "thinking": "Sto pensando…",
+    "error": "Spiacente, non riesco a rispondere ora. Riprova.",
+    "suggestions": [
+      "Come creo un progetto da un brief cliente?",
+      "Come genero i frame dello storyboard?",
+      "Come scelgo il modello immagini AI?",
+      "Come esporto un PDF?"
+    ]
+  },
+  "onboarding": {
+    "skip": "Salta",
+    "next": "Avanti",
+    "start": "Inizia",
+    "slides": [
+      {
+        "icon": "sparkles",
+        "title": "Benvenuto in FrameFlow",
+        "body": "Trasforma un brief creativo in un pacchetto di produzione completo — concept, sceneggiatura, storyboard e shot list — in pochi minuti."
+      },
+      {
+        "icon": "document-text-outline",
+        "title": "Parti da un brief",
+        "body": "Carica un brief cliente (documenti + immagini) e lascia che l’AI costruisca il pacchetto, oppure usa la procedura guidata nella tab Nuovo."
+      },
+      {
+        "icon": "images-outline",
+        "title": "Crea lo storyboard",
+        "body": "Modifica ogni scena, rigenera descrizione, dialoghi, camera e luci con un tocco, e genera le immagini dei frame con più versioni."
+      },
+      {
+        "icon": "color-wand-outline",
+        "title": "Scegli il modello AI",
+        "body": "Scegli Gemini Nano Banana o OpenAI GPT Image 1 — globale, per progetto o per singolo frame. Il controllo è sempre tuo."
+      },
+      {
+        "icon": "download-outline",
+        "title": "Esporta e chiedi aiuto",
+        "body": "Esporta PDF e CSV curati, gestisci il tuo piano e tocca il pulsante chat in qualsiasi momento per l’assistente AI."
       }
     ]
   }

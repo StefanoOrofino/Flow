@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
 import { useProjectStore } from "@/src/useProjectStore";
 import AIDirector from "@/src/AIDirector";
+import { AssistantFab } from "@/src/components/AssistantFab";
 import { useAuth } from "@/src/auth";
 import { S, R, F, MAX_W, Palette, darkPalette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
@@ -338,6 +339,8 @@ export default function Editor() {
           <View style={[styles.viewerClose, { top: insets.top + S.md }]}><Ionicons name="close" size={26} color="#fff" /></View>
         </Pressable>
       </Modal>
+
+      <AssistantFab projectId={id} bottomOffset={28} />
     </View>
   );
 }
