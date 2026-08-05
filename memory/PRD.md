@@ -195,3 +195,6 @@ Implemented in strict priority order per user request:
 - Problem/Solution redesigned as dramatic Before/After ("Night and day"): stronger i18n copy (5 pain points vs 5 outcomes + per-card outcome line + subtitle). WITHOUT card muted/red-tinted (red x dots, clock), gold "VS" circular badge between, WITH card elevated (gold border+glow, gold check dots, wand outcome, negative margins). Verified.
 - Pricing repeated 2x: extracted PricingSection component; instance #1 after Features (holds nav pricing anchor, testID suffix a), instance #2 before FAQ (suffix b). Verified count=2.
 - PENDING: background music under voice-over — user chose generate via integration (needs API key) + ambient minimal; awaiting user's ElevenLabs/fal.ai API key.
+
+## Sprint 25 (2026-06) — Pricing repositioned (DONE)
+- Per user, moved primary Pricing to render immediately AFTER the Storyboard Gallery (holds nav "pricing" anchor, suffix a); second Pricing (suffix b) moved to AFTER FAQ (before Final CTA) so the two are well separated. Order verified: Gallery -> Pricing#1 -> FAQ -> Pricing#2. Count=2.

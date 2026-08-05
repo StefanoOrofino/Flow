@@ -459,9 +459,6 @@ export default function Landing() {
           </View>
         </View>
 
-        {/* PRICING (first occurrence — holds the nav anchor) */}
-        <PricingSection C={C} styles={styles} t={t} startFree={startFree} onLayout={onSec("pricing")} idSuffix="a" />
-
         {/* STORYBOARD showcase */}
         <View style={styles.section}>
           <View style={{ alignItems: "center", marginBottom: S.xl }}>
@@ -474,8 +471,8 @@ export default function Landing() {
         {/* GALLERY — desktop/tablet: keep after the storyboard showcase */}
         {mid ? <GallerySection C={C} styles={styles} t={t} wide={wide} mid={mid} /> : null}
 
-        {/* PRICING (second occurrence, before FAQ) */}
-        <PricingSection C={C} styles={styles} t={t} startFree={startFree} idSuffix="b" />
+        {/* PRICING (primary — right after the storyboard gallery, holds nav anchor) */}
+        <PricingSection C={C} styles={styles} t={t} startFree={startFree} onLayout={onSec("pricing")} idSuffix="a" />
 
         {/* FAQ */}
         <View style={styles.section} onLayout={onSec("faq")}>
@@ -484,6 +481,9 @@ export default function Landing() {
             {faqs.map((f, i) => <FaqItem key={i} f={f} C={C} styles={styles} />)}
           </View>
         </View>
+
+        {/* PRICING (second occurrence — final conversion, after FAQ) */}
+        <PricingSection C={C} styles={styles} t={t} startFree={startFree} idSuffix="b" />
 
         {/* FINAL CTA */}
         <View style={styles.section}>
