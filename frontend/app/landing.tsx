@@ -332,6 +332,8 @@ export default function Landing() {
 
         {/* GALLERY (mobile) — show the cinematic output immediately after the hero */}
         {!mid ? <GallerySection C={C} styles={styles} t={t} wide={wide} mid={mid} /> : null}
+        {/* PRICING (mobile — right after the gallery near the top) */}
+        {!mid ? <PricingSection C={C} styles={styles} t={t} startFree={startFree} onLayout={onSec("pricing")} idSuffix="a" /> : null}
 
         {/* TRUST */}
         <View style={[styles.section, styles.trust]}>
