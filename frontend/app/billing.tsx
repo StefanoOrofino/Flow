@@ -8,6 +8,7 @@ import { api } from "@/src/api";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
 import { H1, H2, Body, Card, Badge, Btn } from "@/src/components";
+import { LinearGradient } from "expo-linear-gradient";
 
 function UsageBar({ m, C, styles, t }: any) {
   const pct = m.unlimited ? 100 : m.percent;
@@ -107,27 +108,30 @@ export default function Billing() {
           <H1 style={{ marginBottom: 2 }}>{t("title")}</H1>
           <Body muted style={{ marginBottom: S.lg }}>{t("subtitle")}</Body>
 
-          {/* Current plan */}
-          <Card style={{ marginBottom: S.lg }}>
+          {/* Current plan — cinematic hero */}
+          <View style={styles.hero}>
+            <LinearGradient colors={["#241E13", "#15130E", "#0C0C0E"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            <View style={styles.heroGlow} pointerEvents="none" />
             <View style={styles.rowBetween}>
-              <Text style={styles.sectionLabel}>{t("currentPlan")}</Text>
+              <Text style={styles.heroLabel}>{t("currentPlan")}</Text>
               <Badge label={t(statusKey)} tone={statusTone} />
             </View>
-            <View style={styles.planTopRow}>
-              <View>
-                <H2>{data.plan.name}</H2>
-                <Text style={styles.planTag}>{data.plan.tagline}</Text>
+            <View style={styles.heroTopRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroPlanName}>{data.plan.name}</Text>
+                <Text style={styles.heroTag}>{data.plan.tagline}</Text>
               </View>
               <View style={{ alignItems: "flex-end" }}>
-                <Text style={styles.bigPrice}>{data.plan.price}</Text>
-                <Text style={styles.interval}>{data.plan.interval === "forever" ? t("freeForever") : t("perInterval", { interval: data.plan.interval })}</Text>
+                <Text style={styles.heroPrice}>{data.plan.price}</Text>
+                <Text style={styles.heroInterval}>{data.plan.interval === "forever" ? t("freeForever") : t("perInterval", { interval: data.plan.interval })}</Text>
               </View>
             </View>
-            <View style={[styles.limitRow, styles.divider, { marginTop: S.sm }]}>
-              <Text style={styles.limitLabel}>{t("nextRenewal")}</Text>
-              <Text style={styles.limitValue}>{data.currentPeriodEnd ? String(data.currentPeriodEnd).slice(0, 10) : t("noRenewal")}</Text>
+            <View style={styles.heroDivider} />
+            <View style={styles.rowBetween}>
+              <Text style={styles.heroRenewLabel}>{t("nextRenewal")}</Text>
+              <Text style={styles.heroRenewVal}>{data.currentPeriodEnd ? String(data.currentPeriodEnd).slice(0, 10) : t("noRenewal")}</Text>
             </View>
-          </Card>
+          </View>
 
           {/* Limit reached upsell */}
           {data.usage.some((m: any) => !m.unlimited && m.percent >= 100) && (
@@ -218,6 +222,19 @@ const createStyles = (C: Palette) => StyleSheet.create({
   rowCenterGap: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 11.5, letterSpacing: 0.6, textTransform: "uppercase" },
   sectionHeading: { color: C.onSurface, fontFamily: F.text, fontSize: 14, fontWeight: "700", marginBottom: S.sm, marginTop: S.xs },
+
+  // Cinematic current-plan hero
+  hero: { borderRadius: R.lg, overflow: "hidden", padding: S.xl, marginBottom: S.lg, borderWidth: 1, borderColor: "rgba(197,160,89,0.3)" },
+  heroGlow: { position: "absolute", top: -60, right: -30, width: 220, height: 220, borderRadius: 110, backgroundColor: "rgba(197,160,89,0.16)" },
+  heroLabel: { color: "rgba(245,241,232,0.55)", fontFamily: F.text, fontSize: 11.5, letterSpacing: 1.4, textTransform: "uppercase" },
+  heroTopRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: S.md },
+  heroPlanName: { color: "#F5F1E8", fontFamily: F.display, fontSize: 30, letterSpacing: -0.4 },
+  heroTag: { color: "rgba(245,241,232,0.6)", fontFamily: F.text, fontSize: 12.5, marginTop: 3, maxWidth: 220 },
+  heroPrice: { color: C.brand, fontFamily: F.display, fontSize: 34, letterSpacing: -0.5 },
+  heroInterval: { color: "rgba(245,241,232,0.55)", fontFamily: F.text, fontSize: 12 },
+  heroDivider: { height: 1, backgroundColor: "rgba(245,241,232,0.12)", marginVertical: S.md },
+  heroRenewLabel: { color: "rgba(245,241,232,0.6)", fontFamily: F.text, fontSize: 13 },
+  heroRenewVal: { color: "#F5F1E8", fontFamily: F.text, fontSize: 14, fontWeight: "600" },
 
   planTopRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: S.sm },
   planTag: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, marginTop: 2, maxWidth: 220 },

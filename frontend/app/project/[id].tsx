@@ -637,30 +637,55 @@ function CommentsPanel({ scene, author, onChange }: any) {
   );
 }
 
+function SceneThumb({ scene, large }: any) {
+  const frames = scene.frames || [];
+  const active = frames.find((x: any) => x.id === scene.active_frame_id) || frames[frames.length - 1] || null;
+  const url = active?.image_url || "";
+  return (
+    <View style={[styles.sbThumb, large && styles.sbThumbLarge]}>
+      {url ? (
+        <ExpoImage source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+      ) : (
+        <>
+          <LinearGradient colors={["#241E13", "#12100C"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          <Ionicons name="film-outline" size={large ? 26 : 20} color={C.onSurface3} />
+        </>
+      )}
+      <View style={styles.sbThumbNum}><Text style={styles.sbThumbNumText}>{scene.scene_number}</Text></View>
+      {url ? (
+        <View style={styles.sbThumbStatus}><Ionicons name="checkmark" size={10} color="#0C0C0E" /></View>
+      ) : null}
+      {frames.length > 1 ? (
+        <View style={styles.sbThumbCount}><Ionicons name="copy-outline" size={9} color="#F5F1E8" /><Text style={styles.sbThumbCountText}>{frames.length}</Text></View>
+      ) : null}
+    </View>
+  );
+}
+
 const SceneCard = React.memo(function SceneCard({ scene, index, open, version, busyScene, frameBusy, drag, isActive,
   onToggle, commitScene, markUnsaved, setStatus, setImage, insertScene, copyScene, actions, frameActions, aspect, author }: any) {
   const f = scene; // single source of truth — read straight from the scene prop (reflects undo/redo & two-way sync)
   const commit = (k: string) => (v: string) => commitScene(scene.id, { [k]: v });
   return (
     <ScaleDecorator>
-      <View style={[styles.sbCard, isActive && styles.sbCardActive]} testID={`scene-card-${index}`}>
-        <View style={styles.sbHead}>
+      <View style={[styles.sbCard, isActive && styles.sbCardActive, open && styles.sbCardOpen]} testID={`scene-card-${index}`}>
+        <Pressable style={styles.sbHead} onPress={() => onToggle(scene.id)} testID={`toggle-${index}`}>
           <Pressable onLongPress={drag} delayLongPress={140} style={styles.dragHandle} testID={`drag-${index}`}>
-            <Ionicons name="reorder-three-outline" size={22} color={C.onSurface2} />
+            <Ionicons name="reorder-three-outline" size={20} color={C.onSurface3} />
           </Pressable>
-          <View style={styles.sbNum}><Text style={styles.sbNumText}>{scene.scene_number}</Text></View>
-          <Pressable style={{ flex: 1 }} onPress={() => onToggle(scene.id)} testID={`toggle-${index}`}>
+          <SceneThumb scene={scene} />
+          <View style={{ flex: 1 }}>
             <Text style={styles.sbTitle} numberOfLines={1}>{f.title || "Untitled scene"}</Text>
             <View style={styles.sbMetaRow}>
-              <Chip>{f.duration || "—"}</Chip><Chip>{f.shot_size || "—"}</Chip><Chip>{f.location || "—"}</Chip>
-              <View style={[styles.statusBadge, { borderColor: statusTone(f.status) }]}>
-                <View style={[styles.statusDot, { backgroundColor: statusTone(f.status) }]} />
-                <Text style={[styles.statusText, { color: statusTone(f.status) }]}>{f.status || "Draft"}</Text>
-              </View>
+              <Chip>{f.duration || "—"}</Chip><Chip>{f.shot_size || "—"}</Chip>{f.location ? <Chip>{f.location}</Chip> : null}
             </View>
-          </Pressable>
-          <Pressable onPress={() => onToggle(scene.id)} hitSlop={8}><Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={C.onSurface2} /></Pressable>
-        </View>
+            <View style={[styles.statusBadge, { borderColor: statusTone(f.status), alignSelf: "flex-start", marginTop: 6 }]}>
+              <View style={[styles.statusDot, { backgroundColor: statusTone(f.status) }]} />
+              <Text style={[styles.statusText, { color: statusTone(f.status) }]}>{f.status || "Draft"}</Text>
+            </View>
+          </View>
+          <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color={C.onSurface2} />
+        </Pressable>
 
         {open && (
           <View style={styles.sbBody}>
@@ -915,14 +940,20 @@ function createStyles(C: Palette) { return StyleSheet.create({
   progVal: { color: C.onSurface, fontFamily: F.display, fontSize: 22 },
   progLabel: { color: C.onSurface2, fontFamily: F.text, fontSize: 10.5, marginTop: 2, textAlign: "center" },
   progDiv: { width: 1, height: 34, backgroundColor: C.border },
-  sbCard: { backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, marginBottom: S.md, overflow: "hidden" },
+  sbCard: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, marginBottom: S.md, overflow: "hidden" },
   sbCardActive: { borderColor: C.brand, shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
-  sbHead: { flexDirection: "row", alignItems: "center", padding: S.md, gap: S.sm },
+  sbCardOpen: { borderColor: C.borderStrong },
+  sbHead: { flexDirection: "row", alignItems: "center", padding: S.md, gap: S.md },
   dragHandle: { padding: 4 },
-  sbNum: { width: 34, height: 34, borderRadius: R.sm, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center" },
-  sbNumText: { color: C.brand, fontFamily: F.display, fontSize: 17 },
-  sbTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 18 },
-  sbMetaRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 5 },
+  sbThumb: { width: 116, height: 66, borderRadius: R.sm, overflow: "hidden", backgroundColor: C.surface3, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: C.border },
+  sbThumbLarge: { width: "100%", height: undefined, aspectRatio: 16 / 9, borderRadius: R.md },
+  sbThumbNum: { position: "absolute", top: 4, left: 4, backgroundColor: "rgba(0,0,0,0.62)", borderRadius: R.sm, minWidth: 20, height: 18, paddingHorizontal: 5, alignItems: "center", justifyContent: "center" },
+  sbThumbNumText: { color: "#F5F1E8", fontFamily: F.display, fontSize: 12.5, fontWeight: "600" },
+  sbThumbStatus: { position: "absolute", bottom: 4, right: 4, width: 16, height: 16, borderRadius: 8, backgroundColor: C.success, alignItems: "center", justifyContent: "center" },
+  sbThumbCount: { position: "absolute", top: 4, right: 4, flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "rgba(0,0,0,0.62)", borderRadius: R.pill, paddingHorizontal: 5, height: 16, justifyContent: "center" },
+  sbThumbCountText: { color: "#F5F1E8", fontFamily: F.text, fontSize: 9.5, fontWeight: "600" },
+  sbTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 19, letterSpacing: -0.2 },
+  sbMetaRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 6 },
   sbBody: { paddingHorizontal: S.md, paddingBottom: S.md, borderTopWidth: 1, borderTopColor: C.border },
   grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: S.md },
   sceneCard: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, overflow: "hidden", marginBottom: S.md },
