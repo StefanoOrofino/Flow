@@ -592,21 +592,26 @@
       ]
     },
     "problem": {
-      "kicker": "THE PROBLEM",
-      "title": "Pre-production is scattered and slow",
+      "kicker": "THE DIFFERENCE",
+      "title": "Night and day",
+      "subtitle": "See exactly what changes the moment FrameFlow enters your workflow.",
       "withoutLabel": "Without FrameFlow",
       "withLabel": "With FrameFlow",
+      "withoutOutcome": "Days of scattered, manual work",
+      "withOutcome": "A full package in minutes",
       "without": [
-        "Scattered briefs & email threads",
-        "Disconnected tools",
-        "Hours of manual planning",
-        "Repeated, duplicated work"
+        "Briefs buried in endless email threads",
+        "A dozen disconnected tools",
+        "Hours lost to manual planning",
+        "The same work, done twice",
+        "Guesswork and missed details"
       ],
       "with": [
-        "One AI-powered production workspace",
-        "Brief → package in minutes",
-        "Source-verified, never invented",
-        "Share, review and export beautifully"
+        "One brief in — one production workspace out",
+        "From brief to full package in minutes",
+        "Every fact source-verified, never invented",
+        "Share, review & export — beautifully",
+        "Confident, client-ready deliverables"
       ]
     },
     "how": {

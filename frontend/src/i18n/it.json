@@ -592,21 +592,26 @@
       ]
     },
     "problem": {
-      "kicker": "IL PROBLEMA",
-      "title": "La pre-produzione è dispersiva e lenta",
+      "kicker": "LA DIFFERENZA",
+      "title": "Come il giorno e la notte",
+      "subtitle": "Guarda esattamente cosa cambia nel momento in cui FrameFlow entra nel tuo flusso di lavoro.",
       "withoutLabel": "Senza FrameFlow",
       "withLabel": "Con FrameFlow",
+      "withoutOutcome": "Giorni di lavoro manuale e disordinato",
+      "withOutcome": "Un pacchetto completo in pochi minuti",
       "without": [
-        "Brief sparsi e catene di email",
-        "Strumenti scollegati tra loro",
-        "Ore di pianificazione manuale",
-        "Lavoro ripetuto e duplicato"
+        "Brief sepolti tra infinite email",
+        "Una decina di strumenti scollegati",
+        "Ore perse in pianificazione manuale",
+        "Lo stesso lavoro, fatto due volte",
+        "Approssimazioni e dettagli persi"
       ],
       "with": [
-        "Un unico workspace di produzione con l'AI",
-        "Dal brief al pacchetto in pochi minuti",
-        "Verificato dalle fonti, mai inventato",
-        "Condividi, revisiona ed esporta con eleganza"
+        "Un brief dentro — un workspace di produzione fuori",
+        "Dal brief al pacchetto completo in pochi minuti",
+        "Ogni dato verificato dalle fonti, mai inventato",
+        "Condividi, revisiona ed esporta con eleganza",
+        "Deliverable sicuri e pronti per il cliente"
       ]
     },
     "how": {

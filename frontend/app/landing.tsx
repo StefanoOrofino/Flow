@@ -44,6 +44,19 @@ const STEP_IMAGES = [
   require("../assets/landing/step5.jpg"),
   require("../assets/landing/step6.jpg"),
 ];
+const FEATURE_IMAGES = [
+  require("../assets/landing/feat1.jpg"),
+  require("../assets/landing/feat2.jpg"),
+  require("../assets/landing/feat3.jpg"),
+  require("../assets/landing/feat4.jpg"),
+  require("../assets/landing/feat5.jpg"),
+  require("../assets/landing/feat6.jpg"),
+  require("../assets/landing/feat7.jpg"),
+  require("../assets/landing/feat8.jpg"),
+  require("../assets/landing/feat9.jpg"),
+  require("../assets/landing/feat10.jpg"),
+  require("../assets/landing/feat11.jpg"),
+];
 
 /* ---------------- structural metadata (icons/ids only; text via i18n) ---------------- */
 const NAV_KEYS = ["features", "how", "pricing", "faq"] as const;
@@ -332,18 +345,43 @@ export default function Landing() {
 
         {/* PROBLEM / SOLUTION */}
         <View style={styles.section} onLayout={onSec("features")}>
-          <SectionHead C={C} styles={styles} kicker={t("problem.kicker")} title={t("problem.title")} />
+          <View style={{ alignItems: "center", marginBottom: S.xxl }}>
+            <Text style={styles.kicker}>{t("problem.kicker")}</Text>
+            <Text style={[styles.h2, { textAlign: "center", maxWidth: 640 }]}>{t("problem.title")}</Text>
+            <Text style={styles.gallerySub}>{t("problem.subtitle")}</Text>
+          </View>
           <View style={[styles.twoCol, !mid && { flexDirection: "column" }]}>
-            <View style={[styles.problemCard, { borderColor: C.border }]}>
-              <Text style={styles.problemLbl}>{t("problem.withoutLabel")}</Text>
+            {/* WITHOUT — muted / negative */}
+            <View style={[styles.problemCard, styles.problemCardBad]}>
+              <View style={styles.problemHead}>
+                <View style={styles.problemTagBad}><Icon name="x" size={13} color="#E0857C" strokeWidth={3} /><Text style={styles.problemTagBadTxt}>{t("problem.withoutLabel")}</Text></View>
+              </View>
+              <View style={styles.problemOutcome}>
+                <Icon name="clock" size={16} color="#B98A82" />
+                <Text style={styles.problemOutcomeBad}>{t("problem.withoutOutcome")}</Text>
+              </View>
+              <View style={styles.problemDivider} />
               {(t("problem.without", { returnObjects: true }) as string[]).map((x) => (
-                <View key={x} style={styles.bullet}><Icon name="x" size={15} color={C.onSurface3} /><Text style={styles.bulletTxtMuted}>{x}</Text></View>
+                <View key={x} style={styles.bullet}><View style={styles.badDot}><Icon name="x" size={11} color="#E0857C" strokeWidth={3} /></View><Text style={styles.bulletTxtMuted}>{x}</Text></View>
               ))}
             </View>
-            <View style={[styles.problemCard, styles.problemCardGood]}>
-              <Text style={[styles.problemLbl, { color: C.brand }]}>{t("problem.withLabel")}</Text>
+
+            {/* VS */}
+            <View style={styles.vsWrap}><View style={styles.vsBadge}><Text style={styles.vsTxt}>VS</Text></View></View>
+
+            {/* WITH — elevated / gold */}
+            <View style={[styles.problemCard, styles.problemCardGood, wide && { marginTop: -14, marginBottom: -14 }]}>
+              <LinearGradient colors={[C.brandTint, "transparent"]} style={styles.problemGlow} pointerEvents="none" />
+              <View style={styles.problemHead}>
+                <View style={styles.problemTagGood}><Icon name="sparkles" size={13} color={C.onBrand} /><Text style={styles.problemTagGoodTxt}>{t("problem.withLabel")}</Text></View>
+              </View>
+              <View style={styles.problemOutcome}>
+                <Icon name="wand" size={16} color={C.brand} />
+                <Text style={styles.problemOutcomeGood}>{t("problem.withOutcome")}</Text>
+              </View>
+              <View style={[styles.problemDivider, { backgroundColor: "rgba(197,160,89,0.25)" }]} />
               {(t("problem.with", { returnObjects: true }) as string[]).map((x) => (
-                <View key={x} style={styles.bullet}><Icon name="check" size={15} color={C.brand} strokeWidth={2.5} /><Text style={styles.bulletTxt}>{x}</Text></View>
+                <View key={x} style={styles.bullet}><View style={styles.goodDot}><Icon name="check" size={11} color="#0C0C0E" strokeWidth={3.5} /></View><Text style={styles.bulletTxt}>{x}</Text></View>
               ))}
             </View>
           </View>
@@ -407,13 +445,22 @@ export default function Landing() {
           <View style={styles.featGrid}>
             {features.map((f, i) => (
               <Animated.View key={i} entering={FadeInDown.duration(360).delay(i * 40)} style={[styles.featCard, wide ? { width: "31.5%" } : mid ? { width: "48%" } : { width: "100%" }]}>
-                <View style={styles.featIcon}><Icon name={FEATURE_ICONS[i] as any} size={18} color={C.brand} strokeWidth={2} /></View>
-                <Text style={styles.featTitle}>{f.title}</Text>
-                <Text style={styles.featDesc}>{f.desc}</Text>
+                <View style={styles.featCover}>
+                  <ExpoImage source={FEATURE_IMAGES[i]} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+                  <LinearGradient colors={["transparent", "rgba(0,0,0,0.5)"]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                </View>
+                <View style={styles.featBody}>
+                  <View style={styles.featIcon}><Icon name={FEATURE_ICONS[i] as any} size={18} color={C.brand} strokeWidth={2} /></View>
+                  <Text style={styles.featTitle}>{f.title}</Text>
+                  <Text style={styles.featDesc}>{f.desc}</Text>
+                </View>
               </Animated.View>
             ))}
           </View>
         </View>
+
+        {/* PRICING (first occurrence — holds the nav anchor) */}
+        <PricingSection C={C} styles={styles} t={t} startFree={startFree} onLayout={onSec("pricing")} idSuffix="a" />
 
         {/* STORYBOARD showcase */}
         <View style={styles.section}>
@@ -427,31 +474,8 @@ export default function Landing() {
         {/* GALLERY — desktop/tablet: keep after the storyboard showcase */}
         {mid ? <GallerySection C={C} styles={styles} t={t} wide={wide} mid={mid} /> : null}
 
-        {/* PRICING */}
-        <View style={[styles.section, styles.altBg]} onLayout={onSec("pricing")}>
-          <SectionHead C={C} styles={styles} kicker={t("pricing.kicker")} title={t("pricing.title")} />
-          <View style={styles.priceGrid}>
-            {PRICING_META.map((p) => {
-              const name = t(`pricing.plans.${p.id}.name`);
-              const feats = t(`pricing.plans.${p.id}.feats`, { returnObjects: true }) as string[];
-              return (
-                <View key={p.id} style={[styles.priceCard, p.rec && styles.priceCardRec]}>
-                  {p.rec && <View style={styles.recBadge}><Text style={styles.recBadgeTxt}>{t("pricing.mostPopular")}</Text></View>}
-                  <Text style={styles.priceName}>{name}</Text>
-                  <View style={styles.priceRow}><Text style={styles.priceVal}>{t(`pricing.plans.${p.id}.price`)}</Text><Text style={styles.pricePer}>{t(`pricing.plans.${p.id}.per`)}</Text></View>
-                  <Pressable onPress={startFree} style={[styles.priceCta, p.rec ? styles.priceCtaGold : styles.priceCtaGhost]}>
-                    <Text style={[styles.priceCtaTxt, p.rec ? { color: C.onBrand } : { color: C.onSurface }]}>{p.id === "free" ? t("pricing.startFree") : t("pricing.getPlan", { name })}</Text>
-                  </Pressable>
-                  <View style={{ marginTop: S.md, gap: 10 }}>
-                    {feats.map((f) => (
-                      <View key={f} style={styles.bullet}><Icon name="check" size={15} color={C.brand} strokeWidth={2.5} /><Text style={styles.bulletTxt}>{f}</Text></View>
-                    ))}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </View>
+        {/* PRICING (second occurrence, before FAQ) */}
+        <PricingSection C={C} styles={styles} t={t} startFree={startFree} idSuffix="b" />
 
         {/* FAQ */}
         <View style={styles.section} onLayout={onSec("faq")}>
@@ -550,6 +574,35 @@ function GallerySection({ C, styles, t, wide, mid }: any) {
         {FRAMES.map((src, i) => (
           <GalleryCard key={i} src={src} i={i} caption={caps[i]} styles={styles} cardW={cardW} />
         ))}
+      </View>
+    </View>
+  );
+}
+
+function PricingSection({ C, styles, t, startFree, onLayout, idSuffix }: any) {
+  return (
+    <View style={[styles.section, styles.altBg]} onLayout={onLayout}>
+      <SectionHead C={C} styles={styles} kicker={t("pricing.kicker")} title={t("pricing.title")} />
+      <View style={styles.priceGrid}>
+        {PRICING_META.map((p) => {
+          const name = t(`pricing.plans.${p.id}.name`);
+          const feats = t(`pricing.plans.${p.id}.feats`, { returnObjects: true }) as string[];
+          return (
+            <View key={p.id} style={[styles.priceCard, p.rec && styles.priceCardRec]} testID={`plan-${p.id}-${idSuffix || "a"}`}>
+              {p.rec && <View style={styles.recBadge}><Text style={styles.recBadgeTxt}>{t("pricing.mostPopular")}</Text></View>}
+              <Text style={styles.priceName}>{name}</Text>
+              <View style={styles.priceRow}><Text style={styles.priceVal}>{t(`pricing.plans.${p.id}.price`)}</Text><Text style={styles.pricePer}>{t(`pricing.plans.${p.id}.per`)}</Text></View>
+              <Pressable onPress={startFree} style={[styles.priceCta, p.rec ? styles.priceCtaGold : styles.priceCtaGhost]}>
+                <Text style={[styles.priceCtaTxt, p.rec ? { color: C.onBrand } : { color: C.onSurface }]}>{p.id === "free" ? t("pricing.startFree") : t("pricing.getPlan", { name })}</Text>
+              </Pressable>
+              <View style={{ marginTop: S.md, gap: 10 }}>
+                {feats.map((f) => (
+                  <View key={f} style={styles.bullet}><Icon name="check" size={15} color={C.brand} strokeWidth={2.5} /><Text style={styles.bulletTxt}>{f}</Text></View>
+                ))}
+              </View>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -722,10 +775,25 @@ const createStyles = (C: Palette) => StyleSheet.create({
   h2: { color: C.onSurface, fontFamily: F.display, fontSize: 34, lineHeight: 40, fontWeight: "500", letterSpacing: -0.5, alignSelf: "center" },
   para: { color: C.onSurface2, fontFamily: F.text, fontSize: 15.5, lineHeight: 25, marginTop: S.md, marginBottom: S.lg },
 
-  twoCol: { flexDirection: "row", gap: S.lg },
-  problemCard: { flex: 1, backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.xl, gap: 12 },
-  problemCardGood: { borderColor: "rgba(197,160,89,0.4)", backgroundColor: C.brandTint },
-  problemLbl: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, fontWeight: "700", letterSpacing: 0.5, marginBottom: 6, textTransform: "uppercase" },
+  twoCol: { flexDirection: "row", gap: 0, alignItems: "center", maxWidth: 920, alignSelf: "center", width: "100%" },
+  problemCard: { flex: 1, backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.xl, gap: 12, overflow: "hidden" },
+  problemCardBad: { borderColor: "rgba(224,133,124,0.28)", backgroundColor: C.surface2, opacity: 0.92 },
+  problemCardGood: { borderColor: C.brand, borderWidth: 2, backgroundColor: C.brandTint, shadowColor: C.brand, shadowOpacity: 0.28, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
+  problemGlow: { position: "absolute", top: 0, left: 0, right: 0, height: 120 },
+  problemHead: { flexDirection: "row" },
+  problemTagBad: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(224,133,124,0.14)", borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 6 },
+  problemTagBadTxt: { color: "#D98A80", fontFamily: F.text, fontSize: 12.5, fontWeight: "700", letterSpacing: 0.4 },
+  problemTagGood: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.brand, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 6 },
+  problemTagGoodTxt: { color: C.onBrand, fontFamily: F.text, fontSize: 12.5, fontWeight: "700", letterSpacing: 0.4 },
+  problemOutcome: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+  problemOutcomeBad: { color: C.onSurface2, fontFamily: F.display, fontSize: 18, flex: 1 },
+  problemOutcomeGood: { color: C.onSurface, fontFamily: F.display, fontSize: 19, fontWeight: "600", flex: 1 },
+  problemDivider: { height: 1, backgroundColor: C.border, marginVertical: 4 },
+  badDot: { width: 20, height: 20, borderRadius: 10, backgroundColor: "rgba(224,133,124,0.16)", alignItems: "center", justifyContent: "center", marginTop: 1 },
+  goodDot: { width: 20, height: 20, borderRadius: 10, backgroundColor: C.brand, alignItems: "center", justifyContent: "center", marginTop: 1 },
+  vsWrap: { alignItems: "center", justifyContent: "center", paddingHorizontal: 6, paddingVertical: 6, zIndex: 5 },
+  vsBadge: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.surface, borderWidth: 2, borderColor: C.brand, alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  vsTxt: { color: C.brand, fontFamily: F.display, fontSize: 16, fontWeight: "700", letterSpacing: 0.5 },
   bullet: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   bulletTxt: { color: C.onSurface, fontFamily: F.text, fontSize: 14.5, flex: 1, lineHeight: 21 },
   bulletTxtMuted: { color: C.onSurface2, fontFamily: F.text, fontSize: 14.5, flex: 1, lineHeight: 21 },
@@ -747,8 +815,10 @@ const createStyles = (C: Palette) => StyleSheet.create({
   flowTxt: { color: C.onSurface, fontFamily: F.text, fontSize: 15 },
 
   featGrid: { flexDirection: "row", flexWrap: "wrap", gap: S.lg, justifyContent: "center", maxWidth: MAX_W, alignSelf: "center", paddingHorizontal: S.xl },
-  featCard: { backgroundColor: C.surface, borderRadius: R.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, padding: S.xl },
-  featIcon: { width: 44, height: 44, borderRadius: R.md, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginBottom: S.md },
+  featCard: { backgroundColor: C.surface, borderRadius: R.lg, borderWidth: StyleSheet.hairlineWidth, borderColor: C.border, overflow: "hidden" },
+  featCover: { height: 128, backgroundColor: C.surface3 },
+  featBody: { padding: S.xl, paddingTop: 0 },
+  featIcon: { width: 48, height: 48, borderRadius: R.md, backgroundColor: C.brandTint, alignItems: "center", justifyContent: "center", marginTop: -24, marginBottom: S.md, borderWidth: 2, borderColor: C.surface },
   featTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 20 },
   featDesc: { color: C.onSurface2, fontFamily: F.text, fontSize: 13.5, lineHeight: 20, marginTop: 6 },
 
