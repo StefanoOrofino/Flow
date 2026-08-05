@@ -198,3 +198,7 @@ Implemented in strict priority order per user request:
 
 ## Sprint 25 (2026-06) — Pricing repositioned (DONE)
 - Per user, moved primary Pricing to render immediately AFTER the Storyboard Gallery (holds nav "pricing" anchor, suffix a); second Pricing (suffix b) moved to AFTER FAQ (before Final CTA) so the two are well separated. Order verified: Gallery -> Pricing#1 -> FAQ -> Pricing#2. Count=2.
+
+## Sprint 26 (2026-06) — Landing mobile layout fixes (DONE)
+- **Cut-off text fix** (Before/After "With FrameFlow" card): root cause = `problemCard` base style had `flex: 1` + `overflow: hidden`; in mobile column mode `flex:1` collapsed the card to ~52px so the last bullet ("Confident, client-ready deliverables") was clipped. `flex: undefined` did NOT override the shorthand. Fix: removed `flex:1` from base `problemCard`; now applied conditionally `mid ? {flex:1} : {width:'100%'}` on both cards + twoCol uses `alignItems:'stretch'` on mobile. Verified: with-card now 347px, full content visible; desktop two-column unchanged.
+- **Pricing triple-render on mobile fix**: primary `<PricingSection idSuffix="a">` (after storyboard gallery, line ~477) rendered unconditionally → on mobile it appeared 3x (mobile-top + primary + after-FAQ). Wrapped primary in `{mid ? <PricingSection/> : null}`. Mobile now shows exactly 2 (suffix a after gallery near top + suffix b after FAQ); desktop unchanged (2). Verified via testID counts + screenshots (390px + 1280px).

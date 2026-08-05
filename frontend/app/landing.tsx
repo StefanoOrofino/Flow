@@ -352,9 +352,9 @@ export default function Landing() {
             <Text style={[styles.h2, { textAlign: "center", maxWidth: 640 }]}>{t("problem.title")}</Text>
             <Text style={styles.gallerySub}>{t("problem.subtitle")}</Text>
           </View>
-          <View style={[styles.twoCol, !mid && { flexDirection: "column" }]}>
+          <View style={[styles.twoCol, !mid && { flexDirection: "column", alignItems: "stretch" }]}>
             {/* WITHOUT — muted / negative */}
-            <View style={[styles.problemCard, styles.problemCardBad]}>
+            <View style={[styles.problemCard, styles.problemCardBad, mid ? { flex: 1 } : { width: "100%" }]}>
               <View style={styles.problemHead}>
                 <View style={styles.problemTagBad}><Icon name="x" size={13} color="#E0857C" strokeWidth={3} /><Text style={styles.problemTagBadTxt}>{t("problem.withoutLabel")}</Text></View>
               </View>
@@ -372,7 +372,7 @@ export default function Landing() {
             <View style={styles.vsWrap}><View style={styles.vsBadge}><Text style={styles.vsTxt}>VS</Text></View></View>
 
             {/* WITH — elevated / gold */}
-            <View style={[styles.problemCard, styles.problemCardGood, wide && { marginTop: -14, marginBottom: -14 }]}>
+            <View style={[styles.problemCard, styles.problemCardGood, mid ? { flex: 1 } : { width: "100%" }, wide && { marginTop: -14, marginBottom: -14 }]}>
               <LinearGradient colors={[C.brandTint, "transparent"]} style={styles.problemGlow} pointerEvents="none" />
               <View style={styles.problemHead}>
                 <View style={styles.problemTagGood}><Icon name="sparkles" size={13} color={C.onBrand} /><Text style={styles.problemTagGoodTxt}>{t("problem.withLabel")}</Text></View>
@@ -473,8 +473,8 @@ export default function Landing() {
         {/* GALLERY — desktop/tablet: keep after the storyboard showcase */}
         {mid ? <GallerySection C={C} styles={styles} t={t} wide={wide} mid={mid} /> : null}
 
-        {/* PRICING (primary — right after the storyboard gallery, holds nav anchor) */}
-        <PricingSection C={C} styles={styles} t={t} startFree={startFree} onLayout={onSec("pricing")} idSuffix="a" />
+        {/* PRICING (primary — right after the storyboard gallery, holds nav anchor). Mobile shows it near the top instead. */}
+        {mid ? <PricingSection C={C} styles={styles} t={t} startFree={startFree} onLayout={onSec("pricing")} idSuffix="a" /> : null}
 
         {/* FAQ */}
         <View style={styles.section} onLayout={onSec("faq")}>
@@ -778,7 +778,7 @@ const createStyles = (C: Palette) => StyleSheet.create({
   para: { color: C.onSurface2, fontFamily: F.text, fontSize: 15.5, lineHeight: 25, marginTop: S.md, marginBottom: S.lg },
 
   twoCol: { flexDirection: "row", gap: 0, alignItems: "center", maxWidth: 920, alignSelf: "center", width: "100%" },
-  problemCard: { flex: 1, backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.xl, gap: 12, overflow: "hidden" },
+  problemCard: { backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.xl, gap: 12, overflow: "hidden" },
   problemCardBad: { borderColor: "rgba(224,133,124,0.28)", backgroundColor: C.surface2, opacity: 0.92 },
   problemCardGood: { borderColor: C.brand, borderWidth: 2, backgroundColor: C.brandTint, shadowColor: C.brand, shadowOpacity: 0.28, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: 8 },
   problemGlow: { position: "absolute", top: 0, left: 0, right: 0, height: 120 },
