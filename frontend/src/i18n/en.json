@@ -845,6 +845,24 @@
         "Lifestyle · Sunset",
         "Aerial · Desert highway"
       ]
-    }
+    },
+    "stats": [
+      {
+        "value": "Minutes",
+        "label": "From brief to full package"
+      },
+      {
+        "value": "6+",
+        "label": "Deliverables per project"
+      },
+      {
+        "value": "EN · IT",
+        "label": "Fully localized"
+      },
+      {
+        "value": "100%",
+        "label": "Source-verified, never invented"
+      }
+    ]
   }
 }

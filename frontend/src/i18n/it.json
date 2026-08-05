@@ -845,6 +845,24 @@
         "Lifestyle · Tramonto",
         "Aerea · Autostrada nel deserto"
       ]
-    }
+    },
+    "stats": [
+      {
+        "value": "Minuti",
+        "label": "Dal brief al pacchetto completo"
+      },
+      {
+        "value": "6+",
+        "label": "Deliverable per progetto"
+      },
+      {
+        "value": "EN · IT",
+        "label": "Completamente localizzato"
+      },
+      {
+        "value": "100%",
+        "label": "Verificato dalle fonti, mai inventato"
+      }
+    ]
   }
 }

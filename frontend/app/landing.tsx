@@ -165,7 +165,7 @@ function StoryboardMock({ C, styles }: any) {
 export default function Landing() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { C, scheme, toggle } = useTheme() as any;
+  const { C, isDark, toggleTheme } = useTheme();
   const styles = useMemo(() => createStyles(C), [C]);
   const { width } = useWindowDimensions();
   const wide = width > 900;
@@ -186,11 +186,12 @@ export default function Landing() {
   const login = () => router.push("/login");
   const toggleLang = () => setLanguage(currentLanguage === "it" ? "en" : "it");
   const [demoOpen, setDemoOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.surface }}>
       {/* Sticky nav */}
-      <View style={[styles.nav, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.nav, scrolled && styles.navScrolled, { paddingTop: insets.top + 10 }]}>
         <View style={styles.navInner}>
           <Pressable style={styles.brand} onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}>
             <LogoMark color={C.brand} size={22} />
@@ -205,17 +206,18 @@ export default function Landing() {
           )}
           <View style={styles.navRight}>
             <Pressable onPress={toggleLang} hitSlop={8} style={styles.langBtn}><Text style={styles.langTxt}>{currentLanguage.toUpperCase()}</Text></Pressable>
-            <Pressable onPress={toggle} hitSlop={8} style={styles.navIcon}><Icon name={scheme === "dark" ? "sun" : "moon"} size={17} color={C.onSurface2} /></Pressable>
+            <Pressable onPress={toggleTheme} hitSlop={8} style={styles.navIcon}><Icon name={isDark ? "sun" : "moon"} size={17} color={C.onSurface2} /></Pressable>
             {mid && <Pressable onPress={login}><Text style={styles.navLink}>{t("nav.login")}</Text></Pressable>}
             <Pressable onPress={startFree} style={styles.navCta}><Text style={styles.navCtaTxt}>{t("nav.startFree")}</Text></Pressable>
           </View>
         </View>
       </View>
 
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0 }}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 0 }}
+        scrollEventThrottle={16} onScroll={(e) => { const y = e.nativeEvent.contentOffset.y; setScrolled(y > 16); }}>
         {/* HERO */}
         <View style={styles.hero}>
-          <LinearGradient colors={scheme === "dark" ? ["#1A1710", "#111014", C.surface] : ["#FBF7EE", "#F4EEE1", C.surface]} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={isDark ? ["#1A1710", "#111014", C.surface] : ["#FBF7EE", "#F4EEE1", C.surface]} style={StyleSheet.absoluteFill} />
           <View style={styles.heroGlow} />
           <View style={[styles.section, { alignItems: "center", paddingTop: wide ? 96 : 64 }]}>
             <Animated.View entering={FadeInDown.duration(500)} style={{ alignItems: "center" }}>
@@ -277,6 +279,18 @@ export default function Landing() {
                 <Text style={styles.stepTitle}>{s.title}</Text>
                 <Text style={styles.stepDesc}>{s.desc}</Text>
               </Animated.View>
+            ))}
+          </View>
+        </View>
+
+        {/* STATS */}
+        <View style={[styles.section, styles.statsSection]}>
+          <View style={styles.statsRow}>
+            {(t("stats", { returnObjects: true }) as { value: string; label: string }[]).map((s, i) => (
+              <View key={i} style={[styles.statCell, wide ? { flex: 1 } : { width: "50%" }, i > 0 && styles.statDivider]}>
+                <Text style={styles.statVal}>{s.value}</Text>
+                <Text style={styles.statLbl}>{s.label}</Text>
+              </View>
             ))}
           </View>
         </View>
@@ -408,8 +422,30 @@ export default function Landing() {
   );
 }
 
+function GalleryCard({ src, i, caption, styles, cardW }: any) {
+  const s = useSharedValue(1);
+  const imgStyle = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+  return (
+    <Animated.View entering={FadeInDown.duration(400).delay(i * 60)} style={[styles.galleryCard, cardW]}>
+      <Pressable
+        style={{ flex: 1 }}
+        onHoverIn={() => { s.value = withTiming(1.06, { duration: 320 }); }}
+        onHoverOut={() => { s.value = withTiming(1, { duration: 320 }); }}
+      >
+        <Animated.View style={[StyleSheet.absoluteFill, imgStyle]}>
+          <ExpoImage source={src} style={styles.galleryImg} contentFit="cover" transition={250} />
+        </Animated.View>
+        <LinearGradient colors={["transparent", "rgba(0,0,0,0.78)"]} style={styles.galleryOverlay} pointerEvents="none" />
+        <View style={styles.galleryNum}><Text style={styles.galleryNumTxt}>{i + 1}</Text></View>
+        <Text style={styles.galleryCap}>{caption}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 function GallerySection({ C, styles, t, wide, mid }: any) {
   const caps = t("gallery.captions", { returnObjects: true }) as string[];
+  const cardW = wide ? { width: "31.8%" } : mid ? { width: "48.5%" } : { width: "100%" };
   return (
     <View style={[styles.section, styles.altBg]}>
       <View style={{ alignItems: "center", marginBottom: S.xxl, paddingHorizontal: S.xl }}>
@@ -419,12 +455,7 @@ function GallerySection({ C, styles, t, wide, mid }: any) {
       </View>
       <View style={styles.galleryGrid}>
         {FRAMES.map((src, i) => (
-          <Animated.View key={i} entering={FadeInDown.duration(400).delay(i * 60)} style={[styles.galleryCard, wide ? { width: "31.8%" } : mid ? { width: "48.5%" } : { width: "100%" }]}>
-            <ExpoImage source={src} style={styles.galleryImg} contentFit="cover" transition={250} />
-            <LinearGradient colors={["transparent", "rgba(0,0,0,0.78)"]} style={styles.galleryOverlay} pointerEvents="none" />
-            <View style={styles.galleryNum}><Text style={styles.galleryNumTxt}>{i + 1}</Text></View>
-            <Text style={styles.galleryCap}>{caps[i]}</Text>
-          </Animated.View>
+          <GalleryCard key={i} src={src} i={i} caption={caps[i]} styles={styles} cardW={cardW} />
         ))}
       </View>
     </View>
@@ -481,7 +512,7 @@ const createStyles = (C: Palette) => StyleSheet.create({
 
   pill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.brandTint, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 6, marginBottom: S.lg },
   pillTxt: { color: C.brand, fontFamily: F.text, fontSize: 12.5, fontWeight: "600" },
-  h1: { color: C.onSurface, fontFamily: F.display, fontWeight: "500", letterSpacing: -1, textAlign: "center", lineHeight: undefined },
+  h1: { color: C.onSurface, fontFamily: F.display, fontWeight: "600", letterSpacing: -1, textAlign: "center", lineHeight: undefined },
   lead: { color: C.onSurface2, fontFamily: F.text, fontSize: 17, lineHeight: 26, textAlign: "center", marginTop: S.lg },
   heroCtas: { flexDirection: "row", gap: S.md, marginTop: S.xl, flexWrap: "wrap", justifyContent: "center" },
   ctaPrimary: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.brand, borderRadius: R.pill, paddingHorizontal: S.xl, paddingVertical: 14 },
@@ -562,6 +593,7 @@ const createStyles = (C: Palette) => StyleSheet.create({
   trustChipTxt: { color: C.onSurface, fontFamily: F.text, fontSize: 13.5, fontWeight: "500" },
 
   // gallery
+  navScrolled: { backgroundColor: C.surface, shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 8, borderBottomColor: C.borderStrong },
   gallerySub: { color: C.onSurface2, fontFamily: F.text, fontSize: 15, textAlign: "center", maxWidth: 620, lineHeight: 23, marginTop: S.md },
   galleryGrid: { flexDirection: "row", flexWrap: "wrap", gap: S.md, justifyContent: "center", maxWidth: MAX_W, alignSelf: "center", width: "100%", paddingHorizontal: S.xl },
   galleryCard: { aspectRatio: 16 / 9, borderRadius: R.lg, overflow: "hidden", borderWidth: 1, borderColor: C.border, backgroundColor: C.surface3 },
@@ -570,6 +602,14 @@ const createStyles = (C: Palette) => StyleSheet.create({
   galleryNum: { position: "absolute", top: 10, left: 10, backgroundColor: "rgba(0,0,0,0.55)", borderRadius: R.sm, minWidth: 24, height: 22, paddingHorizontal: 7, alignItems: "center", justifyContent: "center" },
   galleryNumTxt: { color: "#F5F1E8", fontFamily: F.display, fontSize: 13, fontWeight: "600" },
   galleryCap: { position: "absolute", left: 12, right: 12, bottom: 10, color: "#F5F1E8", fontFamily: F.text, fontSize: 12.5, fontWeight: "600" },
+
+  // stats
+  statsSection: { paddingVertical: 40 },
+  statsRow: { flexDirection: "row", flexWrap: "wrap", borderRadius: R.lg, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface2, overflow: "hidden" },
+  statCell: { minWidth: 140, alignItems: "center", paddingVertical: S.xl, paddingHorizontal: S.md },
+  statDivider: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: C.border },
+  statVal: { color: C.brand, fontFamily: F.display, fontSize: 34, letterSpacing: -0.5 },
+  statLbl: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, textAlign: "center", marginTop: 6, lineHeight: 17 },
 
   trust: { alignItems: "center", paddingVertical: 40 },
   trustLbl: { color: C.onSurface3, fontFamily: F.text, fontSize: 11.5, letterSpacing: 1.5, marginBottom: S.lg },

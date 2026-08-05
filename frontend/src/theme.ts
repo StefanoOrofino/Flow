@@ -304,8 +304,8 @@ export const S = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 };
 export const R = { sm: 8, md: 12, lg: 18, pill: 999 };
 
 export const F = {
-  display: Platform.select({ web: "'Cormorant Garamond', Georgia, serif", default: "serif" }) as string,
-  text: Platform.select({ web: "'Geist', system-ui, sans-serif", default: "System" }) as string,
+  display: Platform.select({ web: "'Fraunces', Georgia, 'Times New Roman', serif", default: "serif" }) as string,
+  text: Platform.select({ web: "'Inter', system-ui, -apple-system, sans-serif", default: "System" }) as string,
 };
 
 export const MAX_W = 1080;
