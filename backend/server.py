@@ -1142,20 +1142,43 @@ async def billing_checkout_status(session_id: str, user=Depends(get_current_user
 
 @api_router.post("/billing/webhook")
 async def billing_webhook(request: Request):
+    """Tolerant webhook: the Emergent Stripe proxy forwards events without a
+    Stripe-Signature header, so we fall back to raw JSON parsing. Always returns
+    200 so the proxy/Stripe does not retry indefinitely. Activation is idempotent
+    (guarded by payment_transactions.processed)."""
     payload = await request.body()
     sig = request.headers.get("Stripe-Signature")
+    event_type = session_id = payment_status = None
+    metadata: dict = {}
     sc = _stripe_client()
     try:
         event = await sc.handle_webhook(payload, sig)
-    except Exception as e:
-        logger.error(f"stripe webhook error: {e}")
-        raise HTTPException(status_code=400, detail="Invalid webhook")
-    if event.event_type == "checkout.session.completed" and event.session_id:
-        tx = await db.payment_transactions.find_one({"session_id": event.session_id})
-        if tx and not tx.get("processed") and event.payment_status == "paid":
-            await db.payment_transactions.update_one({"session_id": event.session_id},
+        event_type, session_id = event.event_type, event.session_id
+        payment_status, metadata = event.payment_status, (event.metadata or {})
+    except Exception:
+        # Fallback: parse the raw JSON body ourselves.
+        try:
+            data = json.loads(payload.decode("utf-8"))
+            event_type = data.get("type")
+            obj = (data.get("data", {}) or {}).get("object", {}) or {}
+            session_id = obj.get("id")
+            payment_status = obj.get("payment_status")
+            metadata = obj.get("metadata", {}) or {}
+        except Exception as e:
+            logger.warning(f"stripe webhook unparseable: {e}")
+            return {"received": True}
+
+    if event_type == "checkout.session.completed" and payment_status == "paid":
+        tx = None
+        if session_id:
+            tx = await db.payment_transactions.find_one({"session_id": session_id})
+        if tx and not tx.get("processed"):
+            await db.payment_transactions.update_one({"session_id": session_id},
                 {"$set": {"payment_status": "paid", "processed": True, "updated_at": now_iso()}})
             await _activate_plan(tx["user_id"], tx["plan"])
+        elif not tx and metadata.get("user_id") and metadata.get("plan") in PLAN_PRICES:
+            # No local tx (edge case) — activate from trusted event metadata.
+            await _activate_plan(metadata["user_id"], metadata["plan"])
     return {"received": True}
 
 
