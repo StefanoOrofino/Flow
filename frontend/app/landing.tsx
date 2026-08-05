@@ -11,6 +11,22 @@ import { useLanguage } from "@/src/LanguageProvider";
 import { Icon } from "@/src/ui/Icon";
 import { LogoMark } from "@/src/brand/FrameFlowLogo";
 import { Image as ExpoImage } from "expo-image";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+
+const AUDIO: Record<string, any[]> = {
+  en: [
+    require("../assets/landing/audio/en_1.mp3"),
+    require("../assets/landing/audio/en_2.mp3"),
+    require("../assets/landing/audio/en_3.mp3"),
+    require("../assets/landing/audio/en_4.mp3"),
+  ],
+  it: [
+    require("../assets/landing/audio/it_1.mp3"),
+    require("../assets/landing/audio/it_2.mp3"),
+    require("../assets/landing/audio/it_3.mp3"),
+    require("../assets/landing/audio/it_4.mp3"),
+  ],
+};
 
 const FRAMES = [
   require("../assets/landing/frame1.jpg"),
@@ -40,6 +56,27 @@ const PRICING_META = [
 ];
 
 /* ---------------- browser chrome wrapper ---------------- */
+function PrimaryCTA({ label, onPress, styles, C, large }: any) {
+  const [hover, setHover] = useState(false);
+  const sc = useSharedValue(1);
+  const st = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }));
+  return (
+    <Animated.View style={st}>
+      <Pressable
+        onPress={onPress}
+        onHoverIn={() => setHover(true)}
+        onHoverOut={() => setHover(false)}
+        onPressIn={() => { sc.value = withTiming(0.96, { duration: 110 }); }}
+        onPressOut={() => { sc.value = withTiming(1, { duration: 160 }); }}
+        style={[styles.ctaPrimary, large && styles.ctaPrimaryLg, hover && styles.ctaPrimaryHover]}
+      >
+        <Text style={[styles.ctaPrimaryTxt, large && styles.ctaPrimaryTxtLg]}>{label}</Text>
+        <Icon name="arrow-right" size={large ? 20 : 17} color={C.onBrand} strokeWidth={2.5} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 function Chrome({ C, styles, big, children }: any) {
   return (
     <View style={[styles.mock, big && styles.mockBig]}>
@@ -58,17 +95,46 @@ function Chrome({ C, styles, big, children }: any) {
 
 /* ---------------- animated product demo ---------------- */
 const DEMO_ICONS = ["upload", "wand", "check", "clapperboard"];
-function DemoReel({ C, styles, t, big }: any) {
+function DemoReel({ C, styles, t, big, narrated, lang }: any) {
   const [step, setStep] = useState(0);
   const captions = t("demo.steps", { returnObjects: true }) as string[];
-  useEffect(() => {
-    const id = setInterval(() => setStep((s) => (s + 1) % 4), 2600);
-    return () => clearInterval(id);
-  }, []);
+
   // scanning line for the "analyze" step
   const scan = useSharedValue(0);
   useEffect(() => { scan.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.quad) }), -1, true); }, []);
   const scanStyle = useAnimatedStyle(() => ({ top: `${8 + scan.value * 68}%` }));
+
+  // --- voice-over narration (only in narrated / modal mode) ---
+  const player = useAudioPlayer();
+  const status = useAudioPlayerStatus(player);
+  const [playing, setPlaying] = useState(false);
+  const clips = AUDIO[lang === "it" ? "it" : "en"];
+
+  const playStep = (idx: number) => { try { player.replace(clips[idx]); player.seekTo(0); player.play(); } catch {} };
+  const startNarration = () => { setStep(0); setPlaying(true); playStep(0); };
+  const stopNarration = () => { setPlaying(false); try { player.pause(); } catch {} };
+
+  // Non-narrated (hero): auto-cycle on a timer.
+  useEffect(() => {
+    if (narrated) return;
+    const id = setInterval(() => setStep((s) => (s + 1) % 4), 2600);
+    return () => clearInterval(id);
+  }, [narrated]);
+
+  // Narrated: advance to the next clip when the current one finishes.
+  useEffect(() => {
+    if (!narrated || !playing) return;
+    if (status?.didJustFinish) {
+      setStep((cur) => {
+        if (cur < 3) { const n = cur + 1; playStep(n); return n; }
+        setPlaying(false);
+        return cur;
+      });
+    }
+  }, [status?.didJustFinish]);
+
+  // Stop audio if unmounted.
+  useEffect(() => () => { try { player.pause(); } catch {} }, []);
 
   return (
     <Chrome C={C} styles={styles} big={big}>
@@ -122,9 +188,16 @@ function DemoReel({ C, styles, t, big }: any) {
       <View style={styles.demoCaption}>
         <View style={styles.demoStepIcon}><Icon name={DEMO_ICONS[step] as any} size={13} color={C.brand} strokeWidth={2.4} /></View>
         <Text style={styles.demoCaptionTxt} numberOfLines={1}>{captions[step]}</Text>
-        <View style={styles.demoDots}>
-          {[0, 1, 2, 3].map((i) => <View key={i} style={[styles.demoDot, i === step && styles.demoDotActive]} />)}
-        </View>
+        {narrated ? (
+          <Pressable onPress={playing ? stopNarration : startNarration} style={styles.demoPlayBtn} hitSlop={8}>
+            <Icon name={playing ? "pause" : "play"} size={13} color={C.onBrand} strokeWidth={2.5} />
+            <Text style={styles.demoPlayTxt}>{playing ? t("demo.pause") : t("demo.playVoice")}</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.demoDots}>
+            {[0, 1, 2, 3].map((i) => <View key={i} style={[styles.demoDot, i === step && styles.demoDotActive]} />)}
+          </View>
+        )}
       </View>
     </Chrome>
   );
@@ -233,7 +306,7 @@ export default function Landing() {
               <Text style={[styles.h1, { fontSize: wide ? 60 : mid ? 46 : 36, lineHeight: (wide ? 60 : mid ? 46 : 36) * 1.14, maxWidth: 900 }]}>{t("hero.title")}</Text>
               <Text style={[styles.lead, { maxWidth: 620 }]}>{t("hero.subtitle")}</Text>
               <View style={styles.heroCtas}>
-                <Pressable onPress={startFree} style={styles.ctaPrimary}><Text style={styles.ctaPrimaryTxt}>{t("nav.startFree")}</Text><Icon name="arrow-right" size={17} color={C.onBrand} strokeWidth={2.5} /></Pressable>
+                <PrimaryCTA large label={t("nav.startFree")} onPress={startFree} styles={styles} C={C} />
                 <Pressable onPress={() => setDemoOpen(true)} style={styles.ctaGhost}><Icon name="play" size={15} color={C.onSurface} /><Text style={styles.ctaGhostTxt}>{t("hero.watchDemo")}</Text></Pressable>
               </View>
               <Text style={styles.microtrust}>{t("hero.microtrust")}</Text>
@@ -322,7 +395,7 @@ export default function Landing() {
                   <Text style={styles.flowTxt}>{x}</Text>
                 </View>
               ))}
-              <Pressable onPress={startFree} style={[styles.ctaPrimary, { alignSelf: "flex-start", marginTop: S.lg }]}><Text style={styles.ctaPrimaryTxt}>{t("brief.cta")}</Text><Icon name="arrow-right" size={16} color={C.onBrand} strokeWidth={2.5} /></Pressable>
+              <View style={{ alignSelf: "flex-start", marginTop: S.lg }}><PrimaryCTA label={t("brief.cta")} onPress={startFree} styles={styles} C={C} /></View>
             </View>
             <View style={{ flex: 1 }}><BriefMock C={C} styles={styles} t={t} /></View>
           </View>
@@ -395,7 +468,7 @@ export default function Landing() {
             <View style={styles.heroGlow} />
             <Text style={[styles.h2, { color: "#F5F1E8", textAlign: "center" }]}>{t("finalCta.title")}</Text>
             <Text style={[styles.lead, { color: "rgba(245,241,232,0.7)", textAlign: "center" }]}>{t("finalCta.subtitle")}</Text>
-            <Pressable onPress={startFree} style={[styles.ctaPrimary, { marginTop: S.lg }]}><Text style={styles.ctaPrimaryTxt}>{t("finalCta.cta")}</Text><Icon name="arrow-right" size={17} color={C.onBrand} strokeWidth={2.5} /></Pressable>
+            <View style={{ marginTop: S.lg }}><PrimaryCTA large label={t("finalCta.cta")} onPress={startFree} styles={styles} C={C} /></View>
           </View>
         </View>
 
@@ -428,7 +501,7 @@ export default function Landing() {
               </View>
               <Pressable onPress={() => setDemoOpen(false)} hitSlop={10} style={styles.demoModalClose}><Icon name="x" size={20} color={C.onSurface} /></Pressable>
             </View>
-            {demoOpen ? <DemoReel C={C} styles={styles} t={t} big /> : null}
+            {demoOpen ? <DemoReel C={C} styles={styles} t={t} big narrated lang={currentLanguage} /> : null}
           </View>
         </View>
       </Modal>
@@ -536,7 +609,10 @@ const createStyles = (C: Palette) => StyleSheet.create({
   lead: { color: C.onSurface2, fontFamily: F.text, fontSize: 17, lineHeight: 26, textAlign: "center", marginTop: S.lg },
   heroCtas: { flexDirection: "row", gap: S.md, marginTop: S.xl, flexWrap: "wrap", justifyContent: "center" },
   ctaPrimary: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: C.brand, borderRadius: R.pill, paddingHorizontal: S.xl, paddingVertical: 14 },
+  ctaPrimaryLg: { paddingHorizontal: 32, paddingVertical: 17 },
+  ctaPrimaryHover: { backgroundColor: C.brand2, shadowColor: C.brand, shadowOpacity: 0.55, shadowRadius: 22, shadowOffset: { width: 0, height: 8 }, elevation: 10 },
   ctaPrimaryTxt: { color: C.onBrand, fontFamily: F.text, fontSize: 15, fontWeight: "700" },
+  ctaPrimaryTxtLg: { fontSize: 17, letterSpacing: 0.2 },
   ctaGhost: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: C.border, borderRadius: R.pill, paddingHorizontal: S.xl, paddingVertical: 14 },
   ctaGhostTxt: { color: C.onSurface, fontFamily: F.text, fontSize: 15, fontWeight: "600" },
 
@@ -592,6 +668,8 @@ const createStyles = (C: Palette) => StyleSheet.create({
   demoDots: { flexDirection: "row", gap: 5 },
   demoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(245,241,232,0.25)" },
   demoDotActive: { backgroundColor: C.brand, width: 16 },
+  demoPlayBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: C.brand, borderRadius: R.pill, paddingHorizontal: 12, paddingVertical: 6 },
+  demoPlayTxt: { color: C.onBrand, fontFamily: F.text, fontSize: 12, fontWeight: "700" },
 
   // brief mock
   briefMockBody: { flex: 1, flexDirection: "row", padding: 14, gap: 12 },

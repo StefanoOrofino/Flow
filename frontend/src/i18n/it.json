@@ -808,7 +808,7 @@
     },
     "demo": {
       "title": "Guarda FrameFlow in azione",
-      "subtitle": "Uno sguardo veloce a come un brief diventa un pacchetto di produzione completo.",
+      "subtitle": "Una breve guida narrata — dal brief al pacchetto di produzione completo.",
       "close": "Chiudi",
       "steps": [
         "Carica il brief del cliente",
@@ -831,7 +831,9 @@
         "duration": "30s",
         "platform": "Instagram"
       },
-      "packageLabel": "6 scene · sceneggiatura · shot list"
+      "packageLabel": "6 scene · sceneggiatura · shot list",
+      "playVoice": "Ascolta con voce",
+      "pause": "Pausa"
     },
     "gallery": {
       "kicker": "GALLERIA STORYBOARD",

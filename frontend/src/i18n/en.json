@@ -808,7 +808,7 @@
     },
     "demo": {
       "title": "See FrameFlow in action",
-      "subtitle": "A quick look at how a brief becomes a full production package.",
+      "subtitle": "A quick narrated walkthrough — from brief to a full production package.",
       "close": "Close",
       "steps": [
         "Upload your client brief",
@@ -831,7 +831,9 @@
         "duration": "30s",
         "platform": "Instagram"
       },
-      "packageLabel": "6 scenes · script · shot list"
+      "packageLabel": "6 scenes · script · shot list",
+      "playVoice": "Play with voice-over",
+      "pause": "Pause"
     },
     "gallery": {
       "kicker": "STORYBOARD GALLERY",
