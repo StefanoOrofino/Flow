@@ -743,36 +743,50 @@
           "price": "€0",
           "per": "per sempre",
           "feats": [
-            "3 progetti attivi",
+            "2 progetti attivi",
             "20 generazioni AI / mese",
             "10 immagini storyboard / mese",
-            "5 esportazioni PDF / mese",
-            "5 GB di spazio cloud"
+            "5 export PDF / mese",
+            "1 GB di storage"
+          ]
+        },
+        "standard": {
+          "name": "Standard",
+          "price": "€19,90",
+          "per": "/ mese",
+          "feats": [
+            "10 progetti attivi",
+            "150 generazioni AI / mese",
+            "100 immagini storyboard / mese",
+            "Export PDF illimitati",
+            "5 GB di storage",
+            "Link di revisione cliente"
           ]
         },
         "pro": {
           "name": "Pro",
-          "price": "€19",
+          "price": "€49,90",
           "per": "/ mese",
           "feats": [
-            "25 progetti attivi",
-            "500 generazioni AI / mese",
-            "300 immagini storyboard / mese",
-            "Esportazioni PDF illimitate",
-            "10 GB di spazio cloud",
+            "40 progetti attivi",
+            "600 generazioni AI / mese",
+            "400 immagini storyboard / mese",
+            "Export PDF illimitati",
+            "15 GB di storage",
+            "3 postazioni team",
             "AI Director prioritario"
           ]
         },
         "studio": {
           "name": "Studio",
-          "price": "€49",
+          "price": "€99,90",
           "per": "/ mese",
           "feats": [
             "Progetti illimitati",
             "Generazioni AI illimitate",
-            "1500 immagini storyboard / mese",
-            "Posti team e portali",
-            "15 GB di spazio cloud"
+            "2000 immagini storyboard / mese",
+            "50 GB di storage",
+            "10 postazioni & portali brandizzati"
           ]
         }
       }

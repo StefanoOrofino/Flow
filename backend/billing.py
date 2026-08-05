@@ -17,11 +17,12 @@ def _bytes(gb: float) -> int:
     return int(round(float(gb) * _GB))
 
 
-# Configurable storage quotas (GB). Defaults: Free 5 / Pro 10 / Studio 15.
+# Configurable storage quotas (GB). Defaults: Free 1 / Standard 5 / Pro 15 / Studio 50.
 STORAGE_GB = {
-    "free": float(os.environ.get("STORAGE_LIMIT_FREE_GB", 5)),
-    "pro": float(os.environ.get("STORAGE_LIMIT_PRO_GB", 10)),
-    "studio": float(os.environ.get("STORAGE_LIMIT_STUDIO_GB", 15)),
+    "free": float(os.environ.get("STORAGE_LIMIT_FREE_GB", 1)),
+    "standard": float(os.environ.get("STORAGE_LIMIT_STANDARD_GB", 5)),
+    "pro": float(os.environ.get("STORAGE_LIMIT_PRO_GB", 15)),
+    "studio": float(os.environ.get("STORAGE_LIMIT_STUDIO_GB", 50)),
 }
 
 
@@ -48,66 +49,97 @@ PLANS = {
         "recommended": False,
         "tagline": "Get started with core pre-production tools.",
         "limits": {
-            "projects": 3,
+            "projects": 2,
             "ai_generations": 20,
             "image_generations": 10,
+            "brief_imports": 3,
             "exports": 5,
+            "seats": 1,
             "storage_bytes": _bytes(STORAGE_GB["free"]),
         },
         "features": [
-            "Up to 3 active projects",
+            "Up to 2 active projects",
             "20 AI generations / month",
             "10 storyboard image generations / month",
             "5 PDF exports / month",
-            "5 GB cloud storage",
+            "1 GB cloud storage",
             "Light & dark themes, EN + IT",
+        ],
+    },
+    "standard": {
+        "id": "standard",
+        "name": "Standard",
+        "price": "€19,90",
+        "interval": "month",
+        "recommended": False,
+        "tagline": "For solo creators shipping regularly.",
+        "limits": {
+            "projects": 10,
+            "ai_generations": 150,
+            "image_generations": 100,
+            "brief_imports": 20,
+            "exports": -1,
+            "seats": 1,
+            "storage_bytes": _bytes(STORAGE_GB["standard"]),
+        },
+        "features": [
+            "Up to 10 active projects",
+            "150 AI generations / month",
+            "100 storyboard image generations / month",
+            "Unlimited PDF exports",
+            "5 GB cloud storage",
+            "Client review links",
         ],
     },
     "pro": {
         "id": "pro",
         "name": "Pro",
-        "price": "€19",
+        "price": "€49,90",
         "interval": "month",
         "recommended": True,
         "tagline": "For working filmmakers and freelancers.",
         "limits": {
-            "projects": 25,
-            "ai_generations": 500,
-            "image_generations": 300,
+            "projects": 40,
+            "ai_generations": 600,
+            "image_generations": 400,
+            "brief_imports": 100,
             "exports": -1,
+            "seats": 3,
             "storage_bytes": _bytes(STORAGE_GB["pro"]),
         },
         "features": [
-            "Up to 25 active projects",
-            "500 AI generations / month",
-            "300 storyboard image generations / month",
+            "Up to 40 active projects",
+            "600 AI generations / month",
+            "400 storyboard image generations / month",
             "Unlimited PDF exports",
-            "10 GB cloud storage",
+            "15 GB cloud storage",
+            "3 team seats",
             "Priority AI Director",
-            "Client review links",
         ],
     },
     "studio": {
         "id": "studio",
         "name": "Studio",
-        "price": "€49",
+        "price": "€99,90",
         "interval": "month",
         "recommended": False,
         "tagline": "Unlimited scale for studios & teams.",
         "limits": {
             "projects": -1,
             "ai_generations": -1,
-            "image_generations": 1500,
+            "image_generations": 2000,
+            "brief_imports": -1,
             "exports": -1,
+            "seats": 10,
             "storage_bytes": _bytes(STORAGE_GB["studio"]),
         },
         "features": [
             "Unlimited active projects",
             "Unlimited AI generations",
-            "1500 storyboard images / month",
+            "2000 storyboard images / month",
             "Unlimited PDF exports",
-            "15 GB cloud storage",
-            "Team seats & branded client portals",
+            "50 GB cloud storage",
+            "10 team seats & branded client portals",
         ],
     },
 }
@@ -129,7 +161,7 @@ def get_plan(plan_id: str) -> dict:
 def public_plans() -> list:
     """Ordered plan catalog for the Billing + Pricing UI (adds storage_gb for display)."""
     out = []
-    for pid in ("free", "pro", "studio"):
+    for pid in ("free", "standard", "pro", "studio"):
         p = dict(PLANS[pid])
         p["storage_gb"] = STORAGE_GB[pid]
         p["storage_bytes"] = _bytes(STORAGE_GB[pid])

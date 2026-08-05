@@ -1163,7 +1163,7 @@ async def billing_summary(user=Depends(get_current_user)):
 # plan for a 30-day period. Amounts are SERVER-controlled (never from client).
 # ---------------------------------------------------------------------------
 STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
-PLAN_PRICES = {"pro": 19.0, "studio": 49.0}   # EUR — source of truth
+PLAN_PRICES = {"standard": 19.90, "pro": 49.90, "studio": 99.90}   # EUR — source of truth
 PLAN_PERIOD_DAYS = 30
 
 

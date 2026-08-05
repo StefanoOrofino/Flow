@@ -743,36 +743,50 @@
           "price": "€0",
           "per": "forever",
           "feats": [
-            "3 active projects",
+            "2 active projects",
             "20 AI generations / mo",
             "10 storyboard images / mo",
             "5 PDF exports / mo",
-            "5 GB cloud storage"
+            "1 GB cloud storage"
+          ]
+        },
+        "standard": {
+          "name": "Standard",
+          "price": "€19,90",
+          "per": "/ month",
+          "feats": [
+            "10 active projects",
+            "150 AI generations / mo",
+            "100 storyboard images / mo",
+            "Unlimited PDF exports",
+            "5 GB cloud storage",
+            "Client review links"
           ]
         },
         "pro": {
           "name": "Pro",
-          "price": "€19",
+          "price": "€49,90",
           "per": "/ month",
           "feats": [
-            "25 active projects",
-            "500 AI generations / mo",
-            "300 storyboard images / mo",
+            "40 active projects",
+            "600 AI generations / mo",
+            "400 storyboard images / mo",
             "Unlimited PDF exports",
-            "10 GB cloud storage",
+            "15 GB cloud storage",
+            "3 team seats",
             "Priority AI Director"
           ]
         },
         "studio": {
           "name": "Studio",
-          "price": "€49",
+          "price": "€99,90",
           "per": "/ month",
           "feats": [
             "Unlimited projects",
             "Unlimited AI generations",
-            "1500 storyboard images / mo",
-            "Team seats & portals",
-            "15 GB cloud storage"
+            "2000 storyboard images / mo",
+            "50 GB cloud storage",
+            "10 team seats & branded portals"
           ]
         }
       }

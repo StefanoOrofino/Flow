@@ -64,6 +64,7 @@ const STEP_ICONS = ["upload", "wand", "eye", "sparkles", "users", "download"];
 const FEATURE_ICONS = ["wand", "file-text", "clapperboard", "file-text", "list-checks", "camera", "users", "calendar", "wallet", "share", "printer"];
 const PRICING_META = [
   { id: "free", rec: false },
+  { id: "standard", rec: false },
   { id: "pro", rec: true },
   { id: "studio", rec: false },
 ];

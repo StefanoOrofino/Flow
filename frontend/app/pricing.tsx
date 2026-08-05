@@ -13,14 +13,14 @@ import { LinearGradient } from "expo-linear-gradient";
 // Feature comparison values keyed by plan id. Tokens resolved via i18n at render.
 function matrix(t: (k: string) => string) {
   return [
-    { key: "active_projects", free: "3", pro: "25", studio: t("unlimited") },
-    { key: "ai_director", free: t("basic"), pro: t("priority"), studio: t("priorityPlus") },
-    { key: "ai_images", free: `10 ${t("perMo")}`, pro: `300 ${t("perMo")}`, studio: `1500 ${t("perMo")}` },
-    { key: "brief_imports", free: `3 ${t("perMo")}`, pro: `50 ${t("perMo")}`, studio: t("unlimited") },
-    { key: "pdf_exports", free: `5 ${t("perMo")}`, pro: t("unlimited"), studio: t("unlimited") },
-    { key: "team", free: t("none"), pro: `3 ${t("seats")}`, studio: t("unlimited") },
-    { key: "client_review", free: t("none"), pro: t("linkSharing"), studio: t("brandedPortals") },
-    { key: "storage", free: "storage", pro: "storage", studio: "storage" },
+    { key: "active_projects", free: "2", standard: "10", pro: "40", studio: t("unlimited") },
+    { key: "ai_director", free: t("basic"), standard: t("priority"), pro: t("priority"), studio: t("priorityPlus") },
+    { key: "ai_images", free: `10 ${t("perMo")}`, standard: `100 ${t("perMo")}`, pro: `400 ${t("perMo")}`, studio: `2000 ${t("perMo")}` },
+    { key: "brief_imports", free: `3 ${t("perMo")}`, standard: `20 ${t("perMo")}`, pro: `100 ${t("perMo")}`, studio: t("unlimited") },
+    { key: "pdf_exports", free: `5 ${t("perMo")}`, standard: t("unlimited"), pro: t("unlimited"), studio: t("unlimited") },
+    { key: "team", free: t("none"), standard: `1 ${t("seats")}`, pro: `3 ${t("seats")}`, studio: `10 ${t("seats")}` },
+    { key: "client_review", free: t("none"), standard: t("linkSharing"), pro: t("linkSharing"), studio: t("brandedPortals") },
+    { key: "storage", free: "storage", standard: "storage", pro: "storage", studio: "storage" },
   ];
 }
 
