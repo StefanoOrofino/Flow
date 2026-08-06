@@ -31,8 +31,20 @@ async function req(path: string, method = "GET", body?: any) {
   let data: any = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
   if (!res.ok) {
-    const detail = (data && data.detail) || `Request failed (${res.status})`;
-    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    const detail = data && data.detail;
+    if (detail && typeof detail === "object") {
+      const err: any = new Error(detail.message || `Request failed (${res.status})`);
+      err.detail = detail;
+      err.status = res.status;
+      if (detail.code === "plan_limit_reached" || detail.code === "storage_limit_reached") {
+        err.planLimit = true;
+      }
+      throw err;
+    }
+    const msg = (typeof detail === "string" && detail) || `Request failed (${res.status})`;
+    const err: any = new Error(msg);
+    err.status = res.status;
+    throw err;
   }
   return data;
 }

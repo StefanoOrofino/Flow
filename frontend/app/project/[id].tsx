@@ -11,6 +11,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image as ExpoImage } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/src/api";
+import { handlePlanLimit } from "@/src/utils/planLimit";
 import { useProjectStore } from "@/src/useProjectStore";
 import AIDirector from "@/src/AIDirector";
 import { AssistantFab } from "@/src/components/AssistantFab";
@@ -152,7 +153,7 @@ export default function Editor() {
   const regenDescription = regenWrap("-desc", api.regenDescription);
   const regenVoiceOver = regenWrap("-vo", api.regenVoiceOver);
   const regenLighting = regenWrap("-l", api.regenLighting);
-  const regenerateAll = async () => { setRegenAll(true); try { store.applyServer(await api.generate(id)); setTab("Overview"); } catch {} finally { setRegenAll(false); } };
+  const regenerateAll = async () => { setRegenAll(true); try { store.applyServer(await api.generate(id)); setTab("Overview"); } catch (e) { handlePlanLimit(e, () => router.push("/pricing")); } finally { setRegenAll(false); } };
 
   // Storyboard image frames — real Gemini Nano Banana with cost + safety controls
   const [imgInfo, setImgInfo] = useState<any>({ provider: "mock", dev_limit: 3, configured: true });
@@ -165,7 +166,10 @@ export default function Editor() {
     setFrameBusy(sceneId);
     setFrameErrors((e) => ({ ...e, [sceneId]: "" }));
     try { store.applyServer(await fn()); }
-    catch (e: any) { setFrameErrors((er) => ({ ...er, [sceneId]: e?.message || "Generation failed. Please retry." })); }
+    catch (e: any) {
+      if (handlePlanLimit(e, () => router.push("/pricing"))) { setFrameBusy(null); return; }
+      setFrameErrors((er) => ({ ...er, [sceneId]: e?.message || "Generation failed. Please retry." }));
+    }
     finally { setFrameBusy(null); }
   };
   const askConfirm = (fn: () => void) => setConfirmGen(() => fn);

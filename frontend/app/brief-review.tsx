@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { api } from "@/src/api";
 import { briefSession } from "@/src/brief/briefSession";
+import { handlePlanLimit } from "@/src/utils/planLimit";
 import { S, R, F, MAX_W, Palette } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
 import { H1, H2, Body } from "@/src/components";
@@ -165,8 +166,9 @@ export default function ReviewAnalysis() {
       briefSession.clear();
       router.replace(`/project/${pid}`);
     } catch (e: any) {
-      setErr(e.message || t("genFailed"));
       setGenerating(false);
+      if (handlePlanLimit(e, () => router.push("/pricing"))) return;
+      setErr(e.message || t("genFailed"));
     }
   };
 

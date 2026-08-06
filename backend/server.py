@@ -437,6 +437,7 @@ async def list_projects(user=Depends(get_current_user)):
 
 @api_router.post("/projects")
 async def create_project(body: ProjectIn, user=Depends(get_current_user)):
+    await enforce_limit(user["user_id"], "projects")
     doc = body.dict()
     doc.update({"id": uuid.uuid4().hex[:12], "user_id": user["user_id"], "status": "draft",
                 "concept": {}, "treatment": {}, "equipment": {}, "crew": {}, "schedule": {}, "budget": {},
@@ -492,6 +493,7 @@ async def duplicate_project(pid: str, user=Depends(get_current_user)):
 
 @api_router.post("/projects/{pid}/exported")
 async def mark_exported(pid: str, user=Depends(get_current_user)):
+    await enforce_limit(user["user_id"], "exports")
     doc = await _get_owned(pid, user)
     await db.projects.update_one({"id": pid, "user_id": user["user_id"]},
                                  {"$set": {"export_count": (doc.get("export_count") or 0) + 1}})
@@ -501,6 +503,7 @@ async def mark_exported(pid: str, user=Depends(get_current_user)):
 
 @api_router.post("/projects/{pid}/generate")
 async def generate(pid: str, user=Depends(get_current_user)):
+    await enforce_limit(user["user_id"], "ai_generations")
     doc = await _get_owned(pid, user)
     used_mock = MOCK_MODE
     try:
@@ -722,6 +725,8 @@ def _build_frame_prompt(project: dict, scene: dict, base_desc: str, aspect: str)
 
 
 async def _run_generation(pid: str, sid: str, user: dict, base_desc: str, aspect: str, style_preset: str, model: Optional[str] = None):
+    await enforce_limit(user["user_id"], "image_generations")
+    await enforce_storage(user["user_id"])
     doc = await _get_owned(pid, user)
     scene = _find_scene(doc, sid)
     # Effective model: per-generation override > per-project setting > global user setting > server default.
@@ -1146,6 +1151,56 @@ async def bump_usage(user_id: str, field: str, n: int = 1):
         logger.warning(f"usage bump failed ({field}): {e}")
 
 
+async def _usage_value(user_id: str, metric: str) -> int:
+    """Current value of a usage metric. Projects are always counted live."""
+    if metric == "projects":
+        return await db.projects.count_documents({"user_id": user_id})
+    u = await db.usage.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    return int(u.get(metric, 0) or 0)
+
+
+async def enforce_limit(user_id: str, metric: str):
+    """Block the request with HTTP 402 when the user's plan limit for `metric`
+    has been reached. limit == -1 means unlimited (never blocks)."""
+    sub = await get_or_create_subscription(user_id)
+    plan = billing.get_plan(sub.get("plan_id"))
+    limit = plan["limits"].get(metric, 0)
+    if limit == -1:
+        return
+    used = await _usage_value(user_id, metric)
+    if used >= limit:
+        pretty = metric.replace("_", " ")
+        raise HTTPException(status_code=402, detail={
+            "code": "plan_limit_reached",
+            "metric": metric,
+            "limit": limit,
+            "used": used,
+            "plan": plan["id"],
+            "planName": plan["name"],
+            "message": f"You've reached your {plan['name']} plan limit ({limit} {pretty}). Upgrade your plan to continue.",
+        })
+
+
+async def enforce_storage(user_id: str):
+    """Block with HTTP 402 when the user's storage quota is full."""
+    sub = await get_or_create_subscription(user_id)
+    plan = billing.get_plan(sub.get("plan_id"))
+    limit = int(plan["limits"].get("storage_bytes", 0) or 0)
+    if limit <= 0:
+        return
+    used = await compute_storage_bytes(user_id)
+    if used >= limit:
+        raise HTTPException(status_code=402, detail={
+            "code": "storage_limit_reached",
+            "metric": "storage",
+            "limit": limit,
+            "used": used,
+            "plan": plan["id"],
+            "planName": plan["name"],
+            "message": f"Your {plan['name']} plan storage ({billing.format_bytes(limit)}) is full. Upgrade to add more.",
+        })
+
+
 @api_router.get("/billing/summary")
 async def billing_summary(user=Depends(get_current_user)):
     uid = user["user_id"]
@@ -1469,6 +1524,7 @@ MAX_IMAGE_BYTES = 6 * 1024 * 1024
 
 @api_router.post("/briefs/analyze")
 async def analyze_brief_endpoint(body: AnalyzeBriefIn, user=Depends(get_current_user)):
+    await enforce_limit(user["user_id"], "brief_imports")
     if not body.documents and not body.images:
         raise HTTPException(status_code=400, detail="Upload at least one document or reference image.")
 
@@ -1499,6 +1555,7 @@ async def analyze_brief_endpoint(body: AnalyzeBriefIn, user=Depends(get_current_
             image_errors.append({"fileName": f.name, "code": "corrupted_file", "message": "Could not read this image."})
 
     analysis, mock = await brief_service.analyze_brief(docs, images)
+    await bump_usage(user["user_id"], "brief_imports")
     return {
         "documents": [{k: v for k, v in d.items() if k != "text"} for d in docs],
         "documentErrors": doc_errors,
@@ -1511,6 +1568,9 @@ async def analyze_brief_endpoint(body: AnalyzeBriefIn, user=Depends(get_current_
 
 @api_router.post("/briefs/create-project")
 async def create_project_from_brief(body: CreateFromBriefIn, user=Depends(get_current_user)):
+    await enforce_limit(user["user_id"], "projects")
+    if body.generate:
+        await enforce_limit(user["user_id"], "ai_generations")
     payload = brief_service.map_brief_to_project(body.fields, body.visual)
     if body.title:
         payload["title"] = body.title[:80]
