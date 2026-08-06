@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Platform } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Platform, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,6 +36,20 @@ export default function Settings() {
   const styles = useMemo(() => createStyles(C), [C]);
 
   const [adminInfo, setAdminInfo] = useState<{ is_privileged: boolean; can_claim: boolean } | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteErr, setDeleteErr] = useState("");
+  const confirmDelete = async () => {
+    setDeleting(true); setDeleteErr("");
+    try {
+      await api.deleteAccount();
+      setDeleteOpen(false);
+      await logout();
+    } catch (e: any) {
+      setDeleteErr(e?.message || t("deleteFailed"));
+      setDeleting(false);
+    }
+  };
   useEffect(() => { api.adminStatus().then((s: any) => setAdminInfo({ is_privileged: !!s.is_privileged, can_claim: !!s.can_claim })).catch(() => {}); }, []);
   const showAdmin = adminInfo && (adminInfo.is_privileged || adminInfo.can_claim);
 
@@ -260,7 +274,44 @@ export default function Settings() {
         </Card>
 
         <Btn title={t("logout")} variant="ghost" icon="log-out-outline" onPress={logout} testID="logout-btn" />
+
+        {/* Danger zone — account deletion (App Store / GDPR compliant) */}
+        <Text style={[styles.sectionLabel, { marginTop: S.xl }]}>{t("dangerZone")}</Text>
+        <Card style={{ marginBottom: S.lg, borderColor: C.error }}>
+          <View style={styles.row}>
+            <Ionicons name="trash-outline" size={18} color={C.error} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowLabel, { color: C.error }]}>{t("deleteAccount")}</Text>
+              <Text style={styles.rowValue}>{t("deleteAccountDesc")}</Text>
+            </View>
+          </View>
+          <Pressable onPress={() => setDeleteOpen(true)} testID="delete-account-btn"
+            style={[styles.deleteBtn, { borderColor: C.error }]}>
+            <Text style={[styles.deleteBtnTxt, { color: C.error }]}>{t("deleteAccount")}</Text>
+          </Pressable>
+        </Card>
       </ScrollView>
+
+      {/* Delete account confirmation */}
+      <Modal visible={deleteOpen} transparent animationType="fade" onRequestClose={() => setDeleteOpen(false)}>
+        <View style={styles.modalBg}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => !deleting && setDeleteOpen(false)} />
+          <View style={styles.modalCard}>
+            <View style={styles.modalIcon}><Ionicons name="warning-outline" size={26} color={C.error} /></View>
+            <Text style={styles.modalTitle}>{t("deleteConfirmTitle")}</Text>
+            <Text style={styles.modalBody}>{t("deleteConfirmBody")}</Text>
+            {deleteErr ? <Text style={[styles.modalBody, { color: C.error }]}>{deleteErr}</Text> : null}
+            <View style={styles.modalActions}>
+              <Pressable onPress={() => setDeleteOpen(false)} disabled={deleting} style={[styles.modalBtn, { backgroundColor: C.surface3 }]} testID="delete-cancel">
+                <Text style={[styles.modalBtnTxt, { color: C.onSurface }]}>{t("deleteCancel")}</Text>
+              </Pressable>
+              <Pressable onPress={confirmDelete} disabled={deleting} style={[styles.modalBtn, { backgroundColor: C.error }]} testID="delete-confirm">
+                <Text style={[styles.modalBtnTxt, { color: "#fff" }]}>{deleting ? t("deleting") : t("deleteConfirmCta")}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -325,4 +376,16 @@ const createStyles = (C: Palette) => StyleSheet.create({
 
   shortcutRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: S.sm, minHeight: 40 },
   kbd: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, backgroundColor: C.surface3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: R.sm, overflow: "hidden" },
+
+  deleteBtn: { marginTop: S.md, alignItems: "center", justifyContent: "center", paddingVertical: 12, borderRadius: R.md, borderWidth: 1, minHeight: 44 },
+  deleteBtnTxt: { fontFamily: F.text, fontSize: 14, fontWeight: "600" },
+
+  modalBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: S.xl },
+  modalCard: { width: "100%", maxWidth: 400, backgroundColor: C.surface2, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S.xl, alignItems: "center" },
+  modalIcon: { width: 52, height: 52, borderRadius: R.pill, backgroundColor: C.errorTint, alignItems: "center", justifyContent: "center", marginBottom: S.md },
+  modalTitle: { color: C.onSurface, fontFamily: F.display, fontSize: 20, textAlign: "center", marginBottom: 6 },
+  modalBody: { color: C.onSurface2, fontFamily: F.text, fontSize: 14, lineHeight: 21, textAlign: "center", marginBottom: S.sm },
+  modalActions: { flexDirection: "row", gap: S.sm, marginTop: S.md, width: "100%" },
+  modalBtn: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 13, borderRadius: R.md, minHeight: 46 },
+  modalBtnTxt: { fontFamily: F.text, fontSize: 14, fontWeight: "600" },
 });

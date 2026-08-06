@@ -164,7 +164,16 @@
     "aiAssistant": "AI Assistant",
     "aiAssistantValue": "Chat for help ›",
     "viewTutorial": "View tutorial",
-    "viewTutorialValue": "Replay intro ›"
+    "viewTutorialValue": "Replay intro ›",
+    "dangerZone": "DANGER ZONE",
+    "deleteAccount": "Delete account",
+    "deleteAccountDesc": "Permanently delete your account and all your data.",
+    "deleteConfirmTitle": "Delete your account?",
+    "deleteConfirmBody": "This permanently deletes your account and all associated data — projects, storyboards, subscription and usage. This action cannot be undone.",
+    "deleteCancel": "Cancel",
+    "deleteConfirmCta": "Delete account",
+    "deleting": "Deleting…",
+    "deleteFailed": "Could not delete the account. Please try again."
   },
   "dashboard": {
     "welcome": "Welcome back, {{name}}",

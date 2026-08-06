@@ -57,6 +57,7 @@ export const api = {
   resetRequest: (email: string) => req("/auth/password-reset/request", "POST", { email }),
   resetConfirm: (token: string, new_password: string) =>
     req("/auth/password-reset/confirm", "POST", { token, new_password }),
+  deleteAccount: () => req("/auth/account", "DELETE"),
 
   listProjects: () => req("/projects"),
   createProject: (b: any) => req("/projects", "POST", b),

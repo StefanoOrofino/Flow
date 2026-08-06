@@ -164,7 +164,16 @@
     "aiAssistant": "Assistente AI",
     "aiAssistantValue": "Chatta per aiuto ›",
     "viewTutorial": "Guarda il tutorial",
-    "viewTutorialValue": "Rivedi introduzione ›"
+    "viewTutorialValue": "Rivedi introduzione ›",
+    "dangerZone": "ZONA PERICOLOSA",
+    "deleteAccount": "Elimina account",
+    "deleteAccountDesc": "Elimina definitivamente il tuo account e tutti i tuoi dati.",
+    "deleteConfirmTitle": "Eliminare il tuo account?",
+    "deleteConfirmBody": "Questa operazione elimina in modo permanente il tuo account e tutti i dati associati — progetti, storyboard, abbonamento e utilizzo. L'azione non può essere annullata.",
+    "deleteCancel": "Annulla",
+    "deleteConfirmCta": "Elimina account",
+    "deleting": "Eliminazione…",
+    "deleteFailed": "Impossibile eliminare l'account. Riprova."
   },
   "dashboard": {
     "welcome": "Bentornato, {{name}}",

@@ -235,6 +235,21 @@ async def reset_confirm(body: ResetConfirmIn):
     return {"ok": True}
 
 
+@api_router.delete("/auth/account")
+async def delete_account(user=Depends(get_current_user)):
+    """Permanently delete the current user's account and ALL associated data
+    (App Store / GDPR compliant). The platform Owner cannot self-delete."""
+    uid = user["user_id"]
+    if (user.get("role") or "user") == "owner":
+        raise HTTPException(status_code=403, detail="The owner account cannot be deleted.")
+    for coll in ("projects", "versions", "subscriptions", "usage",
+                 "payment_transactions", "password_resets", "user_sessions"):
+        await db[coll].delete_many({"user_id": uid})
+    await db.users.delete_one({"user_id": uid})
+    logger.info(f"account deleted: {uid}")
+    return {"ok": True}
+
+
 @api_router.post("/auth/session")
 async def google_session(body: SessionIn):
     async with httpx.AsyncClient() as hc:
