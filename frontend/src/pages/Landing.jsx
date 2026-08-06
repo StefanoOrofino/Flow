@@ -34,7 +34,7 @@ export default function Landing() {
         <TrustChips />
         {/* Gallery shown right after hero on mobile */}
         <div className="lg:hidden">
-          <Gallery />
+          <Gallery variant="mobile" />
         </div>
         <BeforeAfter />
         <HowItWorks />
@@ -43,7 +43,7 @@ export default function Landing() {
         <Features />
         <Storyboard />
         <div className="hidden lg:block">
-          <Gallery />
+          <Gallery variant="desktop" />
         </div>
         <Pricing />
         <FAQ />

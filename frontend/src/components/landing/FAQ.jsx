@@ -21,6 +21,7 @@ export function FAQ() {
                 <div>
                   <button
                     data-testid={`faq-item-${i}`}
+                    aria-expanded={isOpen}
                     onClick={() => setOpen(isOpen ? -1 : i)}
                     className="w-full flex items-center justify-between gap-4 py-5 text-left"
                   >

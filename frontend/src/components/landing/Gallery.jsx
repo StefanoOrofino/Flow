@@ -2,10 +2,14 @@ import React from "react";
 import { Reveal, SectionHead } from "./Reveal";
 import { useT } from "../../i18n";
 
-export function Gallery() {
+export function Gallery({ variant = "desktop" }) {
   const { t } = useT();
   return (
-    <section id="gallery" data-testid="gallery" className="py-20 md:py-28 scroll-mt-20">
+    <section
+      id={variant === "desktop" ? "gallery" : undefined}
+      data-testid={`gallery-${variant}`}
+      className="py-20 md:py-28 scroll-mt-20"
+    >
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <SectionHead kicker={t.gallery.kicker} title={t.gallery.title} subtitle={t.gallery.subtitle} center />
 
