@@ -511,7 +511,7 @@ export default function Landing() {
             <View style={styles.footCols}>
               <FootCol styles={styles} title={t("footer.companyTitle")} items={t("footer.company", { returnObjects: true }) as string[]} />
               <FootCol styles={styles} title={t("footer.resourcesTitle")} items={t("footer.resources", { returnObjects: true }) as string[]} />
-              <FootCol styles={styles} title={t("footer.legalTitle")} items={t("footer.legal", { returnObjects: true }) as string[]} />
+              <FootCol styles={styles} title={t("footer.legalTitle")} items={t("footer.legal", { returnObjects: true }) as string[]} routes={["/legal/privacy", "/legal/terms", "/legal/cookies"]} router={router} />
             </View>
           </View>
           <Text style={styles.copyright}>{t("footer.copyright")}</Text>
@@ -621,11 +621,21 @@ function SectionHead({ C, styles, kicker, title }: any) {
     </View>
   );
 }
-function FootCol({ styles, title, items }: any) {
+function FootCol({ styles, title, items, routes, router }: any) {
   return (
     <View style={{ gap: 10 }}>
       <Text style={styles.footColTitle}>{title}</Text>
-      {items.map((i: string) => <Text key={i} style={styles.footLink}>{i}</Text>)}
+      {items.map((i: string, idx: number) => {
+        const route = routes && routes[idx];
+        if (route) {
+          return (
+            <Pressable key={i} onPress={() => router.push(route)} testID={`foot-${route}`}>
+              <Text style={styles.footLink}>{i}</Text>
+            </Pressable>
+          );
+        }
+        return <Text key={i} style={styles.footLink}>{i}</Text>;
+      })}
     </View>
   );
 }
