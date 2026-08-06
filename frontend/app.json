@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "Storyboard AI",
+    "name": "FrameFlow Studio",
     "slug": "frontend",
     "version": "1.0.0",
+    "description": "AI pre-production suite for filmmakers — brief to storyboard in minutes.",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
