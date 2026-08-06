@@ -13,19 +13,19 @@ Premium, responsive bilingual (IT default / EN toggle) marketing landing page fo
 ## Architecture
 - **Frontend**: React 19 + Tailwind, framer-motion (reveals, masked hero, parallax), lenis (smooth scroll), lucide-react icons, sonner toasts. i18n via LanguageProvider context (`src/i18n.js`).
 - **Backend**: FastAPI + MongoDB (motor). Routes: `POST/GET /api/leads`, `POST /api/contact`. BaseDocument/PyObjectId pattern.
-- **Routes**: `/` landing, `/signup`, `/login`, `/privacy`, `/termini`, `/cookie`.
+- **Routes**: `/` landing, `/signup`, `/login`, `/dashboard` (protected), `/privacy`, `/termini`, `/cookie`.
 
 ## Implemented (2026-06)
-- All 15 sections: sticky nav (glass on scroll), kinetic hero (masked line reveal + parallax gold logo tile), auto-playing demo mockup + popup dialog, trust-chips marquee, before/after VS, 6-step How It Works, stats bar, client brief flow mock, 11-card bento Features, storyboard showcase, cinematic gallery (mobile-first placement), 4-plan pricing (Pro highlighted), FAQ accordion, final CTA with working email capture, footer.
+- All 15 landing sections: sticky nav (glass on scroll), kinetic hero (masked line reveal + parallax gold logo tile), auto-playing demo mockup + popup dialog, trust-chips marquee, before/after VS, 6-step How It Works, stats bar, client brief flow mock, 11-card bento Features, storyboard showcase, cinematic gallery (mobile-first placement), 4-plan pricing (Pro highlighted), FAQ accordion, final CTA with working email capture, footer.
 - Bilingual IT/EN toggle across entire site.
 - Email capture persists to MongoDB (`leads`), verified end-to-end.
 - SVG Frame-F film-strip logo, gold gradient system, grain/glow, SEO + Open Graph meta with AI-generated OG image.
 - GDPR-template legal pages (Privacy/Termini/Cookie) with lawyer-review disclaimer.
-- Tested: backend 100% (5/5 pytest), frontend 100% (all flows).
+- **Emergent-managed Google sign-in**: /api/auth/session, /auth/me, /auth/logout (cookie OR Bearer); protected /dashboard; nav shows Dashboard+Esci when authenticated. Verified end-to-end.
+- Tested: landing backend/frontend 100%; auth backend 7/7 + frontend 5/5.
 
 ## Backlog
-- P1: Real auth + user accounts (currently placeholder + waitlist capture).
-- P1: Working app at app.frameflowai.net (dashboard/brief upload).
+- P1: Working app behind /dashboard (brief upload, AI generation).
 - P2: Stripe checkout on pricing plans.
 - P2: Contact form UI (endpoint exists), blog/guides pages.
 - P2: Persist chosen language in localStorage; add hreflang tags.

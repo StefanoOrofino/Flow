@@ -221,8 +221,10 @@ async def auth_me(request: Request, authorization: Optional[str] = Header(defaul
 
 
 @api_router.post("/auth/logout")
-async def logout(request: Request, response: Response):
+async def logout(request: Request, response: Response, authorization: Optional[str] = Header(default=None)):
     token = request.cookies.get("session_token")
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1]
     if token:
         await db.user_sessions.delete_one({"session_token": token})
     response.delete_cookie(key="session_token", path="/", samesite="none", secure=True)
