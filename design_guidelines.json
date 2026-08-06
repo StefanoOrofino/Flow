@@ -1,0 +1,164 @@
+{
+  "theme_and_colors": {
+    "theme_mode": "dark",
+    "theme_lock": "LOCKED DARK THEME (No light/dark toggle).",
+    "background": {
+      "base": "#0C0C0E",
+      "surface": "#141416",
+      "surface_elevated": "rgba(245, 241, 232, 0.03)"
+    },
+    "text": {
+      "primary": "#F5F1E8",
+      "secondary": "rgba(245, 241, 232, 0.7)",
+      "muted": "rgba(245, 241, 232, 0.4)"
+    },
+    "accent": {
+      "gold": "#C5A059",
+      "gold_gradient": "linear-gradient(to right, #EBD08A, #C5A059, #9A7B3C)"
+    },
+    "borders": {
+      "thin": "rgba(245, 241, 232, 0.1)"
+    },
+    "forbidden_colors": ["blue", "purple"]
+  },
+  "typography": {
+    "fonts": {
+      "headings": "'Fraunces', serif",
+      "body": "'Inter', sans-serif"
+    },
+    "hierarchy": {
+      "h1_hero": "text-5xl md:text-6xl lg:text-7xl font-light tracking-tighter leading-none",
+      "h2_section": "text-3xl md:text-4xl font-normal tracking-tight",
+      "h3_card": "text-xl md:text-2xl font-normal",
+      "body": "text-base md:text-lg text-white/70 leading-relaxed",
+      "overline_label": "text-xs font-semibold uppercase tracking-[0.2em] text-[#C5A059]"
+    }
+  },
+  "visual_enhancers": {
+    "surfaces": "Use elevated charcoal surfaces (not pure black). Apple/Linear aesthetic.",
+    "dividers": "1px thin dividers using border-white/10.",
+    "spacing": "Generous spacing. Use p-8 to p-24 for sections to create an airy, premium feel.",
+    "logo_f": "Letter F in metallic gold constructed as a film strip (vertical rod with sprocket holes, two solid arms), in a rounded square tile with subtle glow.",
+    "glassmorphism": "Subtle backdrop-blur-xl on sticky nav and floating elements with bg-white/5."
+  },
+  "grids_and_layouts": {
+    "bento_grid": "For the 11-card Features section, use a highly asymmetrical bento grid (grid-cols-1 md:grid-cols-4) mixing tall, wide, and square cards.",
+    "container": "Max-w-7xl mx-auto px-6 md:px-12",
+    "alignment": "Left-align text for editorial feel; center-align only specific stats or final CTAs."
+  },
+  "motion_and_interactions": {
+    "smooth_scroll": "Implement smooth scrolling using Lenis.",
+    "hero_reveal": "Masked line-by-line reveal using Framer Motion (initial y: 100%, clip-path).",
+    "scroll_reveal": "Fade-in and slight translate-y on scroll for sections.",
+    "hover_effects": "Hover zoom on images (scale 1.05 with smooth transition), metallic shimmer on buttons.",
+    "parallax": "Subtle 3D/parallax moment in the hero section.",
+    "marquee": "Slow editorial marquee for trust chips or conceptual keywords."
+  },
+  "accessibility_and_ux": {
+    "contrast": "Ensure text against dark backgrounds meets APCA standards. Use text-shadow if overlaid on images.",
+    "focus": "High contrast gold focus rings.",
+    "testing": "All interactive elements MUST include a data-testid attribute (e.g., data-testid='hero-cta-button')."
+  },
+  "sections_and_flow": [
+    {
+      "name": "Sticky Nav",
+      "details": "Bilingual toggle (IT/EN, default IT), logo, primary CTA, glassmorphism background."
+    },
+    {
+      "name": "Hero",
+      "details": "Large logo tile with glow, cinematic typography with masked line-by-line reveal, subtle parallax. Primary CTA."
+    },
+    {
+      "name": "Animated Demo",
+      "details": "Browser mockup (app.frameflowai.net) showing auto-playing stepped animation of the AI process."
+    },
+    {
+      "name": "Trust Chips",
+      "details": "Slow marquee of partner logos or tech stack."
+    },
+    {
+      "name": "Before / After VS",
+      "details": "Comparison section (Old Way vs FrameFlow AI)."
+    },
+    {
+      "name": "How It Works",
+      "details": "6 cards with photos outlining the steps."
+    },
+    {
+      "name": "Stats Bar",
+      "details": "High-impact metrics (e.g., hours saved, budget precision)."
+    },
+    {
+      "name": "Client Brief Flow",
+      "details": "Visual of a mock brief.pdf transforming into production assets."
+    },
+    {
+      "name": "Features",
+      "details": "11-card bento grid with photos and micro-interactions."
+    },
+    {
+      "name": "Storyboard Showcase",
+      "details": "Gallery showing AI-generated storyboards."
+    },
+    {
+      "name": "Cinematic Gallery",
+      "details": "6 cinematic images with captions."
+    },
+    {
+      "name": "Pricing",
+      "details": "4 plans, with 'Pro' plan highlighted using gold accent."
+    },
+    {
+      "name": "FAQ",
+      "details": "Accordion component for questions."
+    },
+    {
+      "name": "Final CTA",
+      "details": "Large editorial heading, email waitlist capture form."
+    },
+    {
+      "name": "Footer",
+      "details": "Links, GDPR, legal pages."
+    }
+  ],
+  "media_and_image_urls": {
+    "storyboard": [
+      "https://images.unsplash.com/photo-1573867880293-a309ab677f28?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwyfHxjaW5lbWF0aWMlMjBzdG9yeWJvYXJkJTIwc2tldGNofGVufDB8fHx8MTc4NjAyNTEzNHww&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1589553872988-2914682fdb94?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODh8MHwxfHNlYXJjaHwzfHxjaW5lbWF0aWMlMjBzdG9yeWJvYXJkJTIwc2tldGNofGVufDB8fHx8MTc4NjAyNTEzNHww&ixlib=rb-4.1.0&q=85"
+    ],
+    "film_set": [
+      "https://images.unsplash.com/photo-1632187989763-c9c620420b4d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzh8MHwxfHNlYXJjaHw0fHxtb3ZpZSUyMHNldCUyMGJlaGluZCUyMHNjZW5lc3xlbnwwfHx8fDE3ODYwMjUxMzR8MA&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1681137063068-081072cf04b4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHw0fHxjaW5lbWF0aWMlMjBtb3ZpZSUyMGxpZ2h0aW5nJTIwZmlsbSUyMHNldHxlbnwwfHx8fDE3ODYwMjUxNDh8MA&ixlib=rb-4.1.0&q=85"
+    ],
+    "cinematic_lens": [
+      "https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwxfHxmaWxtbWFrZXIlMjBjYW1lcmElMjBsZW5zJTIwc3BvdGxpZ2h0fGVufDB8fHx8MTc4NjAyNTE0OHww&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1625690303837-654c9666d2d0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzl8MHwxfHNlYXJjaHwyfHxmaWxtbWFrZXIlMjBjYW1lcmElMjBsZW5zJTIwc3BvdGxpZ2h0fGVufDB8fHx8MTc4NjAyNTE0OHww&ixlib=rb-4.1.0&q=85"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Build the UI in React using tailwindcss. DO NOT USE SHADCN CARDS for marketing sections; use raw HTML/divs with tailwind for highly custom bento grids and layouts.",
+    "Include 'framer-motion' for all scroll reveals and the hero masked line-by-line reveal.",
+    "Use 'lenis' for smooth scrolling.",
+    "Include 'lucide-react' for icons.",
+    "Implement the exact color palette specified: #0C0C0E background, #F5F1E8 text, and #C5A059 gold accent. Do NOT use any blue or purple.",
+    "For the 'Frame F' logo, create a custom SVG component that matches the description (film strip aesthetic with gold metallic gradient).",
+    "All copy should be in Italian by default, with an IT/EN toggle placeholder in the nav.",
+    "Do NOT center-align everything. Use editorial left-alignment where appropriate.",
+    "Ensure every interactive element has a data-testid attribute.",
+    "For images, use the provided Unsplash URLs or valid functional equivalents."
+  ],
+  "universal_guidelines_for_main_agent": [
+    "You tend to converge toward generic outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Do not use dark colors as gradients.",
+    "Don't make generic centered layouts. Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. Always add transitions for specific interactive elements.",
+    "You MUST NOT center align the app container.",
+    "Always use modern button styles.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Missing categories for images = use functional equivalents. DO NOT USE PLACEHOLDER TEXT.",
+    "Prioritize using pre-existing components from src/components/ui when applicable."
+  ]
+}
