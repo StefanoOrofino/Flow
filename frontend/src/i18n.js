@@ -39,7 +39,7 @@ const dict = {
       badge: "La pre-produzione con l'AI, reinventata",
       titleLines: ["La Suite di Produzione", "AI per Filmmaker"],
       subtitle:
-        "Trasforma un brief del cliente in un pacchetto di produzione completo in pochi minuti — concept, sceneggiatura, storyboard, shot list e altro ancora.",
+        "Trasforma un brief in un pacchetto di produzione completo in pochi minuti — concept, sceneggiatura, storyboard, shot list e altro ancora.",
       ctaPrimary: "Inizia Gratis",
       ctaSecondary: "Guarda la Demo",
       trust: "Nessuna carta di credito · Piano gratuito per sempre · PDF pronti all'uso",
@@ -242,7 +242,7 @@ dict.en = {
   hero: {
     badge: "AI pre-production, reinvented",
     titleLines: ["The AI Production", "Suite for Filmmakers"],
-    subtitle: "Turn a client brief into a complete production package in minutes — concept, screenplay, storyboard, shot list and more.",
+    subtitle: "Turn a brief into a complete production package in minutes — concept, screenplay, storyboard, shot list and more.",
     ctaPrimary: "Start Free",
     ctaSecondary: "Watch the Demo",
     trust: "No credit card · Free forever plan · Ready-to-use PDFs",
