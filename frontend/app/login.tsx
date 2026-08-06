@@ -17,7 +17,6 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
-  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
@@ -37,7 +36,6 @@ export default function Login() {
   return (
     <AuthShell title={t("auth:welcomeBack")} subtitle={t("auth:signInSubtitle")}>
       {err ? <View style={styles.errBox}><Text style={styles.errText}>{err}</Text></View> : null}
-      {notice ? <View style={styles.noticeBox}><Text style={styles.noticeText}>{notice}</Text></View> : null}
 
       <Field label={t("auth:email")} value={email} onChangeText={setEmail} placeholder={t("auth:emailPlaceholder")}
         keyboardType="email-address" testID="login-email" />
@@ -52,9 +50,7 @@ export default function Login() {
 
       <View style={styles.divider}><View style={styles.line} /><Text style={styles.dividerText}>{t("common:or")}</Text><View style={styles.line} /></View>
 
-      <Btn title={t("auth:signInWithGoogle")} variant="ghost" icon="logo-google" onPress={loginWithGoogle} testID="google-login" style={{ marginBottom: S.sm }} />
-      <Btn title={t("auth:signInWithApple")} variant="ghost" icon="logo-apple"
-        onPress={() => setNotice(t("auth:appleComingSoon"))} testID="apple-login" />
+      <Btn title={t("auth:signInWithGoogle")} variant="ghost" icon="logo-google" onPress={loginWithGoogle} testID="google-login" />
 
       <View style={styles.footer}>
         <Text style={styles.muted}>{t("auth:newHere")}</Text>
