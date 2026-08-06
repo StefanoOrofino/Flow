@@ -26,6 +26,7 @@ function statusMeta(f: any, C: Palette) {
 }
 
 function FieldRow({ f, onChange, C, styles, t }: any) {
+  const [showSrc, setShowSrc] = React.useState(false);
   const meta = statusMeta(f, C);
   const isSuggestion = f.status === "suggestion" || f.isSuggestion;
   const src = f.sourceImage ? `${t("sourceImage", { defaultValue: "Image" })}: ${f.sourceImage}`
@@ -52,12 +53,19 @@ function FieldRow({ f, onChange, C, styles, t }: any) {
         testID={`input-${f.key}`}
       />
 
-      {/* Verbatim evidence for extracted facts */}
+      {/* Verbatim evidence for extracted facts — tappable to reveal full source */}
       {meta.key === "found" && !!f.evidenceSnippet && (
-        <View style={styles.evidenceBox}>
+        <Pressable onPress={() => setShowSrc((s: boolean) => !s)} style={styles.evidenceBox} testID={`evidence-${f.key}`}>
           <Ionicons name="document-text-outline" size={12} color={C.onSurface2} />
-          <Text style={styles.evidenceTxt} numberOfLines={4}>“{f.evidenceSnippet}”</Text>
-        </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.evidenceTxt} numberOfLines={showSrc ? undefined : 4}>“{f.evidenceSnippet}”</Text>
+            {showSrc && !!src && <Text style={styles.evidenceSrc}>{t("source", { defaultValue: "Source" })}: {src}</Text>}
+          </View>
+          <View style={styles.evidenceToggle}>
+            <Text style={styles.evidenceToggleTxt}>{showSrc ? t("hideSource", { defaultValue: "Hide" }) : t("showSource", { defaultValue: "Show source" })}</Text>
+            <Ionicons name={showSrc ? "chevron-up" : "chevron-down"} size={12} color={C.brand} />
+          </View>
+        </Pressable>
       )}
 
       {/* Ambiguous — pick a possible value */}
@@ -93,7 +101,7 @@ function FieldRow({ f, onChange, C, styles, t }: any) {
         <Text style={styles.reason}>{f.extractionReason}</Text>
       )}
 
-      {!!src && <Text style={styles.source}>{t("source", { defaultValue: "Source" })}: {src}</Text>}
+      {!!src && !(meta.key === "found" && !!f.evidenceSnippet) && <Text style={styles.source}>{t("source", { defaultValue: "Source" })}: {src}</Text>}
     </View>
   );
 }
@@ -333,7 +341,10 @@ const createStyles = (C: Palette) => StyleSheet.create({
   bannerNote: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, marginTop: S.md, lineHeight: 17 },
   sectionNote: { color: C.onSurface2, fontFamily: F.text, fontSize: 12.5, marginBottom: S.md, lineHeight: 18 },
   evidenceBox: { flexDirection: "row", gap: 6, alignItems: "flex-start", marginTop: 8, backgroundColor: C.surface3, borderRadius: R.sm, padding: 8 },
-  evidenceTxt: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, flex: 1, fontStyle: "italic", lineHeight: 17 },
+  evidenceTxt: { color: C.onSurface2, fontFamily: F.text, fontSize: 12, fontStyle: "italic", lineHeight: 17 },
+  evidenceSrc: { color: C.onSurface3, fontFamily: F.text, fontSize: 11, marginTop: 6 },
+  evidenceToggle: { flexDirection: "row", alignItems: "center", gap: 2, paddingLeft: 4 },
+  evidenceToggleTxt: { color: C.brand, fontFamily: F.text, fontSize: 11, fontWeight: "600" },
   ambiguousLbl: { color: C.warning, fontFamily: F.text, fontSize: 11.5, fontWeight: "600", marginBottom: 6 },
   suggestionCard: { backgroundColor: C.surface2, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S.md, marginBottom: S.sm },
   suggestionTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },

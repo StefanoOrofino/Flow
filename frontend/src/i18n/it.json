@@ -410,7 +410,9 @@
     "aiSuggestionsNote": "Sono osservazioni dell’AI, non dati estratti dal tuo brief. Conferma quelli che vuoi utilizzare.",
     "aiSuggestionsCreative": "Suggerimenti AI — proposte creative",
     "aiSuggestionsCreativeNote": "Idee opzionali generate dall’AI. Non fanno parte del tuo brief e non vengono applicate automaticamente.",
-    "suggestionBadge": "Suggerimento AI"
+    "suggestionBadge": "Suggerimento AI",
+    "showSource": "Mostra fonte",
+    "hideSource": "Nascondi"
   },
   "manualProject": {
     "title": "Crea da zero",
