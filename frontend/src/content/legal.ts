@@ -12,8 +12,8 @@ export type LegalDoc = {
 
 const UPDATED = "June 2026";
 const COMPANY = "FrameFlow Studio";
-const CONTACT = "privacy@frameflow.ai";
-const DOMAIN = "frameflow.ai";
+const CONTACT = "privacy@frameflowai.net";
+const DOMAIN = "frameflowai.net";
 
 export const LEGAL: Record<"privacy" | "terms" | "cookies", { it: LegalDoc; en: LegalDoc }> = {
   // ─────────────────────────────────────────────── PRIVACY ───

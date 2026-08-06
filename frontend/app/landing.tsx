@@ -100,7 +100,7 @@ function Chrome({ C, styles, big, children }: any) {
         <View style={[styles.dot, { backgroundColor: "#E06C60" }]} />
         <View style={[styles.dot, { backgroundColor: "#E0B65C" }]} />
         <View style={[styles.dot, { backgroundColor: "#7CC08A" }]} />
-        <View style={styles.mockUrl}><Text style={styles.mockUrlTxt}>app.frameflow.ai</Text></View>
+        <View style={styles.mockUrl}><Text style={styles.mockUrlTxt}>app.frameflowai.net</Text></View>
       </View>
       {children}
     </View>

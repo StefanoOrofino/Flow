@@ -21,18 +21,20 @@ export default function Root({ children }: PropsWithChildren) {
         />
         <meta name="theme-color" content="#0C0C0E" />
         <meta name="author" content="FrameFlow Studio" />
+        <link rel="canonical" href="https://www.frameflowai.net/" />
         <link rel="icon" href="/favicon.png" />
         <link rel="apple-touch-icon" href="/favicon.png" />
 
         {/* --- Open Graph (Facebook / LinkedIn / iMessage) --- */}
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://www.frameflowai.net/" />
         <meta property="og:site_name" content="FrameFlow Studio" />
         <meta property="og:title" content="FrameFlow Studio — AI Pre-Production for Filmmakers" />
         <meta
           property="og:description"
           content="From brief to storyboard in minutes. The AI pre-production suite for filmmakers, videographers and agencies."
         />
-        <meta property="og:image" content="/og-image.png" />
+        <meta property="og:image" content="https://www.frameflowai.net/og-image.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
 
@@ -43,7 +45,7 @@ export default function Root({ children }: PropsWithChildren) {
           name="twitter:description"
           content="From brief to storyboard in minutes. The AI pre-production suite for filmmakers."
         />
-        <meta name="twitter:image" content="/og-image.png" />
+        <meta name="twitter:image" content="https://www.frameflowai.net/og-image.png" />
         {/*
           Disable body scrolling on web to make ScrollView components work correctly.
           If you want to enable scrolling, remove `ScrollViewStyleReset` and
