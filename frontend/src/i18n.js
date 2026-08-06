@@ -150,7 +150,7 @@ const dict = {
       kicker: "GALLERIA STORYBOARD",
       title: "Storyboard cinematografici generati con l'AI",
       subtitle:
-        "Fotogrammi storyboard reali che FrameFlow può generare per la tua produzione — da un solo brief.",
+        "Storyboard realistici in un solo click.",
       items: [
         { img: IMG.carBeach, t: "Guida costiera", s: "ORA D'ORO" },
         { img: IMG.interior, t: "Interni", s: "LUCE AMBIENTALE" },
@@ -320,7 +320,7 @@ dict.en = {
   gallery: {
     kicker: "STORYBOARD GALLERY",
     title: "Cinematic storyboards generated with AI",
-    subtitle: "Real storyboard frames FrameFlow can generate for your production — from a single brief.",
+    subtitle: "Realistic storyboards in a single click.",
     items: [
       { img: IMG.carBeach, t: "Coastal drive", s: "GOLDEN HOUR" },
       { img: IMG.interior, t: "Interior", s: "AMBIENT LIGHT" },
