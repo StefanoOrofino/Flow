@@ -1,0 +1,38 @@
+{
+  "summary": "Auth-flow testing (backend + frontend) for FrameFlow Emergent Google sign-in. Backend pytest: 6/7 passing. Frontend Playwright: 5/5 core auth flows passing. All primary review-request items verified: /api/auth/me 401 without token, 200 with Bearer (correct user JSON), 401 with expired session, /api/auth/session 400 without X-Session-ID, /login+/signup show 'Continua con Google' (data-testid=google-signin), unauth /dashboard redirects to /login, seeded-cookie /dashboard shows dash-title (name) + dash-email + dash-logout, dash-logout logs out and navigates to '/'. Session cleanup on cookie-logout works. One backend deviation found: POST /api/auth/logout does NOT delete the session when only Authorization: Bearer is supplied — it reads only the cookie. The frontend never triggers this path (it uses withCredentials cookie), so the app works end-to-end, but the review-request explicitly asks for Bearer-based logout to delete the session.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/logout", "issue": "Only reads session_token from cookie. Logout via 'Authorization: Bearer <token>' returns 200 but does not delete the session in user_sessions. Add Bearer fallback (mirror get_current_user) so API clients can log out."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auth_flows.py",
+    "/app/test_reports/pytest/auth_results.xml"
+  ],
+  "action_items": [
+    "In server.py /api/auth/logout, also accept Authorization: Bearer <token> to identify and delete the session (currently only cookie is honored)."
+  ],
+  "critical_code_review_comments": [
+    "server.py logout endpoint is asymmetric with get_current_user (which supports cookie OR Bearer). Add Bearer parsing for API/CLI parity.",
+    "server.py stores expires_at as ISO string; get_current_user handles both string and datetime — good, but consider storing as native datetime for consistency and easier TTL indexing.",
+    "server.py: consider a Mongo TTL index on user_sessions.expires_at (as datetime) to auto-purge expired sessions.",
+    "AuthContext.checkAuth swallows all errors as 'unauthenticated' — 5xx would be indistinguishable from 401. Consider status-based branching for UX.",
+    "Multiple 401 console errors are visible on /login and /signup because /api/auth/me is called on every mount. Consider skipping /me on public auth pages, or accepting these as expected."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auth_flows.py (new)"
+  ],
+  "success_rate": {"backend": "86% (6/7)", "frontend": "100% (5/5)"},
+  "test_credentials": "No password creds. Seeded MongoDB user+session per /app/auth_testing.md. All TEST_ / test.user / test_session_ data cleaned up.",
+  "seed_data_creation": "Created ephemeral users (email=test.user.<ts>@example.com) and sessions (session_token=test_session_<ts>) in test_database. Cleaned up post-run.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Auth stack verified. To repro dashboard: seed a user+session in test_database (see /app/auth_testing.md), then set cookie {name:session_token, domain:frameflow-ai-6.preview.emergentagent.com, path:/, httpOnly:true, secure:true, sameSite:'None'} and hit /dashboard. Backend get_current_user supports both cookie and Bearer; /api/auth/logout ONLY supports cookie (minor bug, main-agent action item).",
+  "rca of the issue": "Bearer-logout bug RCA: /api/auth/logout reads request.cookies.get('session_token') only; when the client sends Authorization: Bearer <token> (no cookie), token is None and no delete_one is issued, so the session remains active. Fix: replicate the token-resolution logic from get_current_user (cookie OR Bearer) inside logout, then delete_one on the resolved token."
+}

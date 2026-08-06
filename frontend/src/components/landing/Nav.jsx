@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Menu, X, Globe } from "lucide-react";
 import { FrameLogo, Wordmark } from "../FrameLogo";
 import { useT } from "../../i18n";
+import { useAuth } from "../../auth/AuthContext";
 
 const links = [
   ["features", "#features"],
@@ -13,9 +14,15 @@ const links = [
 
 export function Nav() {
   const { t, lang, toggle } = useT();
+  const { user, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
+
+  const doLogout = async () => {
+    await logout();
+    navigate("/", { replace: true });
+  };
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -74,21 +81,49 @@ export function Nav() {
             <span className={lang === "en" ? "text-[#C5A059]" : ""}>EN</span>
           </button>
 
-          <button
-            data-testid="nav-login"
-            onClick={() => navigate("/login")}
-            className="hidden sm:inline-flex text-sm text-[#F5F1E8]/85 hover:text-[#F5F1E8] px-3 py-2 transition-colors duration-300"
-          >
-            {t.nav.login}
-          </button>
+          {user ? (
+            <>
+              <button
+                data-testid="nav-dashboard"
+                onClick={() => navigate("/dashboard")}
+                className="hidden sm:inline-flex items-center gap-2 text-sm text-[#F5F1E8]/85 hover:text-[#F5F1E8] px-3 py-2 transition-colors duration-300"
+              >
+                {user.picture ? (
+                  <img src={user.picture} alt="" className="w-6 h-6 rounded-full border border-[#C5A059]/40 object-cover" />
+                ) : (
+                  <span className="w-6 h-6 rounded-full gold-gradient-bg flex items-center justify-center text-[#0C0C0E] text-xs font-semibold">
+                    {user.name?.[0]?.toUpperCase() || "U"}
+                  </span>
+                )}
+                {t.nav.dashboard}
+              </button>
+              <button
+                data-testid="nav-logout"
+                onClick={doLogout}
+                className="btn-ghost hidden sm:inline-flex rounded-full px-5 py-2.5 text-sm font-medium"
+              >
+                {t.nav.logout}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                data-testid="nav-login"
+                onClick={() => navigate("/login")}
+                className="hidden sm:inline-flex text-sm text-[#F5F1E8]/85 hover:text-[#F5F1E8] px-3 py-2 transition-colors duration-300"
+              >
+                {t.nav.login}
+              </button>
 
-          <button
-            data-testid="nav-cta"
-            onClick={() => navigate("/signup")}
-            className="btn-gold hidden sm:inline-flex rounded-full px-5 py-2.5 text-sm font-semibold"
-          >
-            {t.nav.cta}
-          </button>
+              <button
+                data-testid="nav-cta"
+                onClick={() => navigate("/signup")}
+                className="btn-gold hidden sm:inline-flex rounded-full px-5 py-2.5 text-sm font-semibold"
+              >
+                {t.nav.cta}
+              </button>
+            </>
+          )}
 
           <button
             data-testid="nav-mobile-toggle"
@@ -114,12 +149,25 @@ export function Nav() {
             </button>
           ))}
           <div className="flex gap-3 pt-2">
-            <button onClick={() => navigate("/login")} className="btn-ghost rounded-full px-5 py-2.5 text-sm flex-1">
-              {t.nav.login}
-            </button>
-            <button onClick={() => navigate("/signup")} className="btn-gold rounded-full px-5 py-2.5 text-sm font-semibold flex-1">
-              {t.nav.cta}
-            </button>
+            {user ? (
+              <>
+                <button data-testid="nav-mobile-dashboard" onClick={() => { setOpen(false); navigate("/dashboard"); }} className="btn-ghost rounded-full px-5 py-2.5 text-sm flex-1">
+                  {t.nav.dashboard}
+                </button>
+                <button data-testid="nav-mobile-logout" onClick={() => { setOpen(false); doLogout(); }} className="btn-gold rounded-full px-5 py-2.5 text-sm font-semibold flex-1">
+                  {t.nav.logout}
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => navigate("/login")} className="btn-ghost rounded-full px-5 py-2.5 text-sm flex-1">
+                  {t.nav.login}
+                </button>
+                <button onClick={() => navigate("/signup")} className="btn-gold rounded-full px-5 py-2.5 text-sm font-semibold flex-1">
+                  {t.nav.cta}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

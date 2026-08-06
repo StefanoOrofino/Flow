@@ -32,6 +32,8 @@ const dict = {
       faq: "FAQ",
       login: "Accedi",
       cta: "Inizia Gratis",
+      dashboard: "Dashboard",
+      logout: "Esci",
     },
     hero: {
       badge: "La pre-produzione con l'AI, reinventata",
@@ -214,6 +216,17 @@ const dict = {
       soon: "Le registrazioni complete arrivano presto. Lascia la tua email per l'accesso anticipato.",
       back: "Torna alla home",
       joined: "Grazie! Ti avviseremo appena l'accesso sarà pronto.",
+      google: "Continua con Google",
+      or: "oppure",
+    },
+    dashboard: {
+      welcome: "Bentornato",
+      subtitle: "Questo è il tuo workspace di produzione FrameFlow.",
+      email: "Email",
+      logout: "Esci",
+      newProject: "Nuovo progetto",
+      empty: "Nessun progetto ancora. Carica un brief per iniziare.",
+      soon: "Presto disponibile",
     },
     legal: {
       back: "Torna alla home",
@@ -225,7 +238,7 @@ const dict = {
 
 // English mirror
 dict.en = {
-  nav: { features: "Features", how: "How It Works", pricing: "Pricing", faq: "FAQ", login: "Log in", cta: "Start Free" },
+  nav: { features: "Features", how: "How It Works", pricing: "Pricing", faq: "FAQ", login: "Log in", cta: "Start Free", dashboard: "Dashboard", logout: "Log out" },
   hero: {
     badge: "AI pre-production, reinvented",
     titleLines: ["The AI Production", "Suite for Filmmakers"],
@@ -373,6 +386,17 @@ dict.en = {
     soon: "Full sign-up is coming soon. Leave your email for early access.",
     back: "Back to home",
     joined: "Thanks! We'll notify you as soon as access is ready.",
+    google: "Continue with Google",
+    or: "or",
+  },
+  dashboard: {
+    welcome: "Welcome back",
+    subtitle: "This is your FrameFlow production workspace.",
+    email: "Email",
+    logout: "Log out",
+    newProject: "New project",
+    empty: "No projects yet. Upload a brief to get started.",
+    soon: "Coming soon",
   },
   legal: {
     back: "Back to home",
