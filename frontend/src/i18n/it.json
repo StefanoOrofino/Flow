@@ -297,7 +297,7 @@
     "remaining": "{{count}} rimanenti",
     "includedFeatures": "Incluso",
     "upgrade": "Aggiorna piano",
-    "upgradeSoon": "I piani a pagamento arriveranno presto. Sei sul piano Free.",
+    "upgradeSoon": "Sei sul piano Free. Passa a un piano superiore per sbloccare più progetti, generazioni AI e spazio.",
     "comparePlans": "Confronta i piani",
     "mostPopular": "Piu popolare",
     "currentTag": "Attuale",
@@ -457,7 +457,7 @@
   },
   "pricing": {
     "title": "Scegli il tuo piano",
-    "subtitle": "Prezzi semplici che crescono con il tuo lavoro di produzione.",
+    "subtitle": "Prezzi trasparenti che crescono con la tua produzione. Nessun vincolo, disdici quando vuoi.",
     "recommended": "Consigliato",
     "current": "Piano attuale",
     "forever": "per sempre",
@@ -467,8 +467,8 @@
     "upgradeBtn": "Aggiorna",
     "downgradeBtn": "Cambia piano",
     "getStarted": "Inizia",
-    "checkoutSoon": "Il checkout sicuro arrivera con Stripe (Run 2). Il tuo piano resta invariato per ora.",
-    "compare": "Cosa e incluso",
+    "checkoutSoon": "Pagamento sicuro con Stripe e PayPal.",
+    "compare": "Cosa è incluso",
     "active_projects": "Progetti attivi",
     "ai_director": "AI Director",
     "ai_images": "Generazioni immagini AI",
@@ -604,11 +604,11 @@
       "startFree": "Inizia Gratis"
     },
     "hero": {
-      "badge": "La pre-produzione con l'AI, reinventata",
+      "badge": "Pre-produzione reinventata dall'intelligenza artificiale",
       "title": "La Suite di Produzione AI per Filmmaker",
-      "subtitle": "Trasforma un brief del cliente in un pacchetto di produzione completo in pochi minuti — concept, sceneggiatura, storyboard, shot list e altro ancora.",
+      "subtitle": "Trasforma il brief di un cliente in un pacchetto di produzione completo — concept, sceneggiatura, storyboard e shot list — in pochi minuti, non giorni.",
       "watchDemo": "Guarda la Demo",
-      "microtrust": "Nessuna carta di credito · Piano gratuito per sempre · PDF pronti all'uso"
+      "microtrust": "Nessuna carta richiesta · Piano gratuito per sempre · Deliverable pronti per il cliente"
     },
     "trust": {
       "label": "PENSATO PER I TEAM VIDEO MODERNI",
@@ -623,7 +623,7 @@
     "problem": {
       "kicker": "LA DIFFERENZA",
       "title": "Come il giorno e la notte",
-      "subtitle": "Guarda esattamente cosa cambia nel momento in cui FrameFlow entra nel tuo flusso di lavoro.",
+      "subtitle": "Guarda cosa cambia nel momento esatto in cui FrameFlow entra nel tuo flusso di lavoro.",
       "withoutLabel": "Senza FrameFlow",
       "withLabel": "Con FrameFlow",
       "withoutOutcome": "Giorni di lavoro manuale e disordinato",
@@ -829,12 +829,12 @@
       ]
     },
     "finalCta": {
-      "title": "Pronto a produrre più velocemente?",
-      "subtitle": "Inizia gratis — nessuna carta di credito richiesta.",
+      "title": "Pronto a produrre di più, in meno tempo?",
+      "subtitle": "Prova FrameFlow gratis — nessuna carta di credito richiesta.",
       "cta": "Inizia Gratis"
     },
     "footer": {
-      "note": "La suite di produzione AI per filmmaker, videomaker e agenzie.",
+      "note": "La suite di pre-produzione basata su AI per filmmaker, videomaker e agenzie creative.",
       "companyTitle": "Azienda",
       "company": [
         "Chi siamo",

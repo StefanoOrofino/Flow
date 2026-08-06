@@ -297,7 +297,7 @@
     "remaining": "{{count}} remaining",
     "includedFeatures": "Included",
     "upgrade": "Upgrade plan",
-    "upgradeSoon": "Paid plans are coming soon. You are on the Free plan.",
+    "upgradeSoon": "You're on the Free plan. Upgrade to unlock more projects, AI generations and storage.",
     "comparePlans": "Compare plans",
     "mostPopular": "Most popular",
     "currentTag": "Current",
@@ -457,7 +457,7 @@
   },
   "pricing": {
     "title": "Choose your plan",
-    "subtitle": "Simple pricing that scales with your production work.",
+    "subtitle": "Transparent pricing that scales with your production. No lock-in, cancel anytime.",
     "recommended": "Recommended",
     "current": "Current plan",
     "forever": "forever",
@@ -467,7 +467,7 @@
     "upgradeBtn": "Upgrade",
     "downgradeBtn": "Switch plan",
     "getStarted": "Get started",
-    "checkoutSoon": "Secure checkout arrives with Stripe (Run 2). Your plan is unchanged for now.",
+    "checkoutSoon": "Secure checkout with Stripe and PayPal.",
     "compare": "What's included",
     "active_projects": "Active projects",
     "ai_director": "AI Director",
@@ -604,11 +604,11 @@
       "startFree": "Start Free"
     },
     "hero": {
-      "badge": "AI pre-production, reinvented",
+      "badge": "Pre-production, reimagined with AI",
       "title": "The AI Production Suite for Filmmakers",
-      "subtitle": "Turn a client brief into a complete production package in minutes — concept, script, storyboard, shot list and more.",
+      "subtitle": "Turn a client brief into a complete production package — concept, script, storyboard and shot list — in minutes, not days.",
       "watchDemo": "Watch Demo",
-      "microtrust": "No credit card · Free forever plan · Export-ready PDFs"
+      "microtrust": "No credit card required · Free plan forever · Client-ready deliverables"
     },
     "trust": {
       "label": "BUILT FOR MODERN VIDEO TEAMS",
@@ -623,7 +623,7 @@
     "problem": {
       "kicker": "THE DIFFERENCE",
       "title": "Night and day",
-      "subtitle": "See exactly what changes the moment FrameFlow enters your workflow.",
+      "subtitle": "See exactly what changes the moment FrameFlow joins your workflow.",
       "withoutLabel": "Without FrameFlow",
       "withLabel": "With FrameFlow",
       "withoutOutcome": "Days of scattered, manual work",
@@ -829,12 +829,12 @@
       ]
     },
     "finalCta": {
-      "title": "Ready to produce faster?",
-      "subtitle": "Start free — no credit card required.",
+      "title": "Ready to produce more, in less time?",
+      "subtitle": "Try FrameFlow free — no credit card required.",
       "cta": "Start Free"
     },
     "footer": {
-      "note": "The AI production suite for filmmakers, videographers and agencies.",
+      "note": "The AI pre-production suite for filmmakers, videographers and creative agencies.",
       "companyTitle": "Company",
       "company": [
         "About",
