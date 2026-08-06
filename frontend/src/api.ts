@@ -96,6 +96,8 @@ export const api = {
   startCheckout: (plan: string, origin_url: string) => req("/billing/checkout", "POST", { plan, origin_url }),
   checkoutStatus: (sid: string) => req(`/billing/checkout/status/${sid}`),
   cancelPlan: () => req("/billing/cancel", "POST"),
+  paypalCreateOrder: (plan: string, origin_url: string) => req("/billing/paypal/order", "POST", { plan, origin_url }),
+  paypalCapture: (orderId: string) => req(`/billing/paypal/capture/${orderId}`, "POST"),
   // Create Project from Client Brief (Run 1)
   analyzeBrief: (body: { documents: any[]; images: any[] }) => req("/briefs/analyze", "POST", body),
   createProjectFromBrief: (body: any) => req("/briefs/create-project", "POST", body),

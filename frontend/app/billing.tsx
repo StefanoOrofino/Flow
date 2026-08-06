@@ -81,20 +81,31 @@ export default function Billing() {
 
   useEffect(() => { load(); }, [load]);
 
-  // After returning from Stripe Checkout (web), confirm the payment by polling.
+  // After returning from Stripe or PayPal Checkout (web), confirm the payment.
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const sid = params.get("session_id");
-    if (!sid) return;
+    const ppOrder = params.get("paypal_order");
+    const ppToken = params.get("token");
+    if (!sid && !(ppOrder && ppToken)) return;
     // Clean the URL so a refresh doesn't re-trigger.
     window.history.replaceState({}, "", window.location.pathname);
     let cancelled = false;
     (async () => {
       setCheckoutMsg(t("checkoutProcessing"));
+      if (ppOrder && ppToken) {
+        try {
+          const r = await api.paypalCapture(ppToken);
+          if (cancelled) return;
+          if (r?.paid) { setCheckoutMsg(t("checkoutSuccess")); await load(); }
+          else setCheckoutMsg(t("checkoutFailed"));
+        } catch { if (!cancelled) setCheckoutMsg(t("checkoutFailed")); }
+        return;
+      }
       for (let i = 0; i < 6; i++) {
         try {
-          const r = await api.checkoutStatus(sid);
+          const r = await api.checkoutStatus(sid as string);
           if (r.paid) {
             if (cancelled) return;
             setCheckoutMsg(t("checkoutSuccess"));

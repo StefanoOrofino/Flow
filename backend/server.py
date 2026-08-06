@@ -1154,7 +1154,9 @@ async def billing_summary(user=Depends(get_current_user)):
     # projects usage is always computed live (source of truth)
     usage["projects"] = await db.projects.count_documents({"user_id": uid})
     storage_bytes = await compute_storage_bytes(uid)
-    return billing.build_summary(sub, usage, storage_bytes)
+    summary = billing.build_summary(sub, usage, storage_bytes)
+    summary["paypalEnabled"] = paypal_configured()
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -1286,6 +1288,135 @@ async def billing_cancel(user=Depends(get_current_user)):
         upsert=True,
     )
     return {"ok": True, "plan": "free"}
+
+
+# ---------------------------------------------------------------------------
+# PayPal payments (REST API v2) — alternative to Stripe on the same plans.
+# A completed capture activates the chosen plan for 30 days (idempotent via
+# payment_transactions). Requires PAYPAL_CLIENT_ID / PAYPAL_SECRET env vars.
+# ---------------------------------------------------------------------------
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
+PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET", "")
+PAYPAL_ENV = os.environ.get("PAYPAL_ENV", "sandbox").lower()
+PAYPAL_BASE = "https://api-m.paypal.com" if PAYPAL_ENV == "live" else "https://api-m.sandbox.paypal.com"
+
+
+def paypal_configured() -> bool:
+    return bool(PAYPAL_CLIENT_ID and PAYPAL_SECRET)
+
+
+async def _paypal_token() -> str:
+    async with httpx.AsyncClient(timeout=30) as cx:
+        r = await cx.post(f"{PAYPAL_BASE}/v1/oauth2/token",
+                          data={"grant_type": "client_credentials"},
+                          auth=(PAYPAL_CLIENT_ID, PAYPAL_SECRET),
+                          headers={"Accept": "application/json"})
+        r.raise_for_status()
+        return r.json()["access_token"]
+
+
+class PaypalOrderIn(BaseModel):
+    plan: str
+    origin_url: str
+
+
+@api_router.post("/billing/paypal/order")
+async def paypal_create_order(body: PaypalOrderIn, user=Depends(get_current_user)):
+    if body.plan not in PLAN_PRICES:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+    if not paypal_configured():
+        raise HTTPException(status_code=503, detail="PayPal is not configured. Add PAYPAL_CLIENT_ID and PAYPAL_SECRET.")
+    origin = body.origin_url.rstrip("/")
+    amount = f"{PLAN_PRICES[body.plan]:.2f}"
+    try:
+        token = await _paypal_token()
+        async with httpx.AsyncClient(timeout=30) as cx:
+            r = await cx.post(
+                f"{PAYPAL_BASE}/v2/checkout/orders",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                json={
+                    "intent": "CAPTURE",
+                    "purchase_units": [{
+                        "reference_id": body.plan,
+                        "description": f"FrameFlow {body.plan.title()} plan (30 days)",
+                        "amount": {"currency_code": "EUR", "value": amount},
+                        "custom_id": user["user_id"],
+                    }],
+                    "application_context": {
+                        "brand_name": "FrameFlow Studio",
+                        "user_action": "PAY_NOW",
+                        "return_url": f"{origin}/billing?paypal_order=1",
+                        "cancel_url": f"{origin}/pricing",
+                    },
+                },
+            )
+        if r.status_code not in (200, 201):
+            logger.error(f"paypal order failed: {r.status_code} {r.text[:300]}")
+            raise HTTPException(status_code=502, detail="Unable to start PayPal checkout")
+        data = r.json()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"paypal order error: {e}")
+        raise HTTPException(status_code=502, detail="Unable to start PayPal checkout")
+
+    approve = next((l["href"] for l in data.get("links", []) if l.get("rel") == "approve"), "")
+    await db.payment_transactions.insert_one({
+        "session_id": data["id"], "provider": "paypal", "user_id": user["user_id"],
+        "plan": body.plan, "amount": float(PLAN_PRICES[body.plan]), "currency": "eur",
+        "payment_status": "initiated", "processed": False,
+        "created_at": now_iso(), "updated_at": now_iso(),
+    })
+    return {"order_id": data["id"], "approve_url": approve}
+
+
+@api_router.post("/billing/paypal/capture/{order_id}")
+async def paypal_capture(order_id: str, user=Depends(get_current_user)):
+    tx = await db.payment_transactions.find_one({"session_id": order_id}, {"_id": 0})
+    if not tx or tx.get("user_id") != user["user_id"]:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if not paypal_configured():
+        raise HTTPException(status_code=503, detail="PayPal is not configured.")
+    try:
+        token = await _paypal_token()
+        async with httpx.AsyncClient(timeout=30) as cx:
+            r = await cx.post(
+                f"{PAYPAL_BASE}/v2/checkout/orders/{order_id}/capture",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            )
+        data = r.json() if r.content else {}
+    except Exception as e:
+        logger.error(f"paypal capture error: {e}")
+        raise HTTPException(status_code=502, detail="Unable to confirm PayPal payment")
+
+    completed = str(data.get("status", "")).upper() == "COMPLETED"
+    if completed and not tx.get("processed"):
+        await db.payment_transactions.update_one({"session_id": order_id},
+            {"$set": {"payment_status": "paid", "processed": True, "updated_at": now_iso()}})
+        await _activate_plan(user["user_id"], tx["plan"])
+    return {"status": data.get("status", "UNKNOWN"), "plan": tx["plan"], "paid": completed}
+
+
+@api_router.post("/billing/paypal/webhook")
+async def paypal_webhook(request: Request):
+    """Tolerant PayPal webhook (always 200). Activates the plan on a completed
+    capture using our stored transaction. Idempotent via processed flag."""
+    try:
+        data = await request.json()
+    except Exception:
+        return {"received": True}
+    event = str(data.get("event_type", ""))
+    resource = data.get("resource", {}) or {}
+    # order id can be the capture's supplementary order id or resource id
+    order_id = (resource.get("supplementary_data", {}) or {}).get("related_ids", {}).get("order_id") \
+        or resource.get("id")
+    if event in ("PAYMENT.CAPTURE.COMPLETED", "CHECKOUT.ORDER.COMPLETED") and order_id:
+        tx = await db.payment_transactions.find_one({"session_id": order_id})
+        if tx and not tx.get("processed"):
+            await db.payment_transactions.update_one({"session_id": order_id},
+                {"$set": {"payment_status": "paid", "processed": True, "updated_at": now_iso()}})
+            await _activate_plan(tx["user_id"], tx["plan"])
+    return {"received": True}
 
 
 async def compute_storage_bytes(user_id: str = None) -> int:

@@ -38,29 +38,51 @@ export default function Pricing() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState<string>("");
+  const [paypalOn, setPaypalOn] = useState(false);
 
   useEffect(() => {
     api.billingSummary()
-      .then((d: any) => { setCurrentPlan(d.plan?.id || "free"); setPlans(d.plans || []); })
+      .then((d: any) => { setCurrentPlan(d.plan?.id || "free"); setPlans(d.plans || []); setPaypalOn(!!d.paypalEnabled); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
   const rows = matrix(t as any);
 
+  const currentOrigin = () => (Platform.OS === "web" && typeof window !== "undefined"
+    ? window.location.origin
+    : (process.env.EXPO_PUBLIC_BACKEND_URL || ""));
+
   const onUpgrade = async (planId: string) => {
     if (planId === currentPlan || planId === "free" || busy) return;
     try {
       setNotice(t("checkoutStarting"));
       setBusy(planId);
-      const origin = Platform.OS === "web" && typeof window !== "undefined"
-        ? window.location.origin
-        : (process.env.EXPO_PUBLIC_BACKEND_URL || "");
-      const { url } = await api.startCheckout(planId, origin);
+      const { url } = await api.startCheckout(planId, currentOrigin());
       if (Platform.OS === "web" && typeof window !== "undefined") {
         window.location.assign(url);
       } else {
         await Linking.openURL(url);
+        setNotice("");
+      }
+    } catch (e: any) {
+      setNotice(e.message || t("checkoutError"));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const onPaypal = async (planId: string) => {
+    if (planId === currentPlan || planId === "free" || busy) return;
+    try {
+      setNotice(t("checkoutStarting"));
+      setBusy("pp-" + planId);
+      const { approve_url } = await api.paypalCreateOrder(planId, currentOrigin());
+      if (!approve_url) throw new Error(t("checkoutError"));
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.location.assign(approve_url);
+      } else {
+        await Linking.openURL(approve_url);
         setNotice("");
       }
     } catch (e: any) {
@@ -98,6 +120,24 @@ export default function Pricing() {
             </Text>
           )}
         </Pressable>
+
+        {paypalOn && !isCurrent && plan.id !== "free" ? (
+          <Pressable
+            onPress={() => onPaypal(plan.id)}
+            disabled={!!busy}
+            testID={`paypal-${plan.id}`}
+            style={({ pressed }) => [styles.paypalBtn, { opacity: pressed ? 0.9 : 1 }]}
+          >
+            {busy === "pp-" + plan.id ? (
+              <ActivityIndicator color="#003087" />
+            ) : (
+              <Text style={styles.paypalTxt}>
+                <Text style={{ color: "#003087" }}>Pay</Text>
+                <Text style={{ color: "#009cde" }}>Pal</Text>
+              </Text>
+            )}
+          </Pressable>
+        ) : null}
 
         <View style={styles.featureList}>
           {rows.map((r) => {
@@ -172,6 +212,8 @@ const createStyles = (C: Palette) => StyleSheet.create({
   tagline: { color: C.onSurface2, fontFamily: F.text, fontSize: 13, marginTop: 6, marginBottom: S.lg, lineHeight: 19 },
 
   cta: { alignItems: "center", justifyContent: "center", borderRadius: R.md, paddingVertical: 13, minHeight: 48, backgroundColor: C.surface3, borderWidth: 1, borderColor: C.border },
+  paypalBtn: { alignItems: "center", justifyContent: "center", borderRadius: R.md, paddingVertical: 11, minHeight: 44, marginTop: 8, backgroundColor: "#FFC439" },
+  paypalTxt: { fontFamily: F.text, fontSize: 16, fontWeight: "800", fontStyle: "italic" },
   ctaRec: { backgroundColor: C.brand, borderColor: C.brand },
   ctaCurrent: { backgroundColor: "transparent", borderColor: C.border },
   ctaTxt: { color: C.onSurface, fontFamily: F.text, fontSize: 14, fontWeight: "700" },
