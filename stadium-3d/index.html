@@ -1,4 +1,4 @@
-<title>Arena Navigli</title>
+<title>San Siro 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap">
@@ -125,8 +125,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
       <div class="event">
-        <div class="venue">Arena Navigli</div>
-        <div class="match">Lupi – Falchi · Sab 31 ott · 20:45</div>
+        <div class="venue">San Siro</div>
+        <div class="match">Stadio G. Meazza · Milano · Sab 31 ott · 20:45</div>
       </div>
       <div class="tix" title="I tuoi biglietti" aria-label="Biglietti prenotati">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg>
@@ -139,7 +139,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       <button data-ring="1" aria-pressed="false">2° anello</button>
       <button data-ring="2" aria-pressed="false">3° anello</button>
     </div>
-    <div id="live" class="live" hidden><span class="dot"></span><em>LIVE</em> Lupi <span id="score">0–0</span> Falchi · <span id="min">6'</span></div>
+    <div id="live" class="live" hidden><span class="dot"></span><em>LIVE</em> Casa <span id="score">0–0</span> Ospiti · <span id="min">6'</span></div>
   </header>
 
   <div id="tip" class="tip" hidden></div>
@@ -149,6 +149,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <section id="legend" class="panel">
       <p class="hint" id="legendHint">Tocca un settore per vedere i posti liberi</p>
       <div class="chips" id="chips"></div>
+      <p class="fine">Concept non ufficiale: posti, prezzi e partita sono di esempio.</p>
     </section>
 
     <section id="secCard" class="panel" hidden>
@@ -209,17 +210,17 @@ const RINGS = [
   { name: '3° anello', o0: 32, rows: 14, depth: 0.9, rise: 0.70, h0: 25.0 },
 ];
 const CATS = {
-  centrale: { name: 'Tribuna Centrale', short: 'Centrale', color: '#f2883a', prices: [429, 249, 129], sold: 0.42 },
-  laterale: { name: 'Tribuna Laterale', short: 'Laterale', color: '#e0485a', prices: [289, 179, 99],  sold: 0.38 },
-  distinti: { name: 'Distinti', short: 'Distinti', color: '#6a83f2', prices: [219, 139, 79],  sold: 0.35 },
-  curva:    { name: 'Curva', short: 'Curva', color: '#2fb3a0', prices: [99, 69, 49],    sold: 0.62 },
+  arancio: { name: 'Arancio', short: 'Arancio · Ovest', color: '#f2883a', prices: [189, 119, 69], sold: 0.42 },
+  rosso:   { name: 'Rosso',   short: 'Rosso · Est',     color: '#e0405a', prices: [159, 99, 59],  sold: 0.38 },
+  blu:     { name: 'Blu',     short: 'Blu · Sud',  color: '#4a74ee', prices: [79, 55, 39],   sold: 0.66 },
+  verde:   { name: 'Verde',   short: 'Verde · Nord', color: '#2fae6a', prices: [79, 55, 39], sold: 0.66 },
 };
 const SECTORS_PER_RING = 24;
 const SECTOR_START = -2.0; // puts a sector boundary on the halfway line
 const AISLE = 1.3;
 
 /* Rounded rectangle around the pitch: every stand is an offset of this curve. */
-const HW = 58, HH = 40, R = 14, SX = HW - R, SZ = HH - R;
+const HW = 58, HH = 40, R = 12, SX = HW - R, SZ = HH - R;
 const line = (x0, z0, x1, z1, nx, nz) => ({ len: Math.hypot(x1 - x0, z1 - z0), at: (u) => ({ x: x0 + (x1 - x0) * u, z: z0 + (z1 - z0) * u, nx, nz }) });
 const arc = (cx, cz, a0, a1) => ({ len: R * Math.abs(a1 - a0), at: (u) => { const a = a0 + (a1 - a0) * u, c = Math.cos(a), s = Math.sin(a); return { x: cx + R * c, z: cz + R * s, nx: c, nz: s }; } });
 const SEGS = [
@@ -324,8 +325,8 @@ const windowTex = canvasTex(64, 128, (g, W, H) => {
   }
 });
 const facadeTex = canvasTex(128, 128, (g, W, H) => {
-  g.fillStyle = '#1c2130'; g.fillRect(0, 0, W, H);
-  g.strokeStyle = '#3a4258'; g.lineWidth = 5;
+  g.fillStyle = '#10131b'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#8d939e'; g.lineWidth = 11;
   for (let i = -1; i <= 1; i++) {
     g.beginPath(); g.moveTo(i * W, H); g.lineTo(i * W + W, 0); g.stroke();
     g.beginPath(); g.moveTo(i * W, 0); g.lineTo(i * W + W, H); g.stroke();
@@ -341,7 +342,7 @@ const glowTex = canvasTex(32, 32, (g) => {
 /* ---------------- ground, pitch, goals ---------------- */
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshLambertMaterial({ color: '#0a0d15' }));
 ground.rotation.x = -Math.PI / 2; scene.add(ground);
-const plaza = new THREE.Mesh(new THREE.CircleGeometry(122, 72), new THREE.MeshLambertMaterial({ color: '#161b26' }));
+const plaza = new THREE.Mesh(new THREE.CircleGeometry(172, 72), new THREE.MeshLambertMaterial({ color: '#161b26' }));
 plaza.rotation.x = -Math.PI / 2; plaza.position.y = 0.02; scene.add(plaza);
 const apron = new THREE.Mesh(new THREE.PlaneGeometry(2 * HW, 2 * HH), new THREE.MeshLambertMaterial({ color: '#215f2d', emissive: '#0c2a12' }));
 apron.rotation.x = -Math.PI / 2; apron.position.y = 0.03; scene.add(apron);
@@ -360,6 +361,12 @@ for (const s of [-1, 1]) {
 }
 
 /* ---------------- stands ---------------- */
+const SEC_L = PERIM / SECTORS_PER_RING;
+const sideOf = (b) => Math.abs(b.nx) > Math.abs(b.nz) ? (b.x > 0 ? 'sud' : 'nord') : (b.z < 0 ? 'ovest' : 'est');
+const secMid = (i) => base(SECTOR_START + (i + 0.5) * SEC_L);
+// San Siro: the third ring runs on three sides only, not along the east stand.
+const eastIdx = [...Array(SECTORS_PER_RING).keys()].filter((i) => sideOf(secMid(i)) === 'est');
+const R3_FROM = SECTOR_START + (eastIdx[eastIdx.length - 1] + 1) * SEC_L, R3_TO = SECTOR_START + eastIdx[0] * SEC_L + PERIM;
 for (let ri = 0; ri < RINGS.length; ri++) {
   const r = RINGS[ri], e = ringEnd(r);
   const prof = [[r.o0, ri === 0 ? 0 : r.h0 - 1.8], [r.o0, r.h0]];
@@ -371,16 +378,81 @@ for (let ri = 0; ri < RINGS.length; ri++) {
   prof.push([e.o, e.h + 1.6], [e.o + 0.6, e.h + 1.6]);
   prof.push(ri === 0 ? [e.o + 0.6, 0] : [e.o + 0.6, e.h - 0.8]);
   prof.push(ri === 0 ? [r.o0, 0] : [r.o0, r.h0 - 1.8]);
-  scene.add(new THREE.Mesh(sweep(prof, 0, PERIM, 360), concreteMat));
+  scene.add(new THREE.Mesh(ri === 2 ? sweep(prof, R3_FROM, R3_TO, 300) : sweep(prof, 0, PERIM, 360), concreteMat));
+  if (ri === 2) for (const sEnd of [R3_FROM, R3_TO]) {
+    const bb = base(sEnd), cap = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(prof.map(([o, h]) => new THREE.Vector2(o, h)))), concreteMat);
+    cap.position.set(bb.x, 0, bb.z); cap.rotation.y = Math.atan2(-bb.nz, bb.nx); scene.add(cap);
+  }
 }
-const FAC_O = 46.5, FAC_H = 37;
-const facadeMat = new THREE.MeshStandardMaterial({ map: facadeTex, color: '#ffffff', roughness: 0.85, emissive: '#1a2540', emissiveIntensity: 0.5, side: THREE.DoubleSide });
-scene.add(new THREE.Mesh(sweep([[FAC_O, 0], [FAC_O, FAC_H], [ringEnd(RINGS[2]).o, FAC_H]], 0, PERIM, 240, 1 / 9, 1 / 9), facadeMat));
+const FAC_O = 35, FAC_H = 23.5;
+const facadeMat = new THREE.MeshStandardMaterial({ map: facadeTex, color: '#ffffff', roughness: 0.85, emissive: '#ffffff', emissiveMap: facadeTex, emissiveIntensity: 0.18, side: THREE.DoubleSide });
+scene.add(new THREE.Mesh(sweep([[FAC_O, 0], [FAC_O, FAC_H], [ringEnd(RINGS[1]).o, FAC_H]], 0, PERIM, 240, 1 / 9, 1 / 9), facadeMat));
 
 const roofMat = new THREE.MeshStandardMaterial({ color: '#1d2230', metalness: 0.4, roughness: 0.6, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false });
-scene.add(new THREE.Mesh(sweep([[15, 39.6], [15, 41], [FAC_O + 3, 41], [FAC_O + 3, 39.6]], 0, PERIM, 240), roofMat));
+scene.add(new THREE.Mesh(sweep([[15, 39.6], [15, 41], [48, 41], [48, 39.6]], 0, PERIM, 240), roofMat));
 const lightStrip = new THREE.Mesh(sweep([[15.3, 39.5], [17.5, 39.5]], 0, PERIM, 240), new THREE.MeshBasicMaterial({ color: '#fff4dc', side: THREE.DoubleSide }));
 scene.add(lightStrip);
+
+/* ---------------- San Siro: ramp towers and red roof girders ---------------- */
+const rampTex = (rep) => {
+  const t = canvasTex(256, 256, (g, W, H) => {
+    g.fillStyle = '#0f121a'; g.fillRect(0, 0, W, H);
+    g.strokeStyle = '#9aa0aa'; g.lineWidth = 30;
+    for (let i = -1; i <= 3; i++) { g.beginPath(); g.moveTo(0, i * H / 2 + H / 2); g.lineTo(W, i * H / 2); g.stroke(); }
+  }, true);
+  t.repeat.set(2, rep); return t;
+};
+const coreMat = new THREE.MeshStandardMaterial({ color: '#2a2f3b', roughness: 0.9 });
+function tower(x, z, rad, h) {
+  const tex = rampTex(h / 9);
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, h, 40, 1, true),
+    new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.5, alphaMap: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.16, roughness: 0.85, side: THREE.DoubleSide }));
+  shell.position.set(x, h / 2, z); scene.add(shell);
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.55, rad * 0.55, h + 1, 20), coreMat);
+  core.position.set(x, (h + 1) / 2, z); scene.add(core);
+}
+const corners = [1, 3, 5, 7].map((i) => { const b = SEGS[i].at(0.5); return new THREE.Vector3(b.x + b.nx * 50, 0, b.z + b.nz * 50); });
+corners.forEach((c) => tower(c.x, c.z, 7, 52));
+for (const x of [-32, 0, 32]) tower(x, -(HH + 40), 5, 34);
+for (const x of [-24, 24]) tower(x, HH + 40, 5, 23);
+tower(-(HW + 40), 0, 5, 34); tower(HW + 40, 0, 5, 34);
+
+const beams = [];
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+function truss(a, b, y0, y1, width) {
+  const dir = new THREE.Vector3().subVectors(b, a).setY(0).normalize(), side = V(-dir.z, 0, dir.x).multiplyScalar(width / 2);
+  const len = a.distanceTo(b), n = Math.round(len / 7);
+  for (const sgn of [-1, 1]) {
+    const off = side.clone().multiplyScalar(sgn);
+    const P = (t, y) => new THREE.Vector3().lerpVectors(a, b, t).add(off).setY(y);
+    beams.push([P(0, y1), P(1, y1), 1.0], [P(0, y0), P(1, y0), 0.8]);
+    for (let k = 0; k <= n; k++) {
+      beams.push([P(k / n, y0), P(k / n, y1), 0.45]);
+      if (k < n) beams.push([P(k / n, k % 2 ? y0 : y1), P((k + 1) / n, k % 2 ? y1 : y0), 0.4]);
+    }
+  }
+  for (let k = 0; k <= n; k += 2) {
+    const m = new THREE.Vector3().lerpVectors(a, b, k / n);
+    beams.push([m.clone().add(side).setY(y1), m.clone().sub(side).setY(y1), 0.4]);
+  }
+}
+for (let i = 0; i < 4; i++) truss(corners[i], corners[(i + 1) % 4], 45, 52.5, 4);
+for (let s = 0; s < PERIM; s += 6.5) {
+  const b = base(s);
+  beams.push([V(b.x + b.nx * 15, 41.3, b.z + b.nz * 15), V(b.x + b.nx * 48, 41.3, b.z + b.nz * 48), 0.35]);
+}
+{
+  const girderMat = new THREE.MeshStandardMaterial({ color: '#c8323e', roughness: 0.55, metalness: 0.25, emissive: '#4a0b12', emissiveIntensity: 0.6 });
+  const gm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), girderMat, beams.length);
+  const d = new THREE.Vector3(), X = V(1, 0, 0), sc = new THREE.Vector3(), mm = new THREE.Matrix4(), qq = new THREE.Quaternion();
+  beams.forEach(([a, b, t], k) => {
+    d.subVectors(b, a); const len = d.length();
+    qq.setFromUnitVectors(X, d.normalize());
+    mm.compose(new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5), qq, sc.set(len, t, t));
+    gm.setMatrixAt(k, mm);
+  });
+  scene.add(gm);
+}
 
 /* ---------------- sectors and seats ---------------- */
 const seatGeo = (() => {
@@ -391,13 +463,7 @@ const seatGeo = (() => {
 const seatMat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
 const hitMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
 const sectors = [], hitMeshes = [];
-const sideName = (b, seg) => seg === 2 ? 'Curva Sud' : seg === 6 ? 'Curva Nord' : (b.z < 0 ? 'Tribuna Ovest' : 'Distinti Est');
-function catOf(b) {
-  if (b.seg === 2 || b.seg === 6) return 'curva';
-  if (b.seg === 0 && Math.abs(b.x) < 26) return 'centrale';
-  if (b.seg === 4 && Math.abs(b.x) < 26) return 'distinti';
-  return 'laterale';
-}
+const SIDES = { ovest: ['arancio', 'Tribuna Ovest'], est: ['rosso', 'Tribuna Est'], sud: ['blu', 'Curva Sud'], nord: ['verde', 'Curva Nord'] };
 const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), v3 = new THREE.Vector3();
 
 for (let ri = 0; ri < RINGS.length; ri++) {
@@ -405,8 +471,13 @@ for (let ri = 0; ri < RINGS.length; ri++) {
   for (let i = 0; i < SECTORS_PER_RING; i++) {
     const sA = SECTOR_START + i * L + AISLE / 2, sB = SECTOR_START + (i + 1) * L - AISLE / 2;
     const mid = base((sA + sB) / 2);
-    const catKey = catOf(mid), cat = CATS[catKey];
-    const sec = { ring: ri, number: (ri + 1) * 100 + i + 1, catKey, cat, side: sideName(mid, mid.seg), price: cat.prices[ri], color: new THREE.Color(cat.color), seats: [], n: { x: mid.nx, z: mid.nz } };
+    const side = sideOf(mid);
+    if (ri === 2 && side === 'est') continue;
+    const [catKey, standName] = SIDES[side], cat = CATS[catKey];
+    const central = (side === 'ovest' || side === 'est') && Math.abs(mid.x) < 26;
+    const price = central ? Math.round(cat.prices[ri] * 1.85 / 10) * 10 - 1 : cat.prices[ri];
+    const catName = `${['Primo', 'Secondo', 'Terzo'][ri]} ${cat.name}${central ? ' centrale' : ''}`;
+    const sec = { ring: ri, number: (ri + 1) * 100 + i + 1, catKey, cat, catName, side: standName, price, color: new THREE.Color(cat.color), seats: [], n: { x: mid.nx, z: mid.nz } };
     for (let j = 0; j < r.rows; j++) {
       const o = r.o0 + j * r.depth + r.depth * 0.45, h = r.h0 + j * r.rise, K = 40;
       const pts = [], cum = [0];
@@ -450,7 +521,7 @@ for (let ri = 0; ri < RINGS.length; ri++) {
   const spots = [];
   for (let gx = -620; gx <= 620; gx += 24) for (let gz = -620; gz <= 620; gz += 24) {
     const d = Math.hypot(gx, gz);
-    if (d < 135 || rand() > 0.78) continue;
+    if (d < 185 || rand() > 0.78) continue;
     spots.push([gx + (rand() - 0.5) * 6, gz + (rand() - 0.5) * 6, d]);
   }
   const mat = new THREE.MeshLambertMaterial({ color: '#141926', emissive: '#ffffff', emissiveMap: windowTex, emissiveIntensity: 0.85 });
@@ -463,13 +534,13 @@ for (let ri = 0; ri < RINGS.length; ri++) {
   scene.add(city);
   const lamps = [];
   for (let k = 0; k < 900; k++) {
-    const a = rand() * Math.PI * 2, rr = 128 + rand() * 520;
+    const a = rand() * Math.PI * 2, rr = 178 + rand() * 470;
     const onStreet = rand() < 0.5;
     const x = onStreet ? Math.round(Math.cos(a) * rr / 24) * 24 + 12 : Math.cos(a) * rr;
     const z = onStreet ? Math.sin(a) * rr : Math.round(Math.sin(a) * rr / 24) * 24 + 12;
     lamps.push(x, 3, z);
   }
-  for (let k = 0; k < 80; k++) { const a = k / 80 * Math.PI * 2; lamps.push(Math.cos(a) * 118, 4, Math.sin(a) * 118); }
+  for (let k = 0; k < 80; k++) { const a = k / 80 * Math.PI * 2; lamps.push(Math.cos(a) * 165, 4, Math.sin(a) * 165); }
   const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(lamps, 3));
   scene.add(new THREE.Points(pg, new THREE.PointsMaterial({ map: glowTex, size: 7, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: '#ffcf8a' })));
 })();
@@ -583,7 +654,7 @@ function fillSector(sec) {
   $('#scSide').textContent = sec.side;
   $('#scTitle').textContent = 'Settore ' + sec.number;
   $('#scPrice').textContent = fmt(sec.price);
-  $('#scSub').textContent = `${RINGS[sec.ring].name} · ${sec.cat.name}`;
+  $('#scSub').textContent = `${sec.catName} · ${RINGS[sec.ring].name}`;
   $('#scBar').style.width = (free / sec.seats.length * 100).toFixed(1) + '%';
   $('#scAvail').textContent = `${free} liberi su ${sec.seats.length}`;
 }
@@ -597,7 +668,7 @@ function fillSeat(st) {
   $('#stSw').style.background = sec.cat.color;
   $('#stSide').textContent = sec.side;
   $('#stTitle').textContent = `Settore ${sec.number}, Fila ${st.row}, Posto ${st.num}`;
-  $('#stSub').textContent = `${RINGS[sec.ring].name} · ${sec.cat.name} · ${fmt(sec.price)}`;
+  $('#stSub').textContent = `${sec.catName} · ${RINGS[sec.ring].name} · ${fmt(sec.price)}`;
   $('#dC').innerHTML = `${Math.round(dCenter)}<small>m</small>`;
   $('#dF').innerHTML = `${Math.round(dField)}<small>m</small>`;
   $('#dG').innerHTML = `${Math.round(dGoal)}<small>m</small>`;
@@ -689,7 +760,7 @@ function onHover(cx, cy) {
     if (s !== hoverSector) { const old = hoverSector; hoverSector = s; old && paint(old); s && paint(s); }
     canvas.style.cursor = s ? 'pointer' : '';
     if (s) {
-      tip.innerHTML = `<i style="background:${s.cat.color}"></i>Settore ${s.number} · ${s.cat.name} · <b>${fmt(s.price)}</b>`;
+      tip.innerHTML = `<i style="background:${s.cat.color}"></i>Settore ${s.number} · ${s.catName} · <b>${fmt(s.price)}</b>`;
       tip.style.left = Math.min(cx + 14, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = cy + 16 + 'px'; tip.hidden = false;
     } else tip.hidden = true;
   } else {
@@ -748,7 +819,7 @@ function frame() {
   else if (!wantOffset && camera.view?.enabled) camera.clearViewOffset();
   if (mode === 'seat' && !tween) camera.rotation.set(lookPitch + pitchOff, lookYaw + yawOff, 0, 'YXZ');
   else if (!tween && controls.enabled) controls.update();
-  const roofTarget = mode === 'seat' ? 0.92 : 0.12;
+  const roofTarget = mode === 'seat' ? 0.6 : 0.12;
   roofMat.opacity += (roofTarget - roofMat.opacity) * Math.min(1, dt * 3);
   lightStrip.visible = mode === 'seat';
   renderer.render(scene, camera);
