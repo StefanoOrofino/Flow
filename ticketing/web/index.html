@@ -1,0 +1,1269 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Biglietteria 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: full-screen night stadium in 3D; glass panels float at top (match + ring filter) and bottom (legend / sector / seat ticket). */
+:root {
+  color-scheme: dark;
+  --bg: #070a12;
+  --panel: rgba(14, 18, 28, 0.84);
+  --panel-strong: #121726;
+  --line: rgba(220, 228, 255, 0.10);
+  --fg: #eef1f8;
+  --muted: #8f97ab;
+  --accent: #f2883a;
+  --ok: #34d37f;
+  --live: #ff4256;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); overflow: hidden; -webkit-font-smoothing: antialiased; }
+#app { position: fixed; inset: 0; }
+#c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+.top {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 5;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;
+}
+.top > * { pointer-events: auto; }
+.bar { width: 100%; max-width: 560px; display: grid; grid-template-columns: 96px 1fr 96px; align-items: center; gap: 8px; }
+.icon-btn, .tix {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel);
+  color: var(--fg); display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.bar .right { display: flex; gap: 8px; justify-content: flex-end; }
+.icon-btn[hidden] { display: grid !important; visibility: hidden; }
+.tix { position: relative; cursor: default; }
+.tix b { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--ok); color: #05210f; font: 700 11px/18px var(--font-body); text-align: center; }
+.tix b[hidden] { display: none !important; }
+.event { text-align: center; text-shadow: 0 1px 10px rgba(0,0,0,.6); min-width: 0; }
+.venue { font: 700 22px/1 var(--font-display); letter-spacing: .02em; text-transform: uppercase; }
+.match { margin-top: 4px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.seg { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); max-width: 100%; }
+.seg button { border: 0; background: transparent; color: var(--muted); font: 600 12px/1 var(--font-body); padding: 9px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+
+.live { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font: 600 12px/1 var(--font-body); font-variant-numeric: tabular-nums; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.live .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 0 var(--live); animation: pulse 1.6s infinite; }
+.live em { font-style: normal; color: var(--live); letter-spacing: .08em; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,66,86,.7); } 70% { box-shadow: 0 0 0 7px rgba(255,66,86,0); } 100% { box-shadow: 0 0 0 0 rgba(255,66,86,0); } }
+
+.bottom {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none;
+}
+.bottom > * { pointer-events: auto; }
+.match-sel { margin-top: 5px; max-width: 100%; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--fg); font: 600 12px/1 var(--font-body); padding: 6px 10px; }
+.cartbar { width: 100%; max-width: 560px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 10px 10px 18px; border-radius: 999px; background: var(--ok); color: #04210f; box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+.cartbar b { font: 700 18px/1 var(--font-display); margin-right: 8px; }
+.cartbar span { font-size: 13px; font-variant-numeric: tabular-nums; }
+.cartbar .btn { height: 40px; padding: 0 18px; background: #04210f; color: #fff; }
+.overlay { position: fixed; inset: 0; z-index: 20; background: rgba(4, 6, 12, .72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); overflow-y: auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 16px) max(16px, env(safe-area-inset-left, 0px)); }
+.ov-panel { max-width: 560px; margin: 0 auto; background: var(--panel-strong); border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.ov-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ov-head h2 { font-size: 28px; }
+.timer { font: 600 12px/1 var(--font-body); color: var(--accent); font-variant-numeric: tabular-nums; margin-top: 6px; }
+.close { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; flex: none; font-size: 18px; }
+.holder { border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.holder .seat { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; font-weight: 700; }
+.holder .seat span { color: var(--muted); font-weight: 500; font-size: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+.field label { font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+.field input, .field select { width: 100%; height: 42px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 0 12px; font: 500 15px var(--font-body); }
+.field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.errors { margin: 0; padding: 10px 14px 10px 30px; border-radius: 12px; background: rgba(255, 66, 86, .12); color: #ffb3bc; font-size: 13px; }
+.sumline { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.sumline.total { font: 700 22px/1 var(--font-display); padding-top: 10px; border-top: 1px solid var(--line); }
+.ticket { display: grid; grid-template-columns: 1fr 132px; gap: 14px; align-items: center; border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: var(--bg); }
+.ticket .qr { background: #fff; border-radius: 10px; padding: 6px; line-height: 0; }
+.ticket .qr svg { width: 100%; height: auto; }
+.ticket h3 { margin: 0 0 4px; font: 700 20px/1.1 var(--font-display); }
+.ticket p { margin: 0; font-size: 12px; color: var(--muted); }
+.ticket code { display: block; margin-top: 8px; font-size: 9px; color: var(--muted); word-break: break-all; }
+.note { margin: 0; font-size: 12px; color: var(--muted); }
+.note a { color: var(--fg); }
+.tix { cursor: pointer; }
+@media (max-width: 420px) { .holder { grid-template-columns: 1fr; } .ticket { grid-template-columns: 1fr 110px; } }
+.panel {
+  pointer-events: auto; width: 100%; max-width: 560px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 20px; padding: 16px 18px; backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 18px 50px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 10px;
+  animation: rise .35s ease-out;
+}
+@keyframes rise { from { transform: translateY(14px); opacity: .4; } to { transform: none; opacity: 1; } }
+.hint { margin: 0; font-size: 13px; color: var(--muted); }
+.chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+.chip { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
+.chip i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.chip span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip b { font: 600 15px/1 var(--font-display); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+
+.eyebrow { font: 600 11px/1 var(--font-body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 7px; }
+.eyebrow i { width: 8px; height: 8px; border-radius: 2px; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+h2 { margin: 0; font: 700 30px/1.02 var(--font-display); letter-spacing: .01em; text-wrap: balance; }
+.price { font: 700 26px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.sub { margin: 0; font-size: 13px; color: var(--muted); }
+.avail { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.avail .track { flex: 1; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.avail .track i { display: block; height: 100%; background: var(--ok); border-radius: 3px; }
+
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stats div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.stats b { font: 700 26px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.stats b small { font-size: 15px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.stats span { font-size: 11px; color: var(--muted); line-height: 1.25; }
+.actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+.btn { height: 48px; border-radius: 999px; border: 1px solid var(--line); font: 700 15px/1 var(--font-body); cursor: pointer; transition: background .2s, color .2s, transform .1s; }
+.btn:active { transform: scale(.98); }
+.btn.ghost { background: transparent; color: var(--fg); }
+.btn.primary { background: var(--fg); color: var(--bg); border-color: transparent; font-variant-numeric: tabular-nums; }
+.btn.primary.done { background: var(--ok); color: #04210f; }
+.btn:disabled { cursor: default; }
+.fine { margin: 0; font-size: 11px; color: var(--muted); text-align: center; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.tip { position: absolute; z-index: 6; pointer-events: none; padding: 7px 10px; border-radius: 10px; background: var(--panel-strong); border: 1px solid var(--line); font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 7px; }
+.tip i { width: 9px; height: 9px; border-radius: 2px; }
+.toast { position: absolute; z-index: 7; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 118px); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 12px; background: var(--panel-strong); border: 1px solid var(--line); font-size: 13px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; z-index: 8; background: var(--bg); font: 600 14px/1 var(--font-body); color: var(--muted); transition: opacity .6s; }
+.loading.gone { opacity: 0; pointer-events: none; }
+
+@media (max-width: 420px) {
+  h2 { font-size: 26px; }
+  .seg button { padding: 9px 9px; font-size: 11.5px; }
+  .stats b { font-size: 23px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel { animation: none; }
+  .live .dot { animation: none; }
+}
+[hidden] { display: none !important; }
+body { margin: 0; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <canvas id="c" aria-label="Stadio in 3D: tocca un settore, poi un posto"></canvas>
+
+  <header class="top">
+    <div class="bar">
+      <button id="back" class="icon-btn" aria-label="Indietro" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div class="event">
+        <div class="venue">San Siro</div>
+        <select id="matchSel" class="match-sel" aria-label="Scegli la partita"></select>
+      </div>
+      <div class="right">
+      <button id="timeBtn" class="icon-btn" aria-label="Passa al giorno"></button>
+      <div class="tix" title="I tuoi biglietti" aria-label="Biglietti prenotati">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg>
+        <b id="tixN" hidden>0</b>
+      </div>
+      </div>
+    </div>
+    <div id="rings" class="seg" role="group" aria-label="Filtra per anello">
+      <button data-ring="all" aria-pressed="true">Tutti</button>
+      <button data-ring="0" aria-pressed="false">1° anello</button>
+      <button data-ring="1" aria-pressed="false">2° anello</button>
+      <button data-ring="2" aria-pressed="false">3° anello</button>
+    </div>
+    <div id="live" class="live" hidden><span class="dot"></span><span id="liveTxt"></span></div>
+  </header>
+
+  <div id="tip" class="tip" hidden></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <footer class="bottom">
+    <div id="cartBar" class="cartbar" hidden>
+      <div><b id="cartCount"></b><span id="cartSub"></span></div>
+      <button id="cartGo" class="btn primary">Procedi</button>
+    </div>
+    <section id="legend" class="panel">
+      <p class="hint" id="legendHint">Tocca un settore per vedere i posti liberi</p>
+      <div class="chips" id="chips"></div>
+      <p class="fine">Concept non ufficiale: posti, prezzi e partita sono di esempio.</p>
+    </section>
+
+    <section id="secCard" class="panel" hidden>
+      <div class="eyebrow"><i id="scSw"></i><span id="scSide"></span></div>
+      <div class="head"><h2 id="scTitle"></h2><div class="price" id="scPrice"></div></div>
+      <p class="sub" id="scSub"></p>
+      <div class="avail"><span class="track"><i id="scBar"></i></span><span id="scAvail"></span></div>
+      <p class="hint">Tocca un posto colorato per vedere la visuale dal seggiolino. I posti grigi sono già venduti.</p>
+    </section>
+
+    <section id="sheet" class="panel" hidden>
+      <div class="eyebrow"><i id="stSw"></i><span id="stSide"></span></div>
+      <h2 id="stTitle"></h2>
+      <p class="sub" id="stSub"></p>
+      <div class="stats">
+        <div><b id="dC"></b><span>dal centro campo</span></div>
+        <div><b id="dF"></b><span>dal bordo campo</span></div>
+        <div><b id="dG"></b><span>dalla porta più vicina</span></div>
+      </div>
+      <div class="actions">
+        <button id="change" class="btn ghost">Cambia posto</button>
+        <button id="book" class="btn primary">Prenota</button>
+      </div>
+      <p class="fine">Trascina per guardarti intorno · Demo, nessun pagamento reale</p>
+    </section>
+  </footer>
+
+  <div id="overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+    <div class="ov-panel" id="ovPanel"></div>
+  </div>
+
+  <div id="loading" class="loading">Costruisco lo stadio…</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const $ = (s) => document.querySelector(s);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------------- seeded random ---------------- */
+let seed = 20261031;
+function rand() {
+  seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/* ---------------- server data ---------------- */
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json' }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  if (r.status === 204) return null;
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const d = data.detail, err = new Error(typeof d === 'string' ? d : (d && d.message) || 'Qualcosa non ha funzionato, riprova');
+    err.status = r.status; err.detail = d; throw err;
+  }
+  return data;
+}
+addEventListener('unhandledrejection', (e) => { const l = $('#loading'); if (l) l.textContent = 'Il server non risponde. Avvia il backend e ricarica la pagina.'; });
+const VENUE = await api('/api/venue');
+const MATCHES = await api('/api/matches');
+let matchId = (MATCHES.find((m) => m.on_sale) || MATCHES[0]).id;
+let PRICES = await api(`/api/matches/${matchId}/prices`);
+let AVAIL = await api(`/api/matches/${matchId}/availability`);
+const currentMatch = () => MATCHES.find((m) => m.id === matchId);
+const fmtC = (c) => '€' + (c % 100 ? (c / 100).toFixed(2).replace('.', ',') : c / 100);
+const fmtDate = (iso) => new Date(iso).toLocaleString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const esc = (t) => String(t).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+let myOrders = [];
+try { myOrders = JSON.parse(localStorage.getItem('tk_orders') || '[]'); } catch { myOrders = []; }
+const saveOrders = () => { try { localStorage.setItem('tk_orders', JSON.stringify(myOrders)); } catch {} };
+
+/* ---------------- stadium data ---------------- */
+const RINGS = [
+  { name: '1° anello', o0: 7,  rows: 14, depth: 0.9, rise: 0.45, h0: 1.2 },
+  { name: '2° anello', o0: 20, rows: 14, depth: 0.9, rise: 0.60, h0: 12.5 },
+  { name: '3° anello', o0: 32, rows: 14, depth: 0.9, rise: 0.70, h0: 25.0 },
+];
+const CATS = {
+  arancio: { name: 'Arancio', short: 'Arancio · Ovest', color: '#e27a35', prices: [189, 119, 69], sold: 0.42 },
+  rosso:   { name: 'Rosso',   short: 'Rosso · Est',     color: '#c23a4b', prices: [159, 99, 59],  sold: 0.38 },
+  blu:     { name: 'Blu',     short: 'Blu · Sud',  color: '#2d62c4', prices: [79, 55, 39],   sold: 0.66 },
+  verde:   { name: 'Verde',   short: 'Verde · Nord', color: '#1f9457', prices: [79, 55, 39], sold: 0.66 },
+};
+const SECTORS_PER_RING = 24;
+const SECTOR_START = -2.0; // puts a sector boundary on the halfway line
+const AISLE = 1.3;
+
+/* Rounded rectangle around the pitch: every stand is an offset of this curve. */
+const HW = 58, HH = 40, R = 12, SX = HW - R, SZ = HH - R;
+const line = (x0, z0, x1, z1, nx, nz) => ({ len: Math.hypot(x1 - x0, z1 - z0), at: (u) => ({ x: x0 + (x1 - x0) * u, z: z0 + (z1 - z0) * u, nx, nz }) });
+const arc = (cx, cz, a0, a1) => ({ len: R * Math.abs(a1 - a0), at: (u) => { const a = a0 + (a1 - a0) * u, c = Math.cos(a), s = Math.sin(a); return { x: cx + R * c, z: cz + R * s, nx: c, nz: s }; } });
+const SEGS = [
+  line(-SX, -HH, SX, -HH, 0, -1), arc(SX, -SZ, -Math.PI / 2, 0),
+  line(HW, -SZ, HW, SZ, 1, 0),    arc(SX, SZ, 0, Math.PI / 2),
+  line(SX, HH, -SX, HH, 0, 1),    arc(-SX, SZ, Math.PI / 2, Math.PI),
+  line(-HW, SZ, -HW, -SZ, -1, 0), arc(-SX, -SZ, Math.PI, Math.PI * 1.5),
+];
+const PERIM = SEGS.reduce((a, s) => a + s.len, 0);
+function base(s) {
+  s = ((s % PERIM) + PERIM) % PERIM;
+  for (let i = 0; i < SEGS.length; i++) {
+    const g = SEGS[i];
+    if (s <= g.len) return { ...g.at(s / g.len), seg: i };
+    s -= g.len;
+  }
+  return { ...SEGS[7].at(1), seg: 7 };
+}
+
+/* ---------------- renderer / scene ---------------- */
+const canvas = $('#c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog('#070a12', 380, 1150);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 3000);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.enablePan = false; controls.enabled = false;
+controls.maxPolarAngle = 1.32;
+
+const hemi = new THREE.HemisphereLight('#c3cdff', '#181b24', 1.15); scene.add(hemi);
+const key = new THREE.DirectionalLight('#ffffff', 1.7); key.position.set(40, 200, 80); scene.add(key);
+const fill = new THREE.DirectionalLight('#ffd7b0', 0.55); fill.position.set(-90, 120, -70); scene.add(fill);
+
+/* Sweep a cross-section profile [(offset, height)...] along the stadium curve. */
+function sweep(profile, sA, sB, samples, uScale = 0.25, vScale = 0.25) {
+  const pos = [], uv = [];
+  const pl = [0];
+  for (let i = 1; i < profile.length; i++) pl.push(pl[i - 1] + Math.hypot(profile[i][0] - profile[i - 1][0], profile[i][1] - profile[i - 1][1]));
+  const cols = [];
+  for (let k = 0; k <= samples; k++) { const s = sA + (sB - sA) * k / samples; cols.push({ s, b: base(s) }); }
+  const P = (b, o, h) => [b.x + b.nx * o, h, b.z + b.nz * o];
+  for (let k = 0; k < samples; k++) {
+    const A = cols[k], B = cols[k + 1];
+    for (let p = 0; p < profile.length - 1; p++) {
+      const [o1, h1] = profile[p], [o2, h2] = profile[p + 1];
+      const a1 = P(A.b, o1, h1), a2 = P(A.b, o2, h2), b1 = P(B.b, o1, h1), b2 = P(B.b, o2, h2);
+      pos.push(...a1, ...b1, ...b2, ...a1, ...b2, ...a2);
+      const ua = A.s * uScale, ub = B.s * uScale, v1 = pl[p] * vScale, v2 = pl[p + 1] * vScale;
+      uv.push(ua, v1, ub, v1, ub, v2, ua, v1, ub, v2, ua, v2);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+const ringEnd = (r) => ({ o: r.o0 + r.rows * r.depth, h: r.h0 + (r.rows - 1) * r.rise });
+
+/* ---------------- textures (drawn from the reference photos' palette) ---------------- */
+function canvasTex(w, h, draw, repeat = false) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.userData.canvas = c;
+  return t;
+}
+const CREAM = '#d9ccb3', CREAM_DARK = '#4a4036', GIRDER = '#cf4a2f';
+const skyTex = (stops) => canvasTex(4, 256, (g, W, H) => {
+  const gr = g.createLinearGradient(0, 0, 0, H);
+  stops.forEach(([o, c]) => gr.addColorStop(o, c));
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+});
+const DAY_SKY = skyTex([[0, '#9fb3c8'], [0.55, '#d6d3c8'], [1, '#e9dcc4']]);
+const NIGHT_SKY = skyTex([[0, '#03050a'], [0.6, '#0b1020'], [1, '#1a1f2e']]);
+const pitchTex = canvasTex(1260, 816, (g, W, H) => {
+  const m = 12, X = (x) => (x + 52.5) * m, Y = (z) => (z + 34) * m;
+  // checkerboard mowing, as in the night photos
+  for (let i = 0; i < 18; i++) for (let j = 0; j < 12; j++) {
+    const a = i % 2, b = j % 2;
+    g.fillStyle = a ^ b ? '#4c9e2c' : (a ? '#57ad33' : '#438f27');
+    g.fillRect(i * W / 18, j * H / 12, W / 18 + 1, H / 12 + 1);
+  }
+  g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 2.4;
+  g.strokeRect(2, 2, W - 4, H - 4);
+  g.beginPath(); g.moveTo(X(0), 0); g.lineTo(X(0), H); g.stroke();
+  g.beginPath(); g.arc(X(0), Y(0), 9.15 * m, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = '#fff';
+  g.beginPath(); g.arc(X(0), Y(0), 4, 0, Math.PI * 2); g.fill();
+  const th = Math.acos(5.5 / 9.15);
+  for (const s of [-1, 1]) {
+    const gx = 52.5 * s;
+    g.strokeRect(Math.min(X(gx), X(gx - 16.5 * s)), Y(-20.16), 16.5 * m, 40.32 * m);
+    g.strokeRect(Math.min(X(gx), X(gx - 5.5 * s)), Y(-9.16), 5.5 * m, 18.32 * m);
+    const spot = X(gx - 11 * s);
+    g.beginPath(); g.arc(spot, Y(0), 4, 0, Math.PI * 2); g.fill();
+    g.beginPath();
+    if (s < 0) g.arc(spot, Y(0), 9.15 * m, -th, th); else g.arc(spot, Y(0), 9.15 * m, Math.PI - th, Math.PI + th);
+    g.stroke();
+  }
+});
+const windowTex = canvasTex(64, 128, (g, W, H) => {
+  g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+  for (let r = 0; r < 15; r++) for (let c = 0; c < 4; c++) {
+    if (rand() < 0.34) {
+      const warm = rand();
+      g.fillStyle = warm < 0.7 ? `rgba(255,${200 + warm * 50 | 0},140,${0.5 + rand() * 0.5})` : `rgba(170,200,255,${0.4 + rand() * 0.4})`;
+      g.fillRect(6 + c * 14, 8 + r * 8, 9, 4);
+    }
+  }
+});
+const wallTex = canvasTex(64, 128, (g, W, H) => {
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#8b8f96';
+  for (let r = 0; r < 15; r++) for (let c = 0; c < 4; c++) g.fillRect(6 + c * 14, 8 + r * 8, 9, 4);
+});
+const glowTex = canvasTex(32, 32, (g) => {
+  const r = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.3, 'rgba(255,240,215,.6)'); r.addColorStop(1, 'rgba(255,220,170,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 32, 32);
+});
+// helical ramps: pale concrete bands with deep shadow gaps (towers and 2nd-ring facade)
+const rampDraw = (cross) => (g, W, H) => {
+  g.fillStyle = CREAM_DARK; g.fillRect(0, 0, W, H);
+  g.strokeStyle = CREAM; g.lineWidth = H * 0.24;
+  for (let i = -1; i <= 3; i++) {
+    g.beginPath(); g.moveTo(0, i * H / 2 + H / 2); g.lineTo(W, i * H / 2); g.stroke();
+    if (cross) { g.beginPath(); g.moveTo(0, i * H / 2); g.lineTo(W, i * H / 2 + H / 2); g.stroke(); }
+  }
+};
+const facadeTex = canvasTex(256, 64, rampDraw(true), true);
+const portholeTex = canvasTex(128, 128, (g, W, H) => {
+  g.fillStyle = CREAM; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#2c2924';
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) { g.beginPath(); g.arc(32 + c * 64 + (r % 2) * 32, 32 + r * 64, 10, 0, Math.PI * 2); g.fill(); }
+}, true);
+const vaultTex = canvasTex(64, 16, (g, W, H) => {
+  const gr = g.createLinearGradient(0, 0, W, 0);
+  gr.addColorStop(0, '#7f7c76'); gr.addColorStop(0.5, '#e4e1da'); gr.addColorStop(1, '#7f7c76');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+}, true);
+const latticeTex = canvasTex(128, 128, (g, W, H) => {
+  g.clearRect(0, 0, W, H); g.strokeStyle = '#ffffff'; g.lineWidth = 4;
+  g.strokeRect(2, 2, W - 4, H - 4);
+  g.beginPath(); g.moveTo(0, 0); g.lineTo(W, H); g.moveTo(W, 0); g.lineTo(0, H); g.stroke();
+}, true);
+const boardTex = canvasTex(512, 32, (g, W, H) => {
+  g.fillStyle = '#1b3f9e'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#ffffff'; g.font = '700 20px "Barlow Condensed", Arial Narrow, sans-serif'; g.textBaseline = 'middle';
+  for (let x = 10; x < W; x += 256) g.fillText('SAN SIRO · MILANO', x, H / 2 + 1);
+}, true);
+
+/* ---------------- ground, pitch, goals, boards ---------------- */
+const groundMat = new THREE.MeshLambertMaterial({ color: '#0a0d15' });
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), groundMat);
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const plazaMat = new THREE.MeshLambertMaterial({ color: '#161b26' });
+const plaza = new THREE.Mesh(new THREE.CircleGeometry(172, 72), plazaMat);
+plaza.rotation.x = -Math.PI / 2; plaza.position.y = 0.02; scene.add(plaza);
+const apron = new THREE.Mesh(new THREE.PlaneGeometry(116, 78), new THREE.MeshLambertMaterial({ color: '#3f8a2a' }));
+apron.rotation.x = -Math.PI / 2; apron.position.y = 0.03; scene.add(apron);
+const pitchMat = new THREE.MeshLambertMaterial({ map: pitchTex, emissive: '#ffffff', emissiveMap: pitchTex, emissiveIntensity: 0.3 });
+const pitch = new THREE.Mesh(new THREE.PlaneGeometry(105, 68), pitchMat);
+pitch.rotation.x = -Math.PI / 2; pitch.position.y = 0.05; scene.add(pitch);
+const concreteMat = new THREE.MeshStandardMaterial({ color: '#a19d94', roughness: 0.92, side: THREE.DoubleSide });
+const creamMat = new THREE.MeshStandardMaterial({ color: CREAM, roughness: 0.9, side: THREE.DoubleSide });
+scene.add(new THREE.Mesh(sweep([[0, 0.04], [RINGS[0].o0, 0.04]], 0, PERIM, 240), new THREE.MeshLambertMaterial({ color: '#66655c', side: THREE.DoubleSide })));
+
+const goalMat = new THREE.MeshLambertMaterial({ color: '#ffffff', emissive: '#777777' });
+const netMat = new THREE.MeshBasicMaterial({ color: '#dfe6ff', transparent: true, opacity: 0.18, side: THREE.DoubleSide });
+for (const s of [-1, 1]) {
+  const gx = 52.5 * s;
+  for (const z of [-3.66, 3.66]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.44, 0.12), goalMat); p.position.set(gx, 1.22, z); scene.add(p); }
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 7.44), goalMat); bar.position.set(gx, 2.44, 0); scene.add(bar);
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(7.32, 2.44), netMat); net.rotation.y = Math.PI / 2; net.position.set(gx + 1.6 * s, 1.22, 0); scene.add(net);
+}
+// LED advertising boards around the pitch
+for (const [x, z, len, rot] of [[0, -38.5, 112, 0], [0, 38.5, 112, 0], [-57, 0, 74, Math.PI / 2], [57, 0, 74, Math.PI / 2]]) {
+  const t = boardTex.clone(); t.repeat.set(len / 24, 1); t.needsUpdate = true;
+  const b = new THREE.Mesh(new THREE.BoxGeometry(len, 0.9, 0.25), new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.55 }));
+  b.position.set(x, 0.5, z); b.rotation.y = rot; scene.add(b);
+}
+
+/* ---------------- stands ---------------- */
+const SEC_L = PERIM / SECTORS_PER_RING;
+const sideOf = (b) => Math.abs(b.nx) > Math.abs(b.nz) ? (b.x > 0 ? 'sud' : 'nord') : (b.z < 0 ? 'ovest' : 'est');
+const secMid = (i) => base(SECTOR_START + (i + 0.5) * SEC_L);
+// San Siro: the third ring runs on three sides; the orange main stand (west) has two rings and the skyboxes.
+const NO_R3 = 'ovest';
+const r3gap = new Set([...Array(SECTORS_PER_RING).keys()].filter((i) => sideOf(secMid(i)) === NO_R3));
+const N_S = SECTORS_PER_RING;
+const gapEnd = [...r3gap].find((i) => !r3gap.has((i + 1) % N_S));
+const gapStart = [...r3gap].find((i) => !r3gap.has((i - 1 + N_S) % N_S));
+const R3_FROM = SECTOR_START + (gapEnd + 1) * SEC_L;
+let R3_TO = SECTOR_START + gapStart * SEC_L; if (R3_TO <= R3_FROM) R3_TO += PERIM;
+const W_FROM = R3_TO - PERIM, W_TO = R3_FROM; // the west stand, where ring 3 is missing
+
+for (let ri = 0; ri < RINGS.length; ri++) {
+  const r = RINGS[ri], e = ringEnd(r);
+  const prof = [[r.o0, ri === 0 ? 0 : r.h0 - 1.8], [r.o0, r.h0]];
+  for (let j = 0; j < r.rows; j++) {
+    const h = r.h0 + j * r.rise, o = r.o0 + j * r.depth;
+    prof.push([o + r.depth, h]);
+    if (j < r.rows - 1) prof.push([o + r.depth, h + r.rise]);
+  }
+  prof.push([e.o, e.h + 1.6], [e.o + 0.6, e.h + 1.6]);
+  prof.push(ri === 0 ? [e.o + 0.6, 0] : [e.o + 0.6, e.h - 0.8]);
+  prof.push(ri === 0 ? [r.o0, 0] : [r.o0, r.h0 - 1.8]);
+  scene.add(new THREE.Mesh(ri === 2 ? sweep(prof, R3_FROM, R3_TO, 300) : sweep(prof, 0, PERIM, 360), concreteMat));
+  // light fascia on the front edge of each upper ring
+  if (ri > 0) scene.add(new THREE.Mesh(ri === 2 ? sweep([[r.o0 - 0.05, r.h0 - 1.9], [r.o0 - 0.05, r.h0 + 0.1]], R3_FROM, R3_TO, 300, 0.25, 0.25)
+    : sweep([[r.o0 - 0.05, r.h0 - 1.9], [r.o0 - 0.05, r.h0 + 0.1]], 0, PERIM, 300), creamMat));
+  if (ri === 2) for (const sEnd of [R3_FROM, R3_TO]) {
+    const bb = base(sEnd), cap = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(prof.map(([o, h]) => new THREE.Vector2(o, h)))), concreteMat);
+    cap.position.set(bb.x, 0, bb.z); cap.rotation.y = Math.atan2(-bb.nz, bb.nx); scene.add(cap);
+  }
+}
+// west main stand: back wall with the band of skyboxes up to the roof
+const glassMat = new THREE.MeshStandardMaterial({ color: '#1c242f', roughness: 0.2, metalness: 0.6, emissive: '#ffcf8a', emissiveIntensity: 0.0, side: THREE.DoubleSide });
+scene.add(new THREE.Mesh(sweep([[33.3, 21.5], [33.3, 39.8]], W_FROM, W_TO, 120), creamMat));
+scene.add(new THREE.Mesh(sweep([[33.1, 25], [33.1, 28.5]], W_FROM, W_TO, 120), glassMat));
+scene.add(new THREE.Mesh(sweep([[33.1, 31], [33.1, 33.5]], W_FROM, W_TO, 120), glassMat));
+
+// exterior: 2nd-ring facade of criss-crossing ramps, smooth cream band around ring 3
+const FAC_O = 35, FAC_H = 23.5;
+const facadeMat = new THREE.MeshStandardMaterial({ map: facadeTex, roughness: 0.9, emissive: '#ffffff', emissiveMap: facadeTex, emissiveIntensity: 0.1, side: THREE.DoubleSide });
+scene.add(new THREE.Mesh(sweep([[FAC_O, 0], [FAC_O, FAC_H], [ringEnd(RINGS[1]).o, FAC_H]], 0, PERIM, 240, 1 / 26, 1 / 6), facadeMat));
+scene.add(new THREE.Mesh(sweep([[45.4, 23.0], [46.3, 24.2], [46.3, 36.4], [45.5, 37.3]], R3_FROM, R3_TO, 300), creamMat));
+
+// roof: corrugated translucent vaults, steel lattice underneath
+const roofMat = new THREE.MeshStandardMaterial({ map: vaultTex, color: '#ffffff', roughness: 0.6, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false });
+scene.add(new THREE.Mesh(sweep([[15, 40.6], [15, 41.3], [48.5, 41.3], [48.5, 40.6]], 0, PERIM, 300, 1 / 3.2, 0.05), roofMat));
+const latticeMat = new THREE.MeshBasicMaterial({ map: latticeTex, alphaMap: latticeTex, alphaTest: 0.5, color: '#5b5f66', side: THREE.DoubleSide });
+const lattice = new THREE.Mesh(sweep([[15.2, 40.2], [48, 40.2]], 0, PERIM, 300, 1 / 4, 1 / 4), latticeMat);
+scene.add(lattice);
+
+// floodlights along the inner roof edge + two big screens behind the goals
+const floodPts = [];
+for (let s = 0; s < PERIM; s += 2.6) { const b = base(s); floodPts.push(b.x + b.nx * 15.6, 39.6, b.z + b.nz * 15.6); }
+const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(floodPts, 3));
+const floods = new THREE.Points(fg, new THREE.PointsMaterial({ map: glowTex, size: 5.5, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: '#eef3ff' }));
+scene.add(floods);
+const screenTex = canvasTex(512, 288, () => {});
+function drawScreen() {
+  const m = currentMatch();
+  const c = screenTex.userData.canvas, g = c.getContext('2d'), W = c.width, H = c.height;
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#0f2a6b'); gr.addColorStop(1, '#081436');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '700 54px "Barlow Condensed", Arial Narrow, sans-serif'; g.fillText(`${m.home_team} – ${m.away_team}`.toUpperCase(), W / 2, H * 0.42, W - 30);
+  g.font = '600 34px "Barlow Condensed", Arial Narrow, sans-serif'; g.fillStyle = '#ffcf5a'; g.fillText(fmtDate(m.kickoff).toUpperCase(), W / 2, H * 0.72, W - 30);
+  screenTex.needsUpdate = true;
+}
+drawScreen();
+for (const segI of [2, 6]) {
+  const b = SEGS[segI].at(0.5);
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(16, 9), new THREE.MeshBasicMaterial({ map: screenTex, side: THREE.DoubleSide }));
+  scr.position.set(b.x + b.nx * 17, 34, b.z + b.nz * 17); scr.rotation.y = Math.atan2(-b.nx, -b.nz); scene.add(scr);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(16.8, 9.8, 0.6), new THREE.MeshLambertMaterial({ color: '#1a1d24' }));
+  frame.position.copy(scr.position).addScaledVector(new THREE.Vector3(b.nx, 0, b.nz), 0.35); frame.rotation.y = scr.rotation.y; scene.add(frame);
+}
+
+/* ---------------- San Siro: ramp towers and red roof girders ---------------- */
+const coreMat = new THREE.MeshStandardMaterial({ color: '#3a342d', roughness: 0.95 });
+const porthole = new THREE.MeshStandardMaterial({ map: portholeTex, roughness: 0.9 });
+function tower(x, z, rad, rampH, topH) {
+  const tex = canvasTex(256, 64, rampDraw(false), true); tex.repeat.set(3, rampH / 3.2);
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, rampH, 48, 1, true),
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.88, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.08 }));
+  shell.position.set(x, rampH / 2, z); scene.add(shell);
+  const cap = new THREE.Mesh(new THREE.CircleGeometry(rad, 48), creamMat); cap.rotation.x = -Math.PI / 2; cap.position.set(x, rampH + 0.02, z); scene.add(cap);
+  if (topH > rampH) {
+    const pt = portholeTex.clone(); pt.repeat.set(6, (topH - rampH) / 6); pt.needsUpdate = true;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(rad * 0.72, rad * 0.72, topH - rampH, 40), [new THREE.MeshStandardMaterial({ map: pt, roughness: 0.9 }), creamMat, creamMat]);
+    top.position.set(x, (topH + rampH) / 2, z); scene.add(top);
+  }
+}
+const corners = [1, 3, 5, 7].map((i) => { const b = SEGS[i].at(0.5); return new THREE.Vector3(b.x + b.nx * 49, 0, b.z + b.nz * 49); });
+corners.forEach((c) => tower(c.x, c.z, 8, 37, 53));
+for (const x of [-34, 0, 34]) tower(x, -(HH + 43), 6.5, 26, 0);
+for (const x of [-26, 26]) tower(x, HH + 43, 6.5, 37, 0);
+tower(-(HW + 43), 0, 6.5, 37, 0); tower(HW + 43, 0, 6.5, 37, 0);
+
+const beams = [];
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+function truss(a, b, y0, y1, width, step = 7, chord = 1.0, web = 0.45) {
+  const dir = new THREE.Vector3().subVectors(b, a).setY(0).normalize(), side = V(-dir.z, 0, dir.x).multiplyScalar(width / 2);
+  const len = V(a.x, 0, a.z).distanceTo(V(b.x, 0, b.z)), n = Math.max(2, Math.round(len / step));
+  for (const sgn of [-1, 1]) {
+    const off = side.clone().multiplyScalar(sgn);
+    const P = (t, y) => new THREE.Vector3().lerpVectors(a, b, t).add(off).setY(y);
+    beams.push([P(0, y1), P(1, y1), chord], [P(0, y0), P(1, y0), chord * 0.8]);
+    for (let k = 0; k <= n; k++) {
+      beams.push([P(k / n, y0), P(k / n, y1), web]);
+      if (k < n) beams.push([P(k / n, k % 2 ? y0 : y1), P((k + 1) / n, k % 2 ? y1 : y0), web * 0.9]);
+    }
+  }
+  for (let k = 0; k <= n; k += 2) {
+    const m = new THREE.Vector3().lerpVectors(a, b, k / n);
+    beams.push([m.clone().add(side).setY(y1), m.clone().sub(side).setY(y1), web]);
+  }
+}
+const girderMat = new THREE.MeshStandardMaterial({ color: GIRDER, roughness: 0.55, metalness: 0.2, emissive: '#3a0c06', emissiveIntensity: 0.6, transparent: true, opacity: 1 });
+// four main girders between the corner towers
+for (let i = 0; i < 4; i++) truss(corners[i], corners[(i + 1) % 4], 45, 53, 4.5);
+// secondary diamond linking the girders' midpoints, and cross trusses over the roof
+const mids = corners.map((c, i) => new THREE.Vector3().lerpVectors(c, corners[(i + 1) % 4], 0.5));
+for (let i = 0; i < 4; i++) truss(mids[i], mids[(i + 1) % 4], 46, 51, 2.2, 8, 0.7, 0.35);
+for (let i = 0; i < 4; i++) {
+  const a = corners[i], b = corners[(i + 1) % 4], dir = new THREE.Vector3().subVectors(b, a).normalize();
+  const inward = V(-dir.z, 0, dir.x); if (inward.dot(new THREE.Vector3().lerpVectors(a, b, 0.5).negate()) < 0) inward.negate();
+  for (let t = 0.2; t < 0.81; t += 0.15) {
+    const p = new THREE.Vector3().lerpVectors(a, b, t);
+    truss(p.clone().addScaledVector(inward, -16), p.clone().addScaledVector(inward, 15), 41.5, 45, 1.6, 6, 0.55, 0.3);
+  }
+}
+{
+  const gm = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), girderMat, beams.length);
+  const d = new THREE.Vector3(), X = V(1, 0, 0), sc = new THREE.Vector3(), mm = new THREE.Matrix4(), qq = new THREE.Quaternion();
+  beams.forEach(([a, b, t], k) => {
+    d.subVectors(b, a); const len = d.length();
+    qq.setFromUnitVectors(X, d.normalize());
+    mm.compose(new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5), qq, sc.set(len, t, t));
+    gm.setMatrixAt(k, mm);
+  });
+  scene.add(gm);
+  // solid red cantilever "wings" where each girder runs past its corner tower
+  const wingShape = new THREE.Shape([new THREE.Vector2(0, 44.5), new THREE.Vector2(24, 49.5), new THREE.Vector2(24, 53.3), new THREE.Vector2(0, 53.3)]);
+  const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 4.5, bevelEnabled: false }); wingGeo.translate(0, 0, -2.25);
+  for (let i = 0; i < 4; i++) {
+    const a = corners[i], b = corners[(i + 1) % 4], dir = new THREE.Vector3().subVectors(b, a).normalize();
+    for (const [p, dv] of [[b, dir], [a, dir.clone().negate()]]) {
+      const w = new THREE.Mesh(wingGeo, girderMat);
+      w.position.set(p.x, 0, p.z); w.rotation.y = Math.atan2(-dv.z, dv.x); scene.add(w);
+    }
+  }
+}
+
+/* ---------------- sectors and seats ---------------- */
+const seatGeo = (() => {
+  const pan = new THREE.BoxGeometry(0.46, 0.09, 0.4); pan.translate(0, 0.42, 0.04);
+  const back = new THREE.BoxGeometry(0.46, 0.46, 0.07); back.translate(0, 0.66, -0.17);
+  return mergeGeometries([pan, back]);
+})();
+const seatMat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
+const hitMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+const sectors = [], hitMeshes = [];
+const SIDES = { ovest: ['arancio', 'Tribuna Ovest'], est: ['rosso', 'Tribuna Est'], sud: ['blu', 'Curva Sud'], nord: ['verde', 'Curva Nord'] };
+const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), v3 = new THREE.Vector3();
+
+const seatById = new Map();
+{
+  for (const vs of VENUE.sectors) {
+    const ri = vs.ring, i = vs.index, r = RINGS[ri], e = ringEnd(r), L = PERIM / SECTORS_PER_RING;
+    const sA = SECTOR_START + i * L + AISLE / 2, sB = SECTOR_START + (i + 1) * L - AISLE / 2;
+    const mid = base((sA + sB) / 2);
+    const cat = CATS[vs.area];
+    const sec = { ring: ri, number: vs.number, zone: vs.zone, catKey: vs.area, cat, catName: VENUE.zones[vs.zone].name, side: vs.stand,
+      get price() { return PRICES.zones[this.zone].prices.INTERO / 100; }, color: new THREE.Color(cat.color), seats: [], n: { x: mid.nx, z: mid.nz } };
+    let bit = 0;
+    for (let j = 0; j < r.rows; j++) {
+      const o = r.o0 + j * r.depth + r.depth * 0.45, h = r.h0 + j * r.rise, K = 40;
+      const pts = [], cum = [0];
+      for (let k = 0; k <= K; k++) {
+        const b = base(sA + (sB - sA) * k / K);
+        pts.push({ x: b.x + b.nx * o, z: b.z + b.nz * o, nx: b.nx, nz: b.nz });
+        if (k) cum.push(cum[k - 1] + Math.hypot(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z));
+      }
+      const total = cum[K], gap = 0.56, n = vs.rows[j], start = (total - (n - 1) * gap) / 2;
+      let sg = 0;
+      for (let qn = 0; qn < n; qn++) {
+        const d = start + qn * gap;
+        while (sg < K - 1 && cum[sg + 1] < d) sg++;
+        const f = (d - cum[sg]) / (cum[sg + 1] - cum[sg]), P = pts[sg], Q = pts[sg + 1];
+        let nx = P.nx + (Q.nx - P.nx) * f, nz = P.nz + (Q.nz - P.nz) * f; const nl = Math.hypot(nx, nz); nx /= nl; nz /= nl;
+        const st = { sec, id: `${vs.number}-${j + 1}-${qn + 1}`, x: P.x + (Q.x - P.x) * f, y: h, z: P.z + (Q.z - P.z) * f, nx, nz, row: j + 1, num: qn + 1,
+          booked: AVAIL.sectors[vs.number][bit++] === '1', owned: false, inCart: false };
+        sec.seats.push(st); seatById.set(st.id, st);
+      }
+    }
+    const mesh = new THREE.InstancedMesh(seatGeo, seatMat, sec.seats.length);
+    sec.seats.forEach((st, k) => {
+      q.setFromAxisAngle(up, Math.atan2(-st.nx, -st.nz));
+      m4.compose(v3.set(st.x, st.y, st.z), q, one);
+      mesh.setMatrixAt(k, m4);
+    });
+    mesh.computeBoundingSphere();
+    sec.mesh = mesh; scene.add(mesh);
+    const hit = new THREE.Mesh(sweep([[r.o0, r.h0 + 0.3], [e.o, e.h + 1.0]], sA, sB, 16), hitMat);
+    hit.visible = false; hit.userData.sec = sec; scene.add(hit); hitMeshes.push(hit);
+    const midRow = sec.seats.filter((s) => s.row === Math.ceil(r.rows / 2));
+    const c = midRow[midRow.length >> 1];
+    sec.center = new THREE.Vector3(c.x, c.y, c.z);
+    sectors.push(sec);
+  }
+}
+
+/* ---------------- surroundings: canopies, trees, Milan ---------------- */
+const canopyMat = new THREE.MeshLambertMaterial({ color: '#cfc6b6' });
+const postMat = new THREE.MeshLambertMaterial({ color: '#8d8b86' });
+for (const [segI, ts] of [[4, [0.1, 0.3, 0.5, 0.7, 0.9]], [3, [0.3, 0.75]], [5, [0.3, 0.75]], [2, [0.25, 0.75]], [6, [0.25, 0.75]]]) {
+  for (const t of ts) {
+    const b = SEGS[segI].at(t), o = 82;
+    const x = b.x + b.nx * o, z = b.z + b.nz * o;
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(9.5, 9.5, 0.7, 40), canopyMat); disc.position.set(x, 7, z); scene.add(disc);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 7, 8), postMat); post.position.set(x, 3.5, z); scene.add(post);
+  }
+}
+const treeMat = new THREE.MeshLambertMaterial({ color: '#56723f' });
+const trees = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), treeMat, 320);
+for (let k = 0; k < 320; k++) {
+  const a = rand() * Math.PI * 2, rr = 176 + rand() * 60, s = 3 + rand() * 3;
+  m4.compose(v3.set(Math.cos(a) * rr, s * 0.9, Math.sin(a) * rr), q.identity(), new THREE.Vector3(s, s * 1.1, s));
+  trees.setMatrixAt(k, m4);
+}
+scene.add(trees);
+const cityMat = new THREE.MeshLambertMaterial({ map: wallTex, emissive: '#ffffff', emissiveMap: windowTex, emissiveIntensity: 0.85 });
+const lamps = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ map: glowTex, size: 7, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: '#ffcf8a' }));
+(() => {
+  const g = new THREE.BoxGeometry(1, 1, 1); g.translate(0, 0.5, 0);
+  const uv = g.attributes.uv;
+  for (let k = 8; k < 16; k++) uv.setXY(k, 0.02, 0.995); // roofs: plain corner of the facade textures
+  const spots = [];
+  for (let gx = -620; gx <= 620; gx += 24) for (let gz = -620; gz <= 620; gz += 24) {
+    const d = Math.hypot(gx, gz);
+    if (d < 245 || rand() > 0.8) continue;
+    spots.push([gx + (rand() - 0.5) * 6, gz + (rand() - 0.5) * 6, d]);
+  }
+  const city = new THREE.InstancedMesh(g, cityMat, spots.length);
+  const pal = ['#e3c9a6', '#d6b38c', '#c99d78', '#eadbc4', '#b98463', '#d9cbb6', '#c7b9a3', '#e9e1d2'].map((c) => new THREE.Color(c));
+  spots.forEach(([x, z, d], k) => {
+    const h = 10 + rand() * (14 + d * 0.035) + (rand() < 0.04 ? 45 : 0);
+    m4.compose(v3.set(x, 0, z), q.setFromAxisAngle(up, (rand() - 0.5) * 0.2), new THREE.Vector3(10 + rand() * 9, h, 10 + rand() * 9));
+    city.setMatrixAt(k, m4);
+    city.setColorAt(k, pal[(rand() * pal.length) | 0]);
+  });
+  scene.add(city);
+  const pts = [];
+  for (let k = 0; k < 900; k++) {
+    const a = rand() * Math.PI * 2, rr = 178 + rand() * 470;
+    const onStreet = rand() < 0.5;
+    const x = onStreet ? Math.round(Math.cos(a) * rr / 24) * 24 + 12 : Math.cos(a) * rr;
+    const z = onStreet ? Math.sin(a) * rr : Math.round(Math.sin(a) * rr / 24) * 24 + 12;
+    pts.push(x, 3, z);
+  }
+  for (let k = 0; k < 80; k++) { const a = k / 80 * Math.PI * 2; pts.push(Math.cos(a) * 165, 4, Math.sin(a) * 165); }
+  lamps.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  scene.add(lamps);
+})();
+
+/* ---------------- day / night ---------------- */
+let night = true;
+function applyTime() {
+  scene.background = night ? NIGHT_SKY : DAY_SKY;
+  scene.fog.color.set(night ? '#0b1020' : '#d8d2c2'); scene.fog.near = night ? 380 : 320; scene.fog.far = night ? 1150 : 1500;
+  hemi.color.set(night ? '#a9b8ff' : '#e6eeff'); hemi.groundColor.set(night ? '#14171f' : '#7d6f5c'); hemi.intensity = night ? 1.0 : 1.7;
+  key.color.set(night ? '#f2f5ff' : '#ffe8c4'); key.intensity = night ? 1.6 : 2.6;
+  key.position.set(...(night ? [40, 200, 80] : [-170, 150, 120]));
+  fill.intensity = night ? 0.35 : 0.7;
+  groundMat.color.set(night ? '#0a0d15' : '#857c6d'); plazaMat.color.set(night ? '#171b24' : '#9a9284');
+  cityMat.emissiveIntensity = night ? 0.85 : 0;
+  treeMat.color.set(night ? '#1d2a1c' : '#56723f');
+  pitchMat.emissiveIntensity = night ? 0.32 : 0.04;
+  glassMat.emissiveIntensity = night ? 0.25 : 0;
+  facadeMat.emissiveIntensity = night ? 0.1 : 0;
+  lamps.visible = floods.visible = night;
+  const btn = $('#timeBtn');
+  btn.setAttribute('aria-label', night ? 'Passa al giorno' : 'Passa alla notte');
+  btn.innerHTML = night
+    ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>'
+    : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+}
+
+/* ---------------- players ---------------- */
+const players = [], ball = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 8), new THREE.MeshLambertMaterial({ color: '#ffffff', emissive: '#888888' }));
+ball.position.set(0, 0.3, 0); scene.add(ball);
+(() => {
+  const form = [[-50, 0], [-35, -25], [-36, -9], [-36, 9], [-35, 25], [-18, -24], [-17, -8], [-17, 8], [-18, 24], [-4, -8], [-4, 8]];
+  const body = new THREE.CylinderGeometry(0.3, 0.24, 1.45, 10); body.translate(0, 0.72, 0);
+  const head = new THREE.SphereGeometry(0.17, 10, 8); head.translate(0, 1.62, 0);
+  const geo = mergeGeometries([body.toNonIndexed(), head.toNonIndexed()]);
+  for (const [team, color, flip] of [[0, '#e0485a', 1], [1, '#e6ecff', -1]]) {
+    const mat = new THREE.MeshLambertMaterial({ color, emissive: color, emissiveIntensity: 0.25 });
+    form.forEach(([x, z], k) => {
+      const m = new THREE.Mesh(geo, mat);
+      const home = new THREE.Vector3(x * flip + (k ? 0 : 0), 0, z * flip);
+      m.position.copy(home); scene.add(m);
+      players.push({ m, home, team, gk: k === 0 });
+    });
+  }
+})();
+const ballTarget = new THREE.Vector3(); let ballTimer = 0;
+function updateMatch(dt) {
+  ballTimer -= dt;
+  if (ballTimer <= 0) { ballTarget.set((rand() - 0.5) * 80, 0.3, (rand() - 0.5) * 54); ballTimer = 1.6 + rand() * 2.4; }
+  const toB = v3.copy(ballTarget).sub(ball.position); const dist = toB.length();
+  if (dist > 0.05) ball.position.addScaledVector(toB.normalize(), Math.min(dist, 11 * dt));
+  for (const team of [0, 1]) {
+    let best = null, bd = 1e9;
+    for (const p of players) if (p.team === team && !p.gk) { const d = p.m.position.distanceToSquared(ball.position); if (d < bd) { bd = d; best = p; } }
+    for (const p of players) if (p.team === team) {
+      const want = p === best ? ball.position : new THREE.Vector3().copy(p.home).lerp(ball.position, p.gk ? 0.06 : 0.32);
+      const dv = new THREE.Vector3(want.x - p.m.position.x, 0, want.z - p.m.position.z); const l = dv.length();
+      if (l > 0.3) p.m.position.addScaledVector(dv.normalize(), Math.min(l, (p === best ? 6.5 : 4) * dt));
+    }
+  }
+}
+
+/* ---------------- state ---------------- */
+let mode = 'intro', focus = null, selectedSeat = null, hoverSector = null, hoverSeat = null, ringFilter = null;
+const cart = [];
+const OVER_POS = new THREE.Vector3(0, 168, 132), ORIGIN = new THREE.Vector3(0, 0, 0);
+const white = new THREE.Color('#ffffff'), dimC = new THREE.Color('#131722'), soldC = new THREE.Color('#2a2f3b'), mineC = new THREE.Color('#5cffa0'), tmpC = new THREE.Color();
+
+function paint(sec) {
+  const ringDim = ringFilter !== null && ringFilter !== sec.ring;
+  const otherDim = (mode === 'sector' || mode === 'seat') && focus !== sec;
+  const hov = sec === hoverSector && mode === 'overview' && !ringDim;
+  for (let k = 0; k < sec.seats.length; k++) {
+    const st = sec.seats[k];
+    if (st.inCart || st.owned) tmpC.copy(mineC);
+    else { tmpC.copy(sec.color); if (st.booked) tmpC.lerp(soldC, 0.8); }
+    if (st === hoverSeat && !st.booked) tmpC.lerp(white, 0.7);
+    if (ringDim) tmpC.lerp(dimC, 0.85); else if (otherDim) tmpC.lerp(dimC, 0.55);
+    if (hov) tmpC.lerp(white, 0.35);
+    sec.mesh.setColorAt(k, tmpC);
+  }
+  sec.mesh.instanceColor.needsUpdate = true;
+}
+const paintAll = () => sectors.forEach(paint);
+paintAll();
+
+/* ---------------- camera moves ---------------- */
+let tween = null, lookYaw = 0, lookPitch = 0, yawOff = 0, pitchOff = 0;
+const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function flyTo(pos, target, dur, done) {
+  controls.enabled = false;
+  if (reduceMotion) dur = 0.01;
+  tween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: target.clone(), dur, t: 0, done };
+}
+function stepTween(dt) {
+  if (!tween) return;
+  tween.t = Math.min(tween.dur, tween.t + dt);
+  const k = ease(tween.t / tween.dur);
+  camera.position.lerpVectors(tween.p0, tween.p1, k);
+  controls.target.lerpVectors(tween.t0, tween.t1, k);
+  camera.lookAt(controls.target);
+  if (tween.t >= tween.dur) { const d = tween.done; tween = null; d && d(); }
+}
+function setOrbit(minD, maxD, maxPolar) {
+  controls.minDistance = minD; controls.maxDistance = maxD; controls.maxPolarAngle = maxPolar;
+  controls.enabled = true; controls.update();
+}
+
+/* ---------------- UI ---------------- */
+const fmt = (n) => '€' + n;
+function renderChips() {
+  $('#chips').innerHTML = Object.entries(CATS).map(([area, c]) => {
+    const ps = Object.entries(PRICES.zones).filter(([code]) => VENUE.zones[code].area === area && (ringFilter === null || VENUE.zones[code].ring === ringFilter))
+      .map(([, z]) => z.prices.INTERO);
+    const p = !ps.length ? '—' : (ringFilter === null ? 'da ' : '') + fmtC(Math.min(...ps));
+    return `<div class="chip"><i style="background:${c.color}"></i><span>${c.short}</span><b>${p}</b></div>`;
+  }).join('');
+}
+function setMode(m) {
+  mode = m;
+  $('#back').hidden = m === 'overview' || m === 'intro';
+  $('#rings').hidden = !(m === 'overview' || m === 'intro');
+  $('#legend').hidden = !(m === 'overview' || m === 'intro');
+  $('#secCard').hidden = m !== 'sector';
+  $('#sheet').hidden = m !== 'seat';
+  $('#live').hidden = m !== 'seat';
+  updateCart();
+  $('#tip').hidden = true;
+  hoverSeat = null; hoverSector = null;
+  paintAll();
+}
+let toastT = 0;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2600); }
+function fillSector(sec) {
+  const free = sec.seats.filter((s) => !s.booked).length;
+  $('#scSw').style.background = sec.cat.color;
+  $('#scSide').textContent = sec.side;
+  $('#scTitle').textContent = 'Settore ' + sec.number;
+  $('#scPrice').textContent = fmt(sec.price);
+  $('#scSub').textContent = `${sec.catName} · ${RINGS[sec.ring].name}`;
+  $('#scBar').style.width = (free / sec.seats.length * 100).toFixed(1) + '%';
+  $('#scAvail').textContent = `${free} liberi su ${sec.seats.length}`;
+}
+function seatEye(st) { return new THREE.Vector3(st.x - st.nx * 0.08, st.y + 1.18, st.z - st.nz * 0.08); }
+function fillSeat(st) {
+  const sec = st.sec, eye = seatEye(st);
+  const dCenter = eye.length();
+  const fx = Math.max(-52.5, Math.min(52.5, eye.x)), fz = Math.max(-34, Math.min(34, eye.z));
+  const dField = Math.hypot(eye.x - fx, eye.y, eye.z - fz);
+  const dGoal = Math.min(Math.hypot(eye.x - 52.5, eye.y, eye.z), Math.hypot(eye.x + 52.5, eye.y, eye.z));
+  $('#stSw').style.background = sec.cat.color;
+  $('#stSide').textContent = sec.side;
+  $('#stTitle').textContent = `Settore ${sec.number}, Fila ${st.row}, Posto ${st.num}`;
+  $('#stSub').textContent = `${sec.catName} · ${RINGS[sec.ring].name} · ${fmt(sec.price)}`;
+  $('#dC').innerHTML = `${Math.round(dCenter)}<small>m</small>`;
+  $('#dF').innerHTML = `${Math.round(dField)}<small>m</small>`;
+  $('#dG').innerHTML = `${Math.round(dGoal)}<small>m</small>`;
+  const b = $('#book'), max = PRICES.max_tickets_per_order;
+  b.classList.toggle('done', st.owned || st.inCart);
+  b.disabled = st.owned || (!st.inCart && cart.length >= max);
+  b.textContent = st.owned ? '✓ Il tuo biglietto' : st.inCart ? 'Rimuovi dal carrello'
+    : cart.length >= max ? `Massimo ${max} posti` : `Aggiungi · ${fmt(sec.price)}`;
+}
+
+function goOverview() {
+  focus = null; selectedSeat = null; setMode('overview');
+  flyTo(OVER_POS, ORIGIN, 1.6, () => setOrbit(60, 460, 1.32));
+}
+function goSector(sec) {
+  focus = sec; selectedSeat = null; setMode('sector'); fillSector(sec);
+  const c = sec.center;
+  const pos = new THREE.Vector3(c.x - sec.n.x * 30, c.y + 15 + sec.ring * 3, c.z - sec.n.z * 30);
+  flyTo(pos, c, 1.5, () => setOrbit(6, 95, 1.5));
+}
+function goSeat(st) {
+  focus = st.sec; selectedSeat = st; setMode('seat'); fillSeat(st);
+  yawOff = 0; pitchOff = 0;
+  flyTo(seatEye(st), new THREE.Vector3(st.x * 0.15, 0, st.z * 0.15), 1.7, () => {
+    const d = new THREE.Vector3(); camera.getWorldDirection(d);
+    lookYaw = Math.atan2(-d.x, -d.z); lookPitch = Math.asin(d.y);
+  });
+}
+function back() {
+  if (tween) return;
+  if (mode === 'seat') goSector(focus);
+  else if (mode === 'sector') goOverview();
+}
+$('#back').addEventListener('click', back);
+$('#change').addEventListener('click', () => !tween && goSector(focus));
+addEventListener('keydown', (e) => { if (e.key === 'Escape') back(); });
+$('#book').addEventListener('click', () => {
+  const st = selectedSeat; if (!st || st.owned) return;
+  if (st.inCart) { st.inCart = false; cart.splice(cart.indexOf(st), 1); }
+  else if (cart.length < PRICES.max_tickets_per_order) { st.inCart = true; cart.push(st); toast(`Aggiunto: Settore ${st.sec.number}, Fila ${st.row}, Posto ${st.num}`); }
+  fillSeat(st); paint(st.sec); updateCart();
+});
+$('#timeBtn').addEventListener('click', () => { night = !night; applyTime(); });
+applyTime();
+$('#rings').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  ringFilter = b.dataset.ring === 'all' ? null : +b.dataset.ring;
+  for (const x of $('#rings').children) x.setAttribute('aria-pressed', x === b);
+  $('#legendHint').textContent = ringFilter === null ? 'Tocca un settore per vedere i posti liberi' : `${RINGS[ringFilter].name}: tocca un settore illuminato`;
+  renderChips(); paintAll();
+});
+renderChips();
+
+/* ---------------- picking ---------------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pickSector(cx, cy) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const list = ringFilter === null || mode !== 'overview' ? hitMeshes : hitMeshes.filter((m) => m.userData.sec.ring === ringFilter);
+  const h = ray.intersectObjects(list, false)[0];
+  return h ? { sec: h.object.userData.sec, point: h.point } : null;
+}
+function nearestSeat(sec, p) {
+  let best = null, bd = 4.5;
+  for (const st of sec.seats) { const d = (st.x - p.x) ** 2 + (st.y + 0.6 - p.y) ** 2 + (st.z - p.z) ** 2; if (d < bd) { bd = d; best = st; } }
+  return best;
+}
+function onTap(cx, cy) {
+  if (mode === 'intro' && tween) { tween.t = tween.dur; return; }
+  if (tween || mode === 'seat') return;
+  const h = pickSector(cx, cy);
+  if (!h) return;
+  if (mode === 'overview') return goSector(h.sec);
+  if (mode === 'sector') {
+    if (h.sec !== focus) return goSector(h.sec);
+    const st = nearestSeat(h.sec, h.point);
+    if (!st) return;
+    if (st.booked && !st.owned) return toast('Posto già venduto: scegline uno colorato.');
+    goSeat(st);
+  }
+}
+function onHover(cx, cy) {
+  if (tween || (mode !== 'overview' && mode !== 'sector')) return;
+  const h = pickSector(cx, cy), tip = $('#tip');
+  if (mode === 'overview') {
+    const s = h ? h.sec : null;
+    if (s !== hoverSector) { const old = hoverSector; hoverSector = s; old && paint(old); s && paint(s); }
+    canvas.style.cursor = s ? 'pointer' : '';
+    if (s) {
+      tip.innerHTML = `<i style="background:${s.cat.color}"></i>Settore ${s.number} · ${s.catName} · <b>${fmt(s.price)}</b>`;
+      tip.style.left = Math.min(cx + 14, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = cy + 16 + 'px'; tip.hidden = false;
+    } else tip.hidden = true;
+  } else {
+    const st = h && h.sec === focus ? nearestSeat(focus, h.point) : null;
+    if (st !== hoverSeat) { hoverSeat = st; paint(focus); }
+    canvas.style.cursor = st && !st.booked ? 'pointer' : '';
+    if (st) {
+      tip.innerHTML = st.booked && !st.owned ? 'Venduto' : `Fila ${st.row} · Posto ${st.num} · <b>${fmt(focus.price)}</b>`;
+      tip.style.left = Math.min(cx + 14, innerWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = cy + 16 + 'px'; tip.hidden = false;
+    } else tip.hidden = true;
+  }
+}
+let down = null;
+canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: performance.now() }; });
+canvas.addEventListener('pointermove', (e) => {
+  if (down && mode === 'seat' && !tween) {
+    yawOff = Math.max(-1.1, Math.min(1.1, yawOff + (e.clientX - down.lx) * 0.005));
+    pitchOff = Math.max(-0.5, Math.min(0.45, pitchOff + (e.clientY - down.ly) * 0.004));
+    down.lx = e.clientX; down.ly = e.clientY;
+  } else if (!down && e.pointerType === 'mouse') onHover(e.clientX, e.clientY);
+});
+addEventListener('pointerup', (e) => {
+  if (!down) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+  if (e.target === canvas && moved < 7 && performance.now() - down.t < 600) onTap(e.clientX, e.clientY);
+  down = null;
+});
+canvas.addEventListener('wheel', (e) => {
+  if (mode !== 'seat') return;
+  e.preventDefault();
+  camera.fov = Math.max(24, Math.min(70, camera.fov + e.deltaY * 0.03)); camera.updateProjectionMatrix();
+}, { passive: false });
+
+/* ---------------- live clock ---------------- */
+/* ---------------- shop: match, cart, checkout, tickets ---------------- */
+const matchSel = $('#matchSel');
+matchSel.innerHTML = MATCHES.map((m) => `<option value="${esc(m.id)}"${m.on_sale ? '' : ' disabled'}>vs ${esc(m.away_team)} · ${esc(fmtDate(m.kickoff))}${m.on_sale ? '' : ' (chiusa)'}</option>`).join('');
+matchSel.value = matchId;
+function showMatchInfo() {
+  const m = currentMatch();
+  $('#liveTxt').textContent = `${m.home_team} – ${m.away_team} · ${fmtDate(m.kickoff)}`;
+  drawScreen();
+}
+function ownedIds() {
+  return new Set(myOrders.filter((o) => o.match_id === matchId).flatMap((o) => o.tickets.map((t) => t.seat_id)));
+}
+function applyAvailability() {
+  const owned = ownedIds(), lost = [];
+  for (const sec of sectors) {
+    const bits = AVAIL.sectors[sec.number];
+    sec.seats.forEach((st, k) => {
+      st.booked = bits[k] === '1'; st.owned = owned.has(st.id);
+      if (st.inCart && st.booked) { st.inCart = false; lost.push(st); }
+    });
+  }
+  for (const st of lost) cart.splice(cart.indexOf(st), 1);
+  if (lost.length) toast(`${lost.length === 1 ? 'Un posto nel carrello è stato appena venduto' : lost.length + ' posti nel carrello sono stati appena venduti'}: scegline un altro.`);
+  paintAll(); updateCart(); renderChips();
+  if (mode === 'sector' && focus) fillSector(focus);
+  if (mode === 'seat' && selectedSeat) fillSeat(selectedSeat);
+  const n = myOrders.reduce((a, o) => a + o.tickets.length, 0), b = $('#tixN');
+  b.hidden = !n; b.textContent = n;
+}
+async function refresh() {
+  [PRICES, AVAIL] = await Promise.all([api(`/api/matches/${matchId}/prices`), api(`/api/matches/${matchId}/availability`)]);
+  applyAvailability();
+}
+matchSel.addEventListener('change', async () => {
+  for (const st of cart) st.inCart = false;
+  cart.length = 0;
+  matchId = matchSel.value;
+  showMatchInfo();
+  await refresh();
+  if (mode !== 'overview' && mode !== 'intro') goOverview();
+  toast(`Posti per ${currentMatch().home_team} – ${currentMatch().away_team}`);
+});
+setInterval(() => { if ($('#overlay').hidden && !document.hidden) refresh().catch(() => {}); }, 20000);
+
+function updateCart() {
+  const bar = $('#cartBar');
+  bar.hidden = !cart.length || mode === 'intro';
+  if (!cart.length) return;
+  const sum = cart.reduce((a, st) => a + PRICES.zones[st.sec.zone].prices.INTERO, 0);
+  $('#cartCount').textContent = cart.length === 1 ? '1 posto' : `${cart.length} posti`;
+  $('#cartSub').textContent = `${fmtC(sum)} + commissioni`;
+}
+
+let hold = null, holdTimer = 0, order = null;
+const overlay = $('#overlay'), panel = $('#ovPanel');
+function openOverlay(html) { panel.innerHTML = html; overlay.hidden = false; panel.querySelector('input, select, button')?.focus(); }
+function closeOverlay() { overlay.hidden = true; panel.innerHTML = ''; clearInterval(holdTimer); }
+function tickTimer() {
+  const el = panel.querySelector('.timer'); if (!el || !hold) return;
+  const left = Math.max(0, Math.round(hold.expires_at - Date.now() / 1000));
+  el.textContent = left ? `Posti bloccati per te ancora ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}` : 'Tempo scaduto: i posti sono stati liberati';
+  if (!left) { clearInterval(holdTimer); hold = null; setTimeout(() => { closeOverlay(); refresh(); }, 2500); }
+}
+async function cancelCheckout() {
+  if (hold) { const h = hold; hold = null; await api(`/api/holds/${h.hold_id}`, { method: 'DELETE' }).catch(() => {}); }
+  closeOverlay(); refresh().catch(() => {});
+}
+overlay.addEventListener('click', (e) => { if (e.target === overlay || e.target.closest('[data-close]')) cancelCheckout(); });
+
+$('#cartGo').addEventListener('click', async () => {
+  const b = $('#cartGo'); b.disabled = true; b.textContent = 'Blocco i posti…';
+  try {
+    hold = await api(`/api/matches/${matchId}/holds`, { method: 'POST', body: { seat_ids: cart.map((st) => st.id) } });
+    order = null;
+    renderHolders();
+  } catch (e) {
+    if (e.status === 409 && e.detail && e.detail.unavailable) {
+      for (const id of e.detail.unavailable) { const st = seatById.get(id); if (st) { st.booked = true; st.inCart = false; cart.splice(cart.indexOf(st), 1); } }
+      paintAll(); updateCart();
+      toast('Qualcuno ha appena preso uno dei tuoi posti: l\'ho tolto dal carrello.');
+    } else toast(e.message);
+  } finally { b.disabled = false; b.textContent = 'Procedi'; }
+});
+
+function typeOptions(st) {
+  return PRICES.ticket_types.map((t) => `<option value="${esc(t.code)}">${esc(t.label)} · ${fmtC(PRICES.zones[st.sec.zone].prices[t.code])}</option>`).join('');
+}
+function renderHolders(errors = []) {
+  const m = currentMatch();
+  openOverlay(`
+    <div class="ov-head"><div><div class="eyebrow">${esc(m.home_team)} – ${esc(m.away_team)} · ${esc(fmtDate(m.kickoff))}</div>
+      <h2 id="ovTitle">Chi va allo stadio?</h2><div class="timer"></div></div>
+      <button class="close" data-close aria-label="Annulla e libera i posti">✕</button></div>
+    <p class="note">I biglietti sono nominativi: all'ingresso verrà chiesto un documento. Le riduzioni dipendono dall'età il giorno della partita.</p>
+    ${errors.length ? `<ul class="errors">${errors.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    <form id="holdersForm" novalidate>
+      ${cart.map((st, i) => `
+        <div class="holder" data-seat="${st.id}" style="margin-bottom:10px">
+          <div class="seat">Settore ${st.sec.number} · Fila ${st.row} · Posto ${st.num}<span>${esc(st.sec.catName)}</span></div>
+          <div class="field"><label for="fn${i}">Nome</label><input id="fn${i}" name="first_name" autocomplete="given-name" required></div>
+          <div class="field"><label for="ln${i}">Cognome</label><input id="ln${i}" name="last_name" autocomplete="family-name" required></div>
+          <div class="field"><label for="bd${i}">Data di nascita</label><input id="bd${i}" name="birth_date" type="date" required></div>
+          <div class="field"><label for="tt${i}">Biglietto</label><select id="tt${i}" name="ticket_type">${typeOptions(st)}</select></div>
+        </div>`).join('')}
+      <div class="field wide"><label for="email">Email per ricevere i biglietti</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+      <div id="sum" style="margin-top:14px;display:flex;flex-direction:column;gap:6px"></div>
+      <button class="btn primary" type="submit" style="width:100%;margin-top:14px">Continua al pagamento</button>
+    </form>`);
+  clearInterval(holdTimer); tickTimer(); holdTimer = setInterval(tickTimer, 1000);
+  const form = $('#holdersForm');
+  const prev = renderHolders.values || {};
+  form.querySelectorAll('input, select').forEach((el) => { if (prev[el.id]) el.value = prev[el.id]; });
+  const sum = () => {
+    let tot = 0;
+    const lines = cart.map((st, i) => { const c = PRICES.zones[st.sec.zone].prices[$('#tt' + i).value] + PRICES.fee_cents; tot += c; return c; });
+    $('#sum').innerHTML = `<div class="sumline"><span>${cart.length === 1 ? '1 biglietto' : cart.length + ' biglietti'}, commissioni incluse (${fmtC(PRICES.fee_cents)} l'uno)</span><span>${fmtC(tot)}</span></div>`;
+  };
+  form.addEventListener('change', sum); sum();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!hold) { closeOverlay(); return toast('Tempo scaduto: scegli di nuovo i posti.'); }
+    renderHolders.values = Object.fromEntries([...form.querySelectorAll('input, select')].map((el) => [el.id, el.value]));
+    const tickets = [...form.querySelectorAll('.holder')].map((h) => ({
+      seat_id: h.dataset.seat, first_name: h.querySelector('[name=first_name]').value.trim(), last_name: h.querySelector('[name=last_name]').value.trim(),
+      birth_date: h.querySelector('[name=birth_date]').value, ticket_type: h.querySelector('[name=ticket_type]').value }));
+    const missing = tickets.some((t) => !t.first_name || !t.last_name || !t.birth_date);
+    if (missing) return renderHolders(['Inserisci nome, cognome e data di nascita per ogni biglietto.']);
+    const btn = form.querySelector('button[type=submit]'); btn.disabled = true; btn.textContent = 'Calcolo il totale…';
+    try {
+      order = await api('/api/orders', { method: 'POST', body: { hold_id: hold.hold_id, email: $('#email').value.trim(), tickets } });
+      renderPayment();
+    } catch (err) {
+      renderHolders(err.detail && err.detail.errors ? err.detail.errors : [err.message]);
+    }
+  });
+}
+
+function renderPayment(error = '') {
+  const typeLabel = (c) => PRICES.ticket_types.find((t) => t.code === c)?.label || c;
+  openOverlay(`
+    <div class="ov-head"><div><div class="eyebrow">Ordine ${esc(order.order_id)}</div><h2 id="ovTitle">Pagamento</h2><div class="timer"></div></div>
+      <button class="close" data-close aria-label="Annulla e libera i posti">✕</button></div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${order.lines.map((l) => `<div class="sumline"><span>Posto ${esc(l.seat_id)} · ${esc(l.first_name)} ${esc(l.last_name)} · ${esc(typeLabel(l.ticket_type))}</span><span>${fmtC(l.price_cents)}</span></div>`).join('')}
+      <div class="sumline"><span>Commissioni di servizio</span><span>${fmtC(order.lines.reduce((a, l) => a + l.fee_cents, 0))}</span></div>
+      <div class="sumline total"><span>Totale</span><span>${fmtC(order.total_cents)}</span></div>
+    </div>
+    ${error ? `<ul class="errors"><li>${esc(error)}</li></ul>` : ''}
+    <form id="payForm" novalidate>
+      <div class="field wide"><label for="card">Numero carta (pagamento simulato)</label><input id="card" inputmode="numeric" autocomplete="off" value="4242 4242 4242 4242"></div>
+      <p class="note" style="margin-top:8px">Prototipo: nessun addebito reale. Usa 4000 0000 0000 0002 per provare un pagamento rifiutato.</p>
+      <button class="btn primary" type="submit" style="width:100%;margin-top:14px">Paga ${fmtC(order.total_cents)}</button>
+    </form>`);
+  clearInterval(holdTimer); tickTimer(); holdTimer = setInterval(tickTimer, 1000);
+  $('#payForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button'); btn.disabled = true; btn.textContent = 'Pagamento in corso…';
+    try {
+      const paid = await api(`/api/orders/${order.order_id}/pay`, { method: 'POST', body: { card_number: $('#card').value } });
+      hold = null; clearInterval(holdTimer);
+      myOrders.push(paid); saveOrders();
+      for (const st of cart) st.inCart = false;
+      cart.length = 0; renderHolders.values = {};
+      renderTickets([paid], true);
+      refresh().catch(() => {});
+    } catch (err) { renderPayment(err.message); }
+  });
+}
+
+function qrSvg(text) {
+  if (typeof qrcode !== 'function') return '<p class="note">QR non disponibile offline</p>';
+  const q = qrcode(0, 'M'); q.addData(text); q.make();
+  return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+}
+function renderTickets(orders, fresh = false) {
+  const list = orders.flatMap((o) => o.tickets.map((t) => ({ ...t, match: MATCHES.find((m) => m.id === o.match_id) })));
+  openOverlay(`
+    <div class="ov-head"><div><div class="eyebrow">${fresh ? 'Pagamento riuscito' : 'I tuoi biglietti'}</div>
+      <h2 id="ovTitle">${fresh ? 'Ecco i tuoi biglietti' : `${list.length} ${list.length === 1 ? 'biglietto' : 'biglietti'}`}</h2></div>
+      <button class="close" data-close aria-label="Chiudi">✕</button></div>
+    ${list.map((t) => `
+      <div class="ticket">
+        <div><p>${t.match ? `${esc(t.match.home_team)} – ${esc(t.match.away_team)} · ${esc(fmtDate(t.match.kickoff))}` : ''}</p>
+          <h3>Settore ${esc(t.seat_id.split('-')[0])} · Fila ${esc(t.seat_id.split('-')[1])} · Posto ${esc(t.seat_id.split('-')[2])}</h3>
+          <p>${esc(t.holder_first)} ${esc(t.holder_last)} · ${esc(t.ticket_type)} · ${fmtC(t.price_cents)}</p>
+          <code>${esc(t.token)}</code></div>
+        <div class="qr">${qrSvg(t.token)}</div>
+      </div>`).join('')}
+    <p class="note">Per provare l'ingresso apri <a href="gate.html" target="_blank" rel="noopener">il controllo varchi</a> e incolla il codice sotto il QR.</p>`);
+}
+$('.tix').addEventListener('click', () => {
+  if (!myOrders.length) return toast('Non hai ancora biglietti: scegli un posto e aggiungilo al carrello.');
+  renderTickets(myOrders);
+});
+showMatchInfo();
+applyAvailability();
+
+/* ---------------- loop ---------------- */
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h;
+  if (camera.view?.enabled) camera.clearViewOffset();
+  camera.fov = mode === 'seat' ? camera.fov : (w < h ? 58 : 46);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+camera.position.set(330, 260, 430); controls.target.set(0, 0, 0); camera.lookAt(0, 0, 0);
+const clock = new THREE.Clock();
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  updateMatch(dt);
+  stepTween(dt);
+  const wantOffset = mode === 'seat' && innerHeight > 500;
+  if (wantOffset && !camera.view?.enabled) camera.setViewOffset(innerWidth, innerHeight, 0, innerHeight * 0.17, innerWidth, innerHeight);
+  else if (!wantOffset && camera.view?.enabled) camera.clearViewOffset();
+  if (mode === 'seat' && !tween) camera.rotation.set(lookPitch + pitchOff, lookYaw + yawOff, 0, 'YXZ');
+  else if (!tween && controls.enabled) controls.update();
+  const roofTarget = mode === 'seat' ? 0.85 : mode === 'sector' ? 0.08 : THREE.MathUtils.clamp((camera.position.length() - 200) / 220, 0.12, 0.95);
+  roofMat.opacity += (roofTarget - roofMat.opacity) * Math.min(1, dt * 3);
+  lattice.visible = mode === 'seat';
+  // from far away the red girders read as San Siro; up close over the seat map they fade so sectors stay readable
+  const gTarget = mode === 'seat' ? 1 : mode === 'sector' ? 0.15 : THREE.MathUtils.clamp((camera.position.length() - 220) / 160, 0.22, 1);
+  girderMat.opacity += (gTarget - girderMat.opacity) * Math.min(1, dt * 3);
+  girderMat.depthWrite = girderMat.opacity > 0.95;
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+$('#loading').classList.add('gone');
+setTimeout(() => $('#loading').remove(), 700);
+flyTo(OVER_POS, ORIGIN, 4.2, () => { setMode('overview'); setOrbit(60, 460, 1.32); });
+</script>
+</body>
+</html>

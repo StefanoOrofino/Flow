@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prezzi e vendite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one column of sections — sales for the selected match first, then that match's settings, then the price list shared by all matches. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0e16; --panel: #121726; --line: rgba(220, 228, 255, .10); --fg: #eef1f8; --muted: #8f97ab;
+  --accent: #f2883a; --ok: #34d37f; --warn: #ffcf5a; --bad: #ff5a6a;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif; --font-body: "Manrope", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--font-body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 60px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+h1 { margin: 0; font: 700 34px/1 var(--font-display); letter-spacing: .01em; }
+h2 { margin: 0; font: 700 22px/1.1 var(--font-display); }
+.muted { color: var(--muted); }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); letter-spacing: .04em; }
+input, select { height: 38px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); padding: 0 10px; font: 500 14px var(--font-body); min-width: 0; }
+input[type=number] { width: 92px; font-variant-numeric: tabular-nums; }
+input[type=checkbox] { height: 18px; width: 18px; }
+button { height: 38px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--fg); padding: 0 16px; font: 700 13px var(--font-body); cursor: pointer; }
+button.primary { background: var(--fg); color: var(--bg); border-color: transparent; }
+button:focus-visible, input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.kpi { border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.kpi b { display: block; font: 700 28px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 12px; color: var(--muted); }
+.table { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .04em; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 7px; }
+.bar { display: inline-block; width: 70px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; vertical-align: middle; margin-left: 6px; }
+.bar i { display: block; height: 100%; }
+.msg { padding: 10px 14px; border-radius: 10px; font-size: 13px; }
+.msg.ok { background: rgba(52, 211, 127, .12); color: #9ff0c4; }
+.msg.err { background: rgba(255, 90, 106, .12); color: #ffb3bc; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); }
+.chip.on { color: var(--ok); } .chip.off { color: var(--bad); }
+@media (max-width: 760px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><div class="muted">Prototipo · area riservata</div><h1>Prezzi e vendite</h1></div>
+    <div class="row">
+      <label for="token">Token amministratore<input id="token" type="password" autocomplete="off" placeholder="demo-admin"></label>
+      <button id="login" class="primary">Accedi</button>
+      <a href="./" class="muted" style="align-self:center">Apri la biglietteria →</a>
+    </div>
+  </header>
+  <div id="flash"></div>
+
+  <div id="app" hidden style="display:contents">
+    <section>
+      <div class="row" style="justify-content:space-between">
+        <label for="matchSel">Partita<select id="matchSel"></select></label>
+        <span id="saleState"></span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><b id="kRevenue"></b><span>incasso online (biglietti)</span></div>
+        <div class="kpi"><b id="kSold"></b><span>biglietti venduti online</span></div>
+        <div class="kpi"><b id="kFill"></b><span>riempimento stadio</span></div>
+        <div class="kpi"><b id="kScanned"></b><span>ingressi registrati ai varchi</span></div>
+      </div>
+      <div class="table"><table id="zonesTable"></table></div>
+      <p class="muted" style="margin:0">"Già venduti" sono i posti occupati al momento della creazione della partita (prevendita simulata). Il prezzo attuale include categoria partita e rincaro dinamico.</p>
+    </section>
+
+    <section>
+      <h2>Impostazioni della partita</h2>
+      <div class="row">
+        <label for="mCategory">Categoria<select id="mCategory"></select></label>
+        <label style="flex-direction:row;align-items:center;gap:8px;height:38px"><input id="mOnSale" type="checkbox"> Vendita aperta</label>
+        <button id="saveMatch" class="primary">Salva partita</button>
+      </div>
+      <p class="muted" style="margin:0">Prezzo personalizzato per zona (solo questa partita). Lascia vuoto per usare il listino.</p>
+      <div class="table"><table id="overTable"></table></div>
+    </section>
+
+    <section>
+      <h2>Nuova partita</h2>
+      <form id="newMatch" class="row">
+        <label for="nAway">Avversario<input id="nAway" required placeholder="es. Torre Calcio"></label>
+        <label for="nComp">Competizione<input id="nComp" required value="Campionato"></label>
+        <label for="nKick">Data e ora<input id="nKick" type="datetime-local" required></label>
+        <label for="nCat">Categoria<select id="nCat"></select></label>
+        <label style="flex-direction:row;align-items:center;gap:8px;height:38px"><input id="nPresale" type="checkbox" checked> Simula prevendita</label>
+        <button class="primary" type="submit">Crea partita</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Listino (vale per tutte le partite)</h2>
+      <div class="grid2">
+        <div>
+          <div class="table"><table id="zonePrices"></table></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div><div class="muted" style="margin-bottom:6px">Moltiplicatore per categoria partita</div><div class="row" id="cats"></div></div>
+          <div><div class="muted" style="margin-bottom:6px">Tipi di biglietto (sconto %)</div><div class="row" id="types"></div></div>
+          <div><div class="muted" style="margin-bottom:6px">Prezzo dinamico: rincaro quando la zona si riempie</div>
+            <div class="row"><label style="flex-direction:row;align-items:center;gap:8px;height:38px"><input id="dynOn" type="checkbox"> Attivo</label><span id="steps" class="row"></span></div></div>
+          <div class="row">
+            <label for="fee">Commissione € / biglietto<input id="fee" type="number" step="0.5" min="0"></label>
+            <label for="maxT">Max biglietti / ordine<input id="maxT" type="number" min="1" max="10"></label>
+            <label for="holdM">Minuti per pagare<input id="holdM" type="number" min="2" max="30"></label>
+          </div>
+          <button id="saveCfg" class="primary" style="align-self:flex-start">Salva listino</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const AREA = { arancio: '#e27a35', rosso: '#c23a4b', blu: '#2d62c4', verde: '#1f9457' };
+const eur = (c) => '€' + (c / 100).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+const esc = (t) => String(t).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+let token = '';
+try { token = sessionStorage.getItem('adm') || ''; } catch {}
+let CFG = null, ZONES = null, MATCHES = [], matchId = null, REPORT = null, PRICES = null;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  const data = r.status === 204 ? null : await r.json().catch(() => ({}));
+  if (!r.ok) { const d = data && data.detail; throw new Error(typeof d === 'string' ? d : d && d.errors ? d.errors.join(' · ') : (d && d.message) || 'Errore'); }
+  return data;
+}
+function flash(text, ok = true) {
+  $('#flash').innerHTML = `<div class="msg ${ok ? 'ok' : 'err'}">${esc(text)}</div>`;
+  clearTimeout(flash.t); flash.t = setTimeout(() => ($('#flash').innerHTML = ''), 4000);
+}
+
+async function login() {
+  token = $('#token').value.trim() || token;
+  try {
+    const r = await api('/api/admin/config');
+    CFG = r.config; ZONES = r.zones;
+    try { sessionStorage.setItem('adm', token); } catch {}
+    $('#app').hidden = false;
+    await loadMatches();
+    renderConfig();
+  } catch (e) { flash(e.message, false); }
+}
+$('#login').addEventListener('click', login);
+$('#token').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+
+async function loadMatches(select) {
+  MATCHES = await api('/api/matches');
+  matchId = select || matchId || MATCHES[0]?.id;
+  $('#matchSel').innerHTML = MATCHES.map((m) => `<option value="${esc(m.id)}">${esc(m.home_team)} – ${esc(m.away_team)} · ${new Date(m.kickoff).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · cat. ${esc(m.category)}</option>`).join('');
+  $('#matchSel').value = matchId;
+  await loadReport();
+}
+$('#matchSel').addEventListener('change', (e) => { matchId = e.target.value; loadReport(); });
+
+async function loadReport() {
+  [REPORT, PRICES] = await Promise.all([api(`/api/admin/matches/${matchId}/report`), api(`/api/matches/${matchId}/prices`)]);
+  const z = REPORT.zones, cap = z.reduce((a, r) => a + r.capacity, 0);
+  const taken = z.reduce((a, r) => a + r.presold + r.sold_online + r.held, 0);
+  $('#kRevenue').textContent = eur(z.reduce((a, r) => a + r.revenue_cents, 0));
+  $('#kSold').textContent = z.reduce((a, r) => a + r.sold_online, 0).toLocaleString('it-IT');
+  $('#kFill').textContent = Math.round(taken / cap * 100) + '%';
+  $('#kScanned').textContent = REPORT.scanned.toLocaleString('it-IT');
+  $('#saleState').innerHTML = REPORT.match.on_sale ? '<span class="chip on">● Vendita aperta</span>' : '<span class="chip off">● Vendita chiusa</span>';
+  $('#zonesTable').innerHTML = `<tr><th>Zona</th><th>Capienza</th><th>Già venduti</th><th>Online</th><th>Bloccati ora</th><th>Liberi</th><th>Riempimento</th><th>Prezzo intero ora</th><th>Incasso</th></tr>` +
+    z.map((r) => {
+      const fill = (r.capacity - r.free) / r.capacity, col = fill > 0.9 ? 'var(--bad)' : fill > 0.7 ? 'var(--warn)' : 'var(--ok)';
+      return `<tr><td><span class="sw" style="background:${AREA[ZONES[r.zone].area]}"></span>${esc(r.name)}</td><td>${r.capacity}</td><td>${r.presold}</td><td>${r.sold_online}</td><td>${r.held}</td><td>${r.free}</td>
+        <td>${Math.round(fill * 100)}%<span class="bar"><i style="width:${fill * 100}%;background:${col}"></i></span></td><td>${eur(PRICES.zones[r.zone].prices.INTERO)}</td><td>${eur(r.revenue_cents)}</td></tr>`;
+    }).join('');
+  $('#mCategory').innerHTML = Object.keys(CFG.match_categories).map((c) => `<option>${esc(c)}</option>`).join('');
+  $('#mCategory').value = REPORT.match.category;
+  $('#mOnSale').checked = REPORT.match.on_sale;
+  const ov = REPORT.match.price_overrides || {};
+  $('#overTable').innerHTML = '<tr><th>Zona</th><th>Listino</th><th>Prezzo per questa partita (€)</th></tr>' + Object.entries(ZONES).map(([code, info]) =>
+    `<tr><td><span class="sw" style="background:${AREA[info.area]}"></span>${esc(info.name)}</td><td>${eur(CFG.zone_prices[code] * 100)}</td>
+     <td><input type="number" min="1" step="1" data-ov="${esc(code)}" value="${ov[code] ?? ''}" aria-label="Prezzo personalizzato ${esc(info.name)}"></td></tr>`).join('');
+}
+
+$('#saveMatch').addEventListener('click', async () => {
+  const price_overrides = {};
+  document.querySelectorAll('[data-ov]').forEach((i) => { if (i.value) price_overrides[i.dataset.ov] = +i.value; });
+  try {
+    await api(`/api/admin/matches/${matchId}`, { method: 'PATCH', body: { category: $('#mCategory').value, on_sale: $('#mOnSale').checked, price_overrides } });
+    flash('Partita aggiornata'); await loadMatches();
+  } catch (e) { flash(e.message, false); }
+});
+
+$('#newMatch').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const m = await api('/api/admin/matches', { method: 'POST', body: {
+      away_team: $('#nAway').value, competition: $('#nComp').value, kickoff: new Date($('#nKick').value).toISOString(),
+      category: $('#nCat').value, presale: $('#nPresale').checked } });
+    flash(`Partita creata: ${m.home_team} – ${m.away_team}`); e.target.reset(); $('#nComp').value = 'Campionato';
+    await loadMatches(m.id);
+  } catch (err) { flash(err.message, false); }
+});
+
+function renderConfig() {
+  $('#nCat').innerHTML = Object.keys(CFG.match_categories).map((c) => `<option${c === 'B' ? ' selected' : ''}>${esc(c)}</option>`).join('');
+  $('#zonePrices').innerHTML = '<tr><th>Zona</th><th>Posti</th><th>Prezzo base intero (€)</th></tr>' + Object.entries(ZONES).map(([code, info]) =>
+    `<tr><td><span class="sw" style="background:${AREA[info.area]}"></span>${esc(info.name)}</td><td>${info.capacity}</td>
+     <td><input type="number" min="1" step="1" data-zone="${esc(code)}" value="${CFG.zone_prices[code]}" aria-label="Prezzo base ${esc(info.name)}"></td></tr>`).join('');
+  $('#cats').innerHTML = Object.entries(CFG.match_categories).map(([c, m]) => `<label>Cat. ${esc(c)}<input type="number" step="0.05" min="0.1" data-cat="${esc(c)}" value="${m}"></label>`).join('');
+  $('#types').innerHTML = CFG.ticket_types.map((t, i) => `<label>${esc(t.label)}<input type="number" min="0" max="99" data-type="${i}" value="${t.discount_pct}"${t.code === 'INTERO' ? ' disabled' : ''}></label>`).join('');
+  $('#dynOn').checked = !!CFG.dynamic_pricing.enabled;
+  $('#steps').innerHTML = CFG.dynamic_pricing.steps.map(([th, ex], i) => `<label>Oltre il % pieno<input type="number" min="1" max="99" data-th="${i}" value="${Math.round(th * 100)}"></label><label>Rincaro %<input type="number" min="0" max="100" data-ex="${i}" value="${Math.round(ex * 100)}"></label>`).join('');
+  $('#fee').value = CFG.service_fee; $('#maxT').value = CFG.max_tickets_per_order; $('#holdM').value = CFG.hold_minutes;
+}
+
+$('#saveCfg').addEventListener('click', async () => {
+  const cfg = structuredClone(CFG);
+  document.querySelectorAll('[data-zone]').forEach((i) => (cfg.zone_prices[i.dataset.zone] = +i.value));
+  document.querySelectorAll('[data-cat]').forEach((i) => (cfg.match_categories[i.dataset.cat] = +i.value));
+  document.querySelectorAll('[data-type]').forEach((i) => (cfg.ticket_types[+i.dataset.type].discount_pct = +i.value));
+  cfg.dynamic_pricing.enabled = $('#dynOn').checked;
+  cfg.dynamic_pricing.steps = cfg.dynamic_pricing.steps.map((s, i) => [+$(`[data-th="${i}"]`).value / 100, +$(`[data-ex="${i}"]`).value / 100]);
+  cfg.service_fee = +$('#fee').value; cfg.max_tickets_per_order = +$('#maxT').value; cfg.hold_minutes = +$('#holdM').value;
+  try { CFG = (await api('/api/admin/config', { method: 'PUT', body: cfg })).config; flash('Listino salvato: i nuovi prezzi valgono subito in biglietteria'); renderConfig(); loadReport(); }
+  catch (e) { flash(e.message, false); }
+});
+
+if (token) { $('#token').value = token; login(); }
+</script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controllo varchi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a single phone-width column for a steward: match, scan or paste, then one big verdict card. */
+:root {
+  color-scheme: dark;
+  --bg: #0b0e16; --panel: #121726; --line: rgba(220, 228, 255, .10); --fg: #eef1f8; --muted: #8f97ab;
+  --accent: #f2883a; --ok: #1fb866; --bad: #e0384b; --warn: #e3a019;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif; --font-body: "Manrope", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 var(--font-body); }
+.wrap { max-width: 480px; margin: 0 auto; padding: calc(env(safe-area-inset-top, 0px) + 20px) max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 14px; }
+h1 { margin: 0; font: 700 32px/1 var(--font-display); }
+.muted { color: var(--muted); font-size: 13px; }
+label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
+select, textarea { width: 100%; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 10px 12px; font: 500 14px var(--font-body); }
+textarea { min-height: 84px; resize: vertical; font-family: ui-monospace, monospace; font-size: 12px; }
+button { height: 50px; border-radius: 999px; border: 1px solid var(--line); background: var(--fg); color: var(--bg); font: 700 16px var(--font-body); cursor: pointer; }
+button.ghost { background: transparent; color: var(--fg); }
+button:focus-visible, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+video { width: 100%; border-radius: 14px; background: #000; }
+.verdict { border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 6px; color: #fff; }
+.verdict b { font: 700 34px/1 var(--font-display); }
+.verdict.ok { background: var(--ok); } .verdict.bad { background: var(--bad); } .verdict.warn { background: var(--warn); color: #1b1300; }
+.verdict dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 8px 0 0; font-size: 14px; }
+.verdict dt { opacity: .8; }
+.verdict dd { margin: 0; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div><div class="muted">Prototipo · steward</div><h1>Controllo varchi</h1></div>
+  <label for="match">Partita di oggi<select id="match"></select></label>
+  <button id="cam" class="ghost" type="button">Scansiona con la fotocamera</button>
+  <video id="video" playsinline muted hidden></video>
+  <label for="token">Oppure incolla il codice sotto il QR<textarea id="token" spellcheck="false"></textarea></label>
+  <button id="check" type="button">Verifica biglietto</button>
+  <div id="out" aria-live="polite"></div>
+  <p class="muted">Ogni biglietto entra una volta sola. Dopo il via libera controlla che il documento corrisponda al nome sul biglietto.</p>
+</div>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+fetch('/api/matches').then((r) => r.json()).then((ms) => {
+  $('#match').innerHTML = ms.map((m) => `<option value="${esc(m.id)}">${esc(m.home_team)} – ${esc(m.away_team)} · ${new Date(m.kickoff).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}</option>`).join('');
+});
+async function check(token) {
+  token = (token || $('#token').value).trim();
+  if (!token) return;
+  const r = await fetch('/api/gate/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, match_id: $('#match').value }) });
+  const d = await r.json();
+  const cls = d.result === 'ok' ? 'ok' : d.result === 'already_used' || d.result === 'wrong_match' ? 'warn' : 'bad';
+  const title = { ok: 'Ingresso OK', already_used: 'Già entrato', wrong_match: 'Partita sbagliata', invalid: 'Non valido' }[d.result];
+  $('#out').innerHTML = `<div class="verdict ${cls}"><b>${title}</b><span>${esc(d.message)}</span>
+    ${d.holder ? `<dl><dt>Titolare</dt><dd>${esc(d.holder)}</dd><dt>Nato il</dt><dd>${esc(new Date(d.birth_date).toLocaleDateString('it-IT'))}</dd>
+    <dt>Posto</dt><dd>Settore ${esc(d.seat_id.split('-')[0])} · Fila ${esc(d.seat_id.split('-')[1])} · Posto ${esc(d.seat_id.split('-')[2])}</dd><dt>Biglietto</dt><dd>${esc(d.ticket_type)}</dd></dl>` : ''}</div>`;
+  $('#token').value = '';
+}
+$('#check').addEventListener('click', () => check());
+$('#cam').addEventListener('click', async () => {
+  if (!('BarcodeDetector' in window)) { $('#out').innerHTML = '<p class="muted">Questo browser non legge i QR dalla fotocamera: incolla il codice.</p>'; return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    const v = $('#video'); v.srcObject = stream; v.hidden = false; await v.play();
+    const det = new BarcodeDetector({ formats: ['qr_code'] });
+    let last = '';
+    const loop = async () => {
+      if (v.hidden) return;
+      const codes = await det.detect(v).catch(() => []);
+      if (codes[0] && codes[0].rawValue !== last) { last = codes[0].rawValue; await check(last); setTimeout(() => (last = ''), 4000); }
+      requestAnimationFrame(loop);
+    };
+    loop();
+  } catch { $('#out').innerHTML = '<p class="muted">Fotocamera non disponibile: incolla il codice.</p>'; }
+});
+</script>
+</body>
+</html>
