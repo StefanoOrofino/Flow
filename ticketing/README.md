@@ -28,6 +28,13 @@ Carte di prova: `4242 4242 4242 4242` va a buon fine, `4000 0000 0000 0002` vien
 Al primo avvio vengono create tre partite di esempio con una prevendita simulata. Per ripartire da zero
 cancella `ticketing.db`.
 
+## Modalità demo (senza server)
+
+Se le pagine non trovano il backend (per esempio aperte da un link condiviso), `web/mockapi.js` risponde
+alle chiamate `/api/*` direttamente nel browser con le stesse regole, salvando i dati nel browser.
+Con il backend avviato non interviene. Serve solo per far provare il flusso: la demo non protegge
+dai doppi acquisti tra persone diverse, perché ogni browser ha i suoi dati.
+
 ## Come funziona
 
 **Posti** (`backend/venue.py`). Settori, file e posti dello stadio, generati dalla stessa geometria usata

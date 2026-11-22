@@ -47,6 +47,7 @@ video { width: 100%; border-radius: 14px; background: #000; }
   <div id="out" aria-live="polite"></div>
   <p class="muted">Ogni biglietto entra una volta sola. Dopo il via libera controlla che il documento corrisponda al nome sul biglietto.</p>
 </div>
+<script src="mockapi.js"></script>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
