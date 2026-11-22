@@ -140,6 +140,13 @@ h2 { margin: 0; font: 700 30px/1.02 var(--font-display); letter-spacing: .01em; 
 .fine { margin: 0; font-size: 11px; color: var(--muted); text-align: center; }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+.seat-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; opacity: 0; transition: opacity .9s ease; }
+.seat-photo.on { opacity: 1; }
+.viewbar { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.viewbar button { border: 1px solid var(--line); border-radius: 999px; background: var(--fg); color: var(--bg); font: 700 13px/1 var(--font-body); padding: 9px 14px; cursor: pointer; }
+.viewbar button:disabled { opacity: .75; cursor: progress; }
+.viewbar span { font-size: 11px; color: var(--fg); text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+@media (prefers-reduced-motion: reduce) { .seat-photo { transition: none; } }
 .tip { position: absolute; z-index: 6; pointer-events: none; padding: 7px 10px; border-radius: 10px; background: var(--panel-strong); border: 1px solid var(--line); font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 7px; }
 .tip i { width: 9px; height: 9px; border-radius: 2px; }
 .toast { position: absolute; z-index: 7; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 118px); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; border-radius: 12px; background: var(--panel-strong); border: 1px solid var(--line); font-size: 13px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
@@ -163,6 +170,7 @@ body { margin: 0; font-size: 14px; }
 
 <div id="app">
   <canvas id="c" aria-label="Stadio in 3D: tocca un settore, poi un posto"></canvas>
+  <img id="seatPhoto" class="seat-photo" alt="Vista realistica dal posto scelto" hidden>
 
   <header class="top">
     <div class="bar">
@@ -188,6 +196,7 @@ body { margin: 0; font-size: 14px; }
       <button data-ring="2" aria-pressed="false">3° anello</button>
     </div>
     <div id="live" class="live" hidden><span class="dot"></span><span id="liveTxt"></span></div>
+    <div id="viewBar" class="viewbar" hidden><button id="viewBtn" type="button"></button><span id="viewNote"></span></div>
   </header>
 
   <div id="tip" class="tip" hidden></div>
@@ -884,6 +893,7 @@ function setMode(m) {
   updateCart();
   $('#tip').hidden = true;
   hoverSeat = null; hoverSector = null;
+  if (m !== 'seat') hideSeatPhoto(true);
   paintAll();
 }
 let toastT = 0;
@@ -935,6 +945,7 @@ function goSeat(st) {
   flyTo(seatEye(st), new THREE.Vector3(st.x * 0.15, 0, st.z * 0.15), 1.7, () => {
     const d = new THREE.Vector3(); camera.getWorldDirection(d);
     lookYaw = Math.atan2(-d.x, -d.z); lookPitch = Math.asin(d.y);
+    seatArrived(st);
   });
 }
 function back() {
@@ -1228,6 +1239,80 @@ $('.tix').addEventListener('click', () => {
   if (!myOrders.length) return toast('Non hai ancora biglietti: scegli un posto e aggiungilo al carrello.');
   renderTickets(myOrders);
 });
+/* ---------------- realistic view from the seat ---------------- */
+let VIEWS = { enabled: false, images: {} };
+api('/api/views').then((v) => { VIEWS = v; }).catch(() => {});
+const photo = $('#seatPhoto');
+const viewKeys = (st) => [`${st.sec.number}-${Math.min(3, Math.ceil(st.row / 5))}`, `${st.sec.number}`];
+const findView = (st) => viewKeys(st).map((k) => VIEWS.images[k]).find(Boolean) || null;
+let photoFor = null, photoOn = false, generating = false;
+function hideSeatPhoto(all) {
+  photo.classList.remove('on'); photoOn = false;
+  setTimeout(() => { if (!photoOn) photo.hidden = true; }, 900);
+  if (all) { $('#viewBar').hidden = true; photoFor = null; }
+}
+function showSeatPhoto(v) {
+  photo.onload = () => { photo.hidden = false; requestAnimationFrame(() => photo.classList.add('on')); };
+  if (photo.getAttribute('src') === v.url && photo.complete) photo.onload(); else photo.src = v.url;
+  photoOn = true;
+}
+function renderViewBar(st) {
+  const v = findView(st), bar = $('#viewBar'), btn = $('#viewBtn'), note = $('#viewNote');
+  if (!v && !VIEWS.enabled) { bar.hidden = true; return; }
+  bar.hidden = false; btn.disabled = generating;
+  if (generating) { btn.textContent = 'Genero la vista…'; note.textContent = 'Di solito servono 10–20 secondi'; return; }
+  if (!v) { btn.textContent = 'Mostra vista realistica'; note.textContent = 'Generata con AI dalla vista 3D'; return; }
+  btn.textContent = photoOn ? 'Guarda in 3D' : 'Mostra vista realistica';
+  note.textContent = v.ai ? 'Immagine indicativa generata con AI' : 'Foto scattata da questo settore';
+}
+function seatArrived(st) {
+  photoFor = st;
+  const v = findView(st);
+  if (v) showSeatPhoto(v);
+  renderViewBar(st);
+}
+function captureView(maxH = 1024) {
+  renderer.render(scene, camera); // capture straight after rendering: no preserveDrawingBuffer needed
+  const src = renderer.domElement, k = Math.min(1, maxH / src.height);
+  const c = document.createElement('canvas'); c.width = Math.round(src.width * k); c.height = Math.round(src.height * k);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.88);
+}
+async function generateView(st) {
+  const r = await api('/api/views', { method: 'POST', body: { sector: st.sec.number, row: st.row, image: captureView(), night } });
+  VIEWS.images[r.key] = { url: r.url, ai: r.ai };
+  return r;
+}
+$('#viewBtn').addEventListener('click', async () => {
+  const st = photoFor; if (!st || generating) return;
+  if (photoOn) { hideSeatPhoto(false); return renderViewBar(st); }
+  const v = findView(st);
+  if (v) { showSeatPhoto(v); return renderViewBar(st); }
+  generating = true; renderViewBar(st);
+  try {
+    yawOff = 0; pitchOff = 0; camera.rotation.set(lookPitch, lookYaw, 0, 'YXZ');
+    await generateView(st);
+    if (photoFor === st && mode === 'seat') showSeatPhoto(findView(st));
+  } catch (e) { toast(e.message); }
+  finally { generating = false; if (photoFor === st) renderViewBar(st); }
+});
+// Hook for tools/pregenerate_views.mjs: frame one seat per sector and row band, then generate its view.
+window.ticketing = {
+  sectors: () => sectors.map((s) => s.number),
+  async pregenerate(number, row) {
+    const sec = sectors.find((s) => s.number === number), seatsInRow = sec.seats.filter((s) => s.row === row), st = seatsInRow[seatsInRow.length >> 1];
+    tween = null; focus = sec; selectedSeat = st; setMode('seat'); fillSeat(st);
+    const target = new THREE.Vector3(st.x * 0.15, 0, st.z * 0.15);
+    camera.position.copy(seatEye(st)); controls.target.copy(target); camera.lookAt(target);
+    const d = new THREE.Vector3(); camera.getWorldDirection(d);
+    lookYaw = Math.atan2(-d.x, -d.z); lookPitch = Math.asin(d.y); yawOff = 0; pitchOff = 0;
+    camera.rotation.set(lookPitch, lookYaw, 0, 'YXZ');
+    if (!camera.view?.enabled && innerHeight > 500) camera.setViewOffset(innerWidth, innerHeight, 0, innerHeight * 0.17, innerWidth, innerHeight);
+    roofMat.opacity = 0.85; girderMat.opacity = 1; lattice.visible = true;
+    return generateView(st);
+  },
+};
+
 showMatchInfo();
 applyAvailability();
 

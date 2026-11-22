@@ -22,7 +22,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import db, pricing, venue
+from . import db, pricing, venue, views
 
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "demo-admin")
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
@@ -433,4 +433,31 @@ def admin_report(match_id: str, conn=Depends(conn_dep)):
             "zones": rows, "by_type": by_type, "orders": orders, "scanned": scanned}
 
 
+# ---------------------------------------------------------------- seat views
+
+@app.get("/api/views")
+def list_views():
+    return {"enabled": views.provider_name() is not None, "provider": views.provider_name(), "images": views.images()}
+
+
+class ViewIn(BaseModel):
+    sector: int
+    row: int
+    image: str = Field(max_length=9_000_000)
+    night: bool = True
+
+
+@app.post("/api/views", status_code=201)
+def create_view(body: ViewIn):
+    sector = venue.sector_map().get(body.sector)
+    if sector is None or not 1 <= body.row <= len(sector.rows):
+        raise HTTPException(422, "Settore o fila inesistente")
+    try:
+        return views.generate(sector, body.row, body.image, body.night)
+    except views.ViewError as e:
+        raise HTTPException(e.status, str(e))
+
+
+views.VIEWS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/views", StaticFiles(directory=views.VIEWS_DIR), name="views")
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")

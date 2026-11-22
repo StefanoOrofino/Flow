@@ -251,6 +251,10 @@
       t.status = 'used'; t.scanned_at = now();
       return out(200, { result: 'ok', message: 'Ingresso consentito: controlla il documento', ...info });
     }
+    if (p[0] === 'views') {
+      if (method === 'GET') return [200, { enabled: false, provider: null, images: {} }];
+      fail(503, 'Nella demo senza server la vista realistica non si può generare');
+    }
     if (p[0] === 'admin') {
       admin();
       if (p[1] === 'config' && method === 'GET') return [200, { config: d.config, zones: ZONES }];

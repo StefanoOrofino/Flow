@@ -138,3 +138,26 @@ def test_admin_pricing_and_report(client):
     assert client.post(f"/api/matches/{m['id']}/holds", json={"seat_ids": seat}).status_code == 409
     rep = client.get("/api/admin/matches/demo-campionato/report", headers=ADMIN).json()
     assert rep["orders"] >= 1 and sum(z["sold_online"] for z in rep["zones"]) >= 2
+
+
+def test_seat_views(client, tmp_path, monkeypatch):
+    import base64
+    monkeypatch.setattr(app_module.views, "VIEWS_DIR", tmp_path)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("VIEW_PROVIDER", raising=False)
+    png = "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\nfake").decode()
+    assert client.get("/api/views").json() == {"enabled": False, "provider": None, "images": {}}
+    assert client.post("/api/views", json={"sector": 104, "row": 6, "image": png}).status_code == 503
+    # a real photo dropped in the folder is found by sector/band
+    (tmp_path / "104-2.jpg").write_bytes(b"jpg")
+    imgs = client.get("/api/views").json()["images"]
+    assert imgs["104-2"]["ai"] is False
+    monkeypatch.setenv("VIEW_PROVIDER", "mock")
+    r = client.post("/api/views", json={"sector": 104, "row": 7, "image": png}).json()
+    assert r["cached"] is True and r["ai"] is False  # the photo wins, nothing generated
+    r = client.post("/api/views", json={"sector": 205, "row": 12, "image": png})
+    assert r.status_code == 201 and r.json()["key"] == "205-3" and r.json()["ai"] is True
+    assert (tmp_path / "205-3.ai.png").exists()
+    assert client.post("/api/views", json={"sector": 999, "row": 1, "image": png}).status_code == 422
+    assert client.post("/api/views", json={"sector": 205, "row": 1, "image": "not-an-image"}).status_code == 422

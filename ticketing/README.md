@@ -28,6 +28,33 @@ Carte di prova: `4242 4242 4242 4242` va a buon fine, `4000 0000 0000 0002` vien
 Al primo avvio vengono create tre partite di esempio con una prevendita simulata. Per ripartire da zero
 cancella `ticketing.db`.
 
+## Vista realistica dal posto
+
+Quando la camera arriva sul posto, la biglietteria mostra in dissolvenza un'immagine realistica con la
+stessa inquadratura della vista 3D (come nel reel che ha ispirato il progetto). Le immagini si cercano
+per settore e fascia di file (file 1-5, 6-10, 11-14) in `web/views/`:
+
+- **Foto vere** (consigliato per un sito reale): metti in `web/views/` file chiamati `104-2.jpg`
+  (settore 104, file 6-10) oppure `104.jpg` (tutto il settore). In biglietteria compaiono come
+  "Foto scattata da questo settore".
+- **Generate con AI**: con una chiave sul server la pagina cattura la vista 3D dal posto e la manda a un
+  modello di immagini, che la rende realistica mantenendo l'inquadratura. Ogni settore e fascia si genera
+  una volta sola e resta salvato (`104-2.ai.jpg`), quindi il costo è limitato a circa 200 immagini.
+  In biglietteria compaiono come "Immagine indicativa generata con AI", perché il modello può mostrare
+  una visuale migliore di quella reale.
+
+```bash
+GEMINI_API_KEY=...  uvicorn backend.app:app      # Gemini (modello: GEMINI_IMAGE_MODEL, default gemini-2.5-flash-image)
+OPENAI_API_KEY=...  uvicorn backend.app:app      # oppure OpenAI (OPENAI_IMAGE_MODEL, default gpt-image-1)
+```
+
+Per generarle tutte in anticipo, invece che al primo clic di un visitatore:
+
+```bash
+npm install playwright@1.49.1 && npx playwright install chromium
+node tools/pregenerate_views.mjs http://localhost:8000            # --day per la versione diurna, --only 104,105 per alcuni settori
+```
+
 ## Modalità demo (senza server)
 
 Se le pagine non trovano il backend (per esempio aperte da un link condiviso), `web/mockapi.js` risponde
